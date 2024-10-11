@@ -1,0 +1,8 @@
+/*
+
+!.gitignore
+!client
+!server
+server/__pycache__/
+client/__pycache__/
+__pycache__/

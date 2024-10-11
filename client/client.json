@@ -1,0 +1,17 @@
+{
+    "Host": {
+        "server_address": "127.0.0.1",
+        "port": 12345
+    },
+    "self": {
+        "client_name": "client0"
+    },
+    "modalities": {
+        "modalities_num": 3,
+        "modalities_name" : [
+            "text",
+            "video",
+            "audio"
+        ]
+    }
+}

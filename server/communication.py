@@ -1,57 +1,88 @@
-import socket
-import threading
-import numpy as np
-from server.communication import send_results
-from server.mmFedAvg import calculate_average
 from task_manager import TaskManager
+import pickle
+import sys
+import struct
 
-import numpy as np
-from communication import send_results, receive_data
-
-class ClientHandler:
-    def __init__(self, client_socket, task_manager):
-        self.client_socket = client_socket
-        self.task_manager = task_manager
+class ServerHandler:
+    def __init__(self, server_socket,server):
+        self.server_socket = server_socket
+        # self.task_manager = task_manager
+        self.server = server
+        
+    def send(self, content):
+        try:
+            send_data = pickle.dumps(content, pickle.HIGHEST_PROTOCOL)
+            send_header = struct.pack('i', sys.getsizeof(send_data))
+            
+            self.server_socket.sendall(send_header)
+            self.server_socket.sendall(send_data)
+        except (OSError, ConnectionResetError) as e:
+            print(f"Content: {content} \n Send failed: {e}")
+            return False
+        except Exception as e:
+            print(f"Content: {content} \n Unexpected error: {e}")
+            return False
+        return True
+        
+        
+    def recv(self):
+        try:
+            response_header = self.server_socket.recv(4)
+            size = struct.unpack('i', response_header)
+            
+            content_byte=b""
+            
+            while sys.getsizeof(content_byte) < size[0]:
+                content_byte += self.server_socket.recv(size[0] - sys.getsizeof(content_byte))
+            
+            content = pickle.loads(content_byte)
+            return content
+        
+        except struct.error as e:
+            print(f"Error unpacking response header: {e}")
+            return None
+    
+        except pickle.PickleError as e:
+            print(f"Error deserializing content: {e}")
+            return None
+        
+        except ConnectionError as e:
+            print(f"Connection error: {e}")
+            return None
+        
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
 
     def handle(self):
-        with self.client_socket:
-            hello_message = self.client_socket.recv(1024).decode()
-            # print("Received from client:", hello_message)
-            modalities = self.client_socket.recv(1024).decode().split()
-            # print("Client modalities:", modalities)
+        with self.server_socket:
+            client_name = self.recv()
+            print("Received from client: "+client_name)        
+            
+            # self.server_socket.sendall("Received name message".encode())
+            self.send("Received name message")
+            
+            self.server.register_client(client_name) #接收名字，发送返回
+            self.server.event.set()
+            with self.server.condition_register:
+                self.server.condition_register.wait()
+                
+                
+            # modality = self.server_socket.recv(1024).decode()
+            modality = self.recv()
+            print("Client modality:", modality)
+            # send_data = pickle.dumps(self.server.mmFedAvg[modality], pickle.HIGHEST_PROTOCOL)
+            # send_header=struct.pack('i', sys.getsizeof(send_data))
+            
+            # self.server_socket.sendall(send_header)
+            # self.server_socket.sendall(send_data)
+            self.send(self.server.mmFedAvg[modality]) #接收模态，发送全局encoder
+            
+            # received_mess = self.server_socket.recv(1024).decode()
+            encoder_update = self.recv()
+            print(encoder_update) 
+            
+            self.send("over")
+            # self.server_socket.sendall("over".encode()) #接收更新，发送结束
 
-            # 发送需要的模态信息
-            required_modalities = self.get_required_modalities(modalities)
-            self.client_socket.sendall("Required modalities: ".encode() + required_modalities.encode())
-
-            # 第二次交互：接收训练结果
-            training_result = receive_data(self.client_socket)  # 假设这是一个1D数组
-            print("Received training result:", training_result)
-
-            # 发送收到确认
-            self.client_socket.sendall("Training result received.".encode())
-
-            # 计算并发送数组平均值
-            average_result = self.calculate_average(training_result)
-            send_results(self.client_socket, average_result)
-
-            # 第三次交互：完成确认
-            self.client_socket.sendall("Completion confirmation.".encode())
-            print("Connection ended.")
-
-    def get_required_modalities(self, modalities):
-        # 返回服务器需要的模态信息（示例逻辑）
-        required_modalities = []  # 你需要根据任务管理来生成这个列表
-        for task_id in self.task_manager.tasks.keys():
-            required_modalities += self.task_manager.get_required_modalities(task_id)
-        return ' '.join(set(required_modalities))
-
-    def calculate_average(self, training_result):
-        # 假设 training_result 是一维数组
-        result_array = np.frombuffer(training_result, dtype=np.float32)
-        average = np.mean(result_array)
-        return average
-
-
-def send_results(client_socket, results):
-    client_socket.sendall(results.tobytes())
+        
