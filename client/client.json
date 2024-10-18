@@ -7,11 +7,10 @@
         "client_name": "client0"
     },
     "modalities": {
-        "modalities_num": 3,
+        "modalities_num": 2,
         "modalities_name" : [
-            "text",
-            "video",
-            "audio"
+            "acc",
+            "gyr"
         ]
     }
 }

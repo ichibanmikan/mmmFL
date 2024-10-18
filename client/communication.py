@@ -68,7 +68,7 @@ class ClientHandler:
             print(f"Server response: {response}") #发送名字，接受返回
             
             self.send(self.config["modality"])
-              
+            
             now_global_encoder=self.recv()
             print(f"Server modality response: {now_global_encoder}") #发送模态，接收全局encoder
             
