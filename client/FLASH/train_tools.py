@@ -16,7 +16,6 @@ import math
 import torch
 import numpy as np
 import torch.optim as optim
-from __future__ import print_function
 
 class TwoCropTransform:
     """Create two crops of the same image"""
@@ -101,7 +100,7 @@ class train_tools:
         del state
 
 
-class AverageMeter(object):
+class AverageMeter:
     """Computes and stores the average and current value"""
     def __init__(self):
         self.reset()

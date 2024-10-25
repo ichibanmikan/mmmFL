@@ -8,11 +8,11 @@ class ServerHandler:
         self.server_socket = server_socket
         # self.task_manager = task_manager
         self.server = server
-        
+        self.round = 0
     def send(self, content):
         try:
             send_data = pickle.dumps(content, pickle.HIGHEST_PROTOCOL)
-            send_header = struct.pack('i', sys.getsizeof(send_data))
+            send_header = struct.pack('i', len(send_data))
             
             self.server_socket.sendall(send_header)
             self.server_socket.sendall(send_data)
@@ -32,8 +32,8 @@ class ServerHandler:
             
             content_byte=b""
             
-            while sys.getsizeof(content_byte) < size[0]:
-                content_byte += self.server_socket.recv(size[0] - sys.getsizeof(content_byte))
+            while len(content_byte) < size[0]:
+                content_byte += self.server_socket.recv(size[0] - len(content_byte))
             
             content = pickle.loads(content_byte)
             return content
@@ -56,33 +56,43 @@ class ServerHandler:
 
     def handle(self):
         with self.server_socket:
-            client_name = self.recv()
-            print("Received from client: "+client_name)        
-            
-            # self.server_socket.sendall("Received name message".encode())
-            self.send("Received name message")
-            
-            self.server.register_client(client_name) #接收名字，发送返回
-            self.server.event.set()
-            with self.server.condition_register:
-                self.server.condition_register.wait()
+            while True:
+                if self.round == 0:
+                    client_name = self.recv()
+                    print("Received from client: "+client_name)        
+                    
+                    # self.server_socket.sendall("Received name message".encode())
+                    self.send("Received name message")
+                    
+                    self.server.register_client(client_name) #接收名字，发送返回
+                    self.server.event.set()
+                    modality = self.recv() # modality是个列表
+                    print("Client modality:", modality)
+                    
+                    self.send("received modality!")
+                    
+                    with self.server.condition_register:
+                        # self.server.name_queue.put((client_name, modality))
+                        self.server.condition_register.wait()
+                else:
+                    self.send(self.server.mmFedAvg[modality]) # 接收模态，发送全局encoder
+                    print("modality: ", self.server.mmFedAvg[modality])
+                encoder_update = self.recv()
+                print("received from client: ", encoder_update)
                 
+                # with self.server.condition_update:
+                #     self.server.data_queue.put((modality, encoder_update))
+                #     self.server.condition_update.wait()
+                self.server.mmFedAvg.update_param(encoder_update, modality)
                 
-            # modality = self.server_socket.recv(1024).decode()
-            modality = self.recv()
-            print("Client modality:", modality)
-            # send_data = pickle.dumps(self.server.mmFedAvg[modality], pickle.HIGHEST_PROTOCOL)
-            # send_header=struct.pack('i', sys.getsizeof(send_data))
-            
-            # self.server_socket.sendall(send_header)
-            # self.server_socket.sendall(send_data)
-            self.send(self.server.mmFedAvg[modality]) #接收模态，发送全局encoder
-            
-            # received_mess = self.server_socket.recv(1024).decode()
-            encoder_update = self.recv()
-            print(encoder_update) 
-            
-            self.send("over")
-            # self.server_socket.sendall("over".encode()) #接收更新，发送结束
+                self.send("over")
+                
+                over_mess = self.recv()
+                print("received over_mess: " ,over_mess)
+                self.round += 1
+                if over_mess == "This training process has converged.":
+                    break
+                else:
+                    continue
 
         

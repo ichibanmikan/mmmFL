@@ -14,10 +14,10 @@
 
 import os
 import json
-import time
 import functools
 import multiprocessing
 from communication import ClientHandler
+from FLASH.main import FLASH_main
 
 
 class Config:
@@ -28,43 +28,71 @@ class Config:
         self.server_address = data["Host"]["server_address"]
         self.port = data["Host"]["port"]
         self.client_name = data["self"]["client_name"]
-        self.modalities_num = data["modalities"]["modalities_num"]
-        self.modalities_name = data["modalities"]["modalities_name"]
+        self.datasets = data["datasets"]
 
-    def single_process_config(self, index):
-        return {
+    def single_process_config(self, state, row, col=None):
+        single_config =  {
             "server_address": self.server_address,
             "port": self.port,
             "client_name": self.client_name,
-            "modality": self.modalities_name[index]
+            'state': state
         }
+        
+        if col is not None:
+            single_config["modality"] = [self.datasets[row]["modalities_name"][col]]
+        else:
+            single_config["modality"] = self.datasets[row]["modalities"]
+            
+        return single_config
 
-
-class Client:
+class Client_state_1:
     def __init__(self, config):
         self.config=config
-        self.round=0
 
     def start(self):
-        while True:
-            barrier_send_weight = multiprocessing.Barrier(self.config.modalities_num)
-            processes=[]
-            for i in range(self.config.modalities_num):
-                worker=ClientHandler(self.config.single_process_config(i), barrier_send_weight)
-                process=multiprocessing.Process(target=functools.partial(ClientHandler.handle, worker))
-                processes.append(process)
-
-            for p in processes:
+        # barrier_send_weight = [multiprocessing.Barrier(self.config.datasets[i]["modalities_num"]) for i in range(len(self.config.datasets))]
+        processes=[]
+        for i in range(len(self.config.datasets)):
+            processes.append([])
+            for j in range(self.config.datasets[i]["modalities_num"]):
+                    single_config = self.config.single_process_config(1, i, j)
+                    trainer = FLASH_main(1, single_config["modality"])
+                    worker = ClientHandler(single_config, trainer)
+                    process = multiprocessing.Process(target=functools.partial(ClientHandler.handle, worker))
+                    processes[i].append(process)
+                    
+        for process_group in processes:
+            for p in process_group:
                 p.start()
-            
-            for p in processes:
+        
+        for process_group in processes:
+            for p in process_group:
                 p.join()
-            print("round: %d is over", round)
-            self.round+=1
+        print("all over")
+ 
+# class Client_state_2:
+#     def __init__(self, config):
+#         self.config=config
+#         self.round=0
 
-            time.sleep(10)
+#     def start(self):
+#         while True:
+#             trainer = FLASH_main(2, self.config.single_process_config(i))
+#             worker=ClientHandler(self.config.single_process_config(i), barrier_send_weight, trainer)
+#             process=multiprocessing.Process(target=functools.partial(ClientHandler.handle, worker))
+
+#             for p in processes:
+#                 p.start()
             
+#             for p in processes:
+#                 p.join()
+#             print("round: %d is over", round)
+#             self.round+=1
+#             if self.round > 10 :
+#                 break
+#             time.sleep(10)
+         
 if __name__ == "__main__":
     config=Config()
-    client=Client(config)
+    client=Client_state_1(config)
     client.start()

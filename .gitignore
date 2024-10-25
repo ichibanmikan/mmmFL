@@ -16,3 +16,7 @@ client/FLASH-data.zip
 client/MHAD-data.zip
 client/USC-data.zip
 client/.DS_Store
+client/FLASH/models/gps.pth
+client/FLASH/models/image.pth
+client/FLASH/models/lidar.pth
+client/USC-HAD/.DS_Store

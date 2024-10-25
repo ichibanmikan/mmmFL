@@ -1,5 +1,6 @@
 import os
 import time
+import queue
 import socket
 import threading
 import configparser
@@ -21,14 +22,16 @@ class Server:
     def __init__(self, config, mmFedAvg):
         # self.task_manager = TaskManager('tasks.json')
         self.config = config
-        self.rounds = 0
         self.clients_processes = []
         self.clients = {}  # 用于追踪唯一客户端名称
         self.threads = []
         self.lock = threading.Lock()
+        # self.condition_update = threading.Condition() #标记是否一次训练
         self.condition_register = threading.Condition() #标记是否完成姓名注册
         self.event=threading.Event()
         self.mmFedAvg=mmFedAvg
+        # self.name_queue = queue.Queue()
+        # self.data_queue = {}
 
     def clear_connections(self):
         """Release all current connections."""
@@ -43,50 +46,41 @@ class Server:
         time.sleep(5)
 
     def start(self):
-        while True:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-                server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                self.server_socket=server_socket
-                server_socket.bind((self.config.HOST, self.config.PORT))
-                server_socket.listen(self.config.MAX_CLIENTS)
-                print("Server is running, waiting for connections...")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.server_socket=server_socket
+            server_socket.bind((self.config.HOST, self.config.PORT))
+            server_socket.listen(self.config.MAX_CLIENTS)
+            print("Server is running, waiting for connections...")
+            
+            while len(self.clients) < self.config.MAX_CLIENTS:
+                server_socket.settimeout(self.config.TIMEOUT)
+                try:
+                    client_socket, addr = server_socket.accept()
+                    print(f"Connected by {addr}")
+                    
+                    with self.lock:
+                        self.clients_processes.append(client_socket)
+                    
+                    # handler = ServerHandler(client_socket, self.task_manager, self)
+                    handler = ServerHandler(client_socket, self)
+                    thread=threading.Thread(target=handler.handle)
+                    self.threads.append(thread)
+                    # self.register_client()
+                    thread.start()
+                    self.event.wait()
+                    
+                except socket.timeout:
+                    print(f"Timeout reached with {len(self.clients_processes)} clients.")
+                    break
+            
+            with self.condition_register:
+                self.condition_register.notify_all()
                 
-                while len(self.clients) < self.config.MAX_CLIENTS:
-                    print(len(self.clients))
-                    server_socket.settimeout(self.config.TIMEOUT)
-                    # server_socket.settimeout(5)
-                    try:
-                        client_socket, addr = server_socket.accept()
-                        print(f"Connected by {addr}")
-                        
-                        with self.lock:
-                            self.clients_processes.append(client_socket)
-                        
-                        # handler = ServerHandler(client_socket, self.task_manager, self)
-                        handler = ServerHandler(client_socket, self)
-                        thread=threading.Thread(target=handler.handle)
-                        self.threads.append(thread)
-                        thread.start()
-                        self.event.wait()
-                        
-                    except socket.timeout:
-                        print(f"Timeout reached with {len(self.clients_processes)} clients.")
-                        break
+            for thread in self.threads:
+                thread.join()
 
-                if len(self.clients) < self.config.MIN_CLIENTS:
-                    print(f"Not enough clients connected ({len(self.clients_processes)}). Abandoning this round.")
-                    self.clear_connections()
-                    continue
-                
-                with self.condition_register:
-                    self.condition_register.notify_all()
-                    
-                for thread in self.threads:
-                    thread.join()
-                    
-                self.rounds += 1
-                print(f"Round {self.rounds} completed with {len(self.clients)} clients.")
-                self.clear_connections()
+            self.clear_connections()
 
     def register_client(self, client_name):
         with self.lock:
