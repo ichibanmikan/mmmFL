@@ -5,10 +5,15 @@ import socket
 import numpy as np
 
 class ClientHandler:
+    
     def __init__(self, config, trainer):
         self.config=config
         self.trainer = trainer
-        self.round = 0
+        self.round_1 = 0
+        self.round_2 = 0
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.connect((self.config["server_address"], self.config["port"]))
+        print(f"Connected to server {self.config["server_address"]}:{self.config["port"]}")
         
     def send(self, content):
         try:
@@ -55,42 +60,39 @@ class ClientHandler:
             print(f"An unexpected error occurred: {e}")
             return None
         
-    def handle(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-            client_socket.connect((self.config["server_address"], self.config["port"]))
-            self.client_socket = client_socket
-            print(f"Connected to server {self.config["server_address"]}:{self.config["port"]}")
-            while True:
-                if self.round == 0:
-                    self.send(self.config["client_name"]) 
-                    
-                    response = self.recv()
-                    print(f"Server response: {response}") #发送名字，接受返回
-                    
-                    self.send(self.config["modality"])
-                    modal_mess = self.recv()
-                    
-                    print("modal_mess: ", modal_mess)
-                else:
-                    now_global_encoder=self.recv()
-                    print(f"Server modality response: {now_global_encoder}") #发送模态，接收全局encoder
-                    print("Type of now_global_encoder:", type(now_global_encoder))
-                    
-                    self.trainer.reset_model_parameter(now_global_encoder)
-                
-                """开始训练"""
-                self.send(self.trainer.main())
-                
-                server_final_response = self.recv()
-                
-                print(f"Final server response: {server_final_response}")  #发送更新，接收结束
-                self.round += 1
-                
-                if self.round > 10:
-                    self.send("This training process has converged.")
-                    self.trainer.save_model(self.round)
-                    break
-                else:
-                    self.send("Train continue")
+    def handle_pre(self):
+        self.send(self.config["client_name"]) 
         
+        response = self.recv()
+        print(f"Server response: {response}") #发送名字，接受返回
+        
+        self.send(self.config["modality"])
+        modal_mess = self.recv()
+        
+        print("modal_mess: ", modal_mess)
+
+    def handle_state_1(self):
+        while True:
+            if self.round_1 != 0:
+                now_global_encoder=self.recv()
+                print(f"Server modality response: {now_global_encoder}") #发送模态，接收全局encoder
+                print("Type of now_global_encoder:", type(now_global_encoder))
+                
+                self.trainer.reset_model_parameter(now_global_encoder)
+            
+            """Train start"""
+            self.send(self.trainer.main(self.config["node_id"]))
+            
+            server_final_response = self.recv()
+            
+            print(f"Final server response: {server_final_response}")  #发送更新，接收结束
+            self.round_1 += 1
+            
+            if self.round_1 > 10:
+                self.send("This training process has converged.")
+                self.trainer.save_model(self.round_1)
+                break
+            else:
+                self.send("Train continue")
+    
         self.client_socket.close()

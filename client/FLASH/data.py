@@ -23,37 +23,34 @@ class rdata:
         data_list_3 = []
         labels_list = []
         
-        for root, dirs, _ in os.walk(data_dir):
-            for dir in dirs:
-                d = os.path.join(root, dir)
-                if self.has_npz_file(d):
-                    if state == 1 or len(modality) == 1:
-                        x_tr = np.load(os.path.join(data_dir, d, modality[0] + '.npz'))
-                        y_tr = np.load(os.path.join(data_dir, d, 'rf.npz'))
-                        data_list_1 = (x_tr[modality[0]])
-                        labels_list = (y_tr['rf'])
-                    elif state == 2:
-                        if len(modality) == 2:
-                            if modality[0]=='gps' or (modality[0]=='lidar' and modality[1]=='image'):
-                                x_tr_1 = np.load(os.path.join(data_dir, d, modality[0] + '.npz'))
-                                x_tr_2 = np.load(os.path.join(data_dir, d, modality[1] + '.npz'))
-                            else:
-                                x_tr_2 = np.load(os.path.join(data_dir, d, modality[0] + '.npz'))
-                                x_tr_1 = np.load(os.path.join(data_dir, d, modality[1] + '.npz'))
-                            y_tr = np.load(os.path.join(data_dir, d, 'rf.npz'))
-                            data_list_1 = (x_tr_1[modality[0]])
-                            data_list_2 = (x_tr_2[modality[1]])
-                            labels_list = (y_tr['rf'])
-                        else:
-                            x_tr_1 = np.load(os.path.join(data_dir, d, 'gps.npz'))
-                            x_tr_2 = np.load(os.path.join(data_dir, d, 'lidar.npz'))
-                            x_tr_3 = np.load(os.path.join(data_dir, d, 'image.npz'))
-                            y_tr = np.load(os.path.join(data_dir, d, 'rf.npz'))
-                            for i in range(len(x_tr_1['gps'])):
-                                data_list_1 = (x_tr_1['gps'][i])
-                                data_list_2 = (x_tr_2['lidar'][i])
-                                data_list_3 = (x_tr_3['image'][i])
-                                labels_list = (y_tr['rf'][i])
+        # for root, d, files in os.walk(data_dir):
+        if state == 1 or len(modality) == 1:
+            x_tr = np.load(os.path.join(data_dir, modality[0] + '.npz'))
+            y_tr = np.load(os.path.join(data_dir, 'rf.npz'))
+            data_list_1 = (x_tr[modality[0]])
+            labels_list = (y_tr['rf'])
+        elif state == 2:
+            if len(modality) == 2:
+                if modality[0]=='gps' or (modality[0]=='lidar' and modality[1]=='image'):
+                    x_tr_1 = np.load(os.path.join(data_dir, modality[0] + '.npz'))
+                    x_tr_2 = np.load(os.path.join(data_dir, modality[1] + '.npz'))
+                else:
+                    x_tr_2 = np.load(os.path.join(data_dir, modality[0] + '.npz'))
+                    x_tr_1 = np.load(os.path.join(data_dir, modality[1] + '.npz'))
+                y_tr = np.load(os.path.join(data_dir, 'rf.npz'))
+                data_list_1 = (x_tr_1[modality[0]])
+                data_list_2 = (x_tr_2[modality[1]])
+                labels_list = (y_tr['rf'])
+            else:
+                x_tr_1 = np.load(os.path.join(data_dir, 'gps.npz'))
+                x_tr_2 = np.load(os.path.join(data_dir, 'lidar.npz'))
+                x_tr_3 = np.load(os.path.join(data_dir, 'image.npz'))
+                y_tr = np.load(os.path.join(data_dir, 'rf.npz'))
+                for i in range(len(x_tr_1['gps'])):
+                    data_list_1 = (x_tr_1['gps'][i])
+                    data_list_2 = (x_tr_2['lidar'][i])
+                    data_list_3 = (x_tr_3['image'][i])
+                    labels_list = (y_tr['rf'][i])
         if len(data_list_1) > 0:
             self.data_1 = np.array(data_list_1, dtype='float')
         else:

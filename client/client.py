@@ -14,17 +14,28 @@
 
 import os
 import json
+import argparse
 import functools
+import threading
 import multiprocessing
 from communication import ClientHandler
 from FLASH.main import FLASH_main
+
 
 
 class Config:
     def __init__(self):
         with open(os.path.join(os.path.dirname(__file__), "client.json")) as js:
             data = json.load(js)
-         
+            parser = argparse.ArgumentParser(description="Process node ID.")
+    
+    # 添加 --node_id 参数
+        parser.add_argument('--node_id', type=int, required=True, help='Node ID of the client')
+
+        # 解析命令行参数
+        args = parser.parse_args()
+        
+        self.node_id = args.node_id
         self.server_address = data["Host"]["server_address"]
         self.port = data["Host"]["port"]
         self.client_name = data["self"]["client_name"]
@@ -35,7 +46,8 @@ class Config:
             "server_address": self.server_address,
             "port": self.port,
             "client_name": self.client_name,
-            'state': state
+            'state': state,
+            'node_id': self.node_id
         }
         
         if col is not None:
@@ -45,20 +57,34 @@ class Config:
             
         return single_config
 
-class Client_state_1:
+class Client:
     def __init__(self, config):
         self.config=config
-
+        self.handlers = []
+        self.threads = []
     def start(self):
-        # barrier_send_weight = [multiprocessing.Barrier(self.config.datasets[i]["modalities_num"]) for i in range(len(self.config.datasets))]
+        for i in range(len(self.config.datasets)):
+            self.handlers.append([])
+            for j in range(self.config.datasets[i]["modalities_num"]):
+                single_config = self.config.single_process_config(1, i, j)
+                trainer = FLASH_main(1, single_config["modality"])
+                worker = ClientHandler(single_config, trainer)                
+                self.handlers[i].append(worker)
+        
+        for i in range(len(self.config.datasets)):
+            for j in range(self.config.datasets[i]["modalities_num"]):
+                thread=threading.Thread(target=self.handlers[i][j].handle_pre)
+                self.threads.append(thread)
+                thread.start()
+                
+        for thread in self.threads:
+            thread.join()
+            
         processes=[]
         for i in range(len(self.config.datasets)):
             processes.append([])
             for j in range(self.config.datasets[i]["modalities_num"]):
-                    single_config = self.config.single_process_config(1, i, j)
-                    trainer = FLASH_main(1, single_config["modality"])
-                    worker = ClientHandler(single_config, trainer)
-                    process = multiprocessing.Process(target=functools.partial(ClientHandler.handle, worker))
+                    process = multiprocessing.Process(target=functools.partial(self.handlers[i][j].handle_state_1))
                     processes[i].append(process)
                     
         for process_group in processes:
@@ -69,30 +95,8 @@ class Client_state_1:
             for p in process_group:
                 p.join()
         print("all over")
- 
-# class Client_state_2:
-#     def __init__(self, config):
-#         self.config=config
-#         self.round=0
-
-#     def start(self):
-#         while True:
-#             trainer = FLASH_main(2, self.config.single_process_config(i))
-#             worker=ClientHandler(self.config.single_process_config(i), barrier_send_weight, trainer)
-#             process=multiprocessing.Process(target=functools.partial(ClientHandler.handle, worker))
-
-#             for p in processes:
-#                 p.start()
-            
-#             for p in processes:
-#                 p.join()
-#             print("round: %d is over", round)
-#             self.round+=1
-#             if self.round > 10 :
-#                 break
-#             time.sleep(10)
          
-if __name__ == "__main__":
+if __name__ == "__main__":    
     config=Config()
-    client=Client_state_1(config)
+    client=Client(config)
     client.start()

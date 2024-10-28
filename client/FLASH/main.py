@@ -57,7 +57,7 @@ class FLASH_main:
             else:
                 self.model = My3Model(self.config.num_classes)      
         
-    def main(self):
+    def main(self, node_id):
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
@@ -65,7 +65,7 @@ class FLASH_main:
         else:
             device = torch.device("cpu")
         self.model = self.model.to(device)
-        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/train/'), self.config, self.state, self.modality)
+        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config, self.state, self.modality)
         train_loader, valid_loader, test_loader = data_f.get_dataset()
 
         self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device, self.state)
