@@ -26,12 +26,7 @@ class Server:
         self.clients = {}  # 用于追踪唯一客户端名称
         self.threads = []
         self.lock = threading.Lock()
-        # self.condition_update = threading.Condition() #标记是否一次训练
-        self.condition_register = threading.Condition() #标记是否完成姓名注册
-        self.event=threading.Event()
         self.mmFedAvg=mmFedAvg
-        # self.name_queue = queue.Queue()
-        # self.data_queue = {}
 
     def clear_connections(self):
         """Release all current connections."""
@@ -53,8 +48,9 @@ class Server:
             server_socket.listen(self.config.MAX_CLIENTS)
             print("Server is running, waiting for connections...")
             
-            while len(self.clients) < self.config.MAX_CLIENTS:
-                server_socket.settimeout(self.config.TIMEOUT)
+            server_socket.settimeout(self.config.TIMEOUT)
+            
+            while True:
                 try:
                     client_socket, addr = server_socket.accept()
                     print(f"Connected by {addr}")
@@ -64,19 +60,20 @@ class Server:
                     
                     # handler = ServerHandler(client_socket, self.task_manager, self)
                     handler = ServerHandler(client_socket, self)
-                    thread=threading.Thread(target=handler.handle)
+                    thread=threading.Thread(target=handler.handle_pre)
                     self.threads.append(thread)
-                    # self.register_client()
-                    thread.start()
-                    self.event.wait()
                     
                 except socket.timeout:
                     print(f"Timeout reached with {len(self.clients_processes)} clients.")
                     break
             
-            with self.condition_register:
-                self.condition_register.notify_all()
-                
+            
+            self.train_state_1_wake_barrier = threading.Barrier(len(self.threads))
+            self.train_state_1_every_round = threading.Barrier(len(self.threads)) 
+            
+            for thread in self.threads:
+                thread.start()
+             
             for thread in self.threads:
                 thread.join()
 
