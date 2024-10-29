@@ -80,14 +80,18 @@ class ServerHandler:
 
             self.server.mmFedAvg.update_param(encoder_update, self.modality)
             
-            self.send("over")
-            
-            over_mess = self.recv()
-            print("received over_mess: " ,over_mess)
+            # over_mess = self.recv()
+            # print("received over_mess: " ,over_mess)
             self.round += 1
-            if over_mess == "This training process has converged.":
+            
+            if self.round > 10:
+                self.send("over")
                 break
             else:
-                continue
+                self.send("Train continue")
+            # if over_mess == "This training process has converged.":
+            #     break
+            # else:
+            #     continue
 
         

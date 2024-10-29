@@ -62,38 +62,36 @@ class Client:
         self.config=config
         self.handlers = []
         self.threads = []
+        
     def start(self):
         for i in range(len(self.config.datasets)):
-            self.handlers.append([])
             for j in range(self.config.datasets[i]["modalities_num"]):
                 single_config = self.config.single_process_config(1, i, j)
                 trainer = FLASH_main(1, single_config["modality"])
                 worker = ClientHandler(single_config, trainer)                
-                self.handlers[i].append(worker)
+                self.handlers.append(worker)
+        self.train_state_1_every_round = multiprocessing.Barrier(len(self.handlers))
         
-        for i in range(len(self.config.datasets)):
-            for j in range(self.config.datasets[i]["modalities_num"]):
-                thread=threading.Thread(target=self.handlers[i][j].handle_pre)
-                self.threads.append(thread)
-                thread.start()
+        for i in range(len(self.handlers)):
+            self.handlers[i].set_barrier_state_1(self.train_state_1_every_round)
+            thread=threading.Thread(target=self.handlers[i].handle_pre)
+            self.threads.append(thread)
+            thread.start()
                 
         for thread in self.threads:
             thread.join()
             
         processes=[]
-        for i in range(len(self.config.datasets)):
-            processes.append([])
-            for j in range(self.config.datasets[i]["modalities_num"]):
-                    process = multiprocessing.Process(target=functools.partial(self.handlers[i][j].handle_state_1))
-                    processes[i].append(process)
-                    
-        for process_group in processes:
-            for p in process_group:
-                p.start()
         
-        for process_group in processes:
-            for p in process_group:
-                p.join()
+        for i in range(len(self.handlers)):
+            process = multiprocessing.Process(target=functools.partial(self.handlers[i].handle_state_1))
+            processes.append(process)
+        
+        for p in processes:
+            p.start()
+        
+        for p in processes:
+            p.join()
         print("all over")
          
 if __name__ == "__main__":    

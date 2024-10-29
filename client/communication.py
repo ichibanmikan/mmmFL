@@ -15,6 +15,9 @@ class ClientHandler:
         self.client_socket.connect((self.config["server_address"], self.config["port"]))
         print(f"Connected to server {self.config["server_address"]}:{self.config["port"]}")
         
+    def set_barrier_state_1(self, train_state_1_every_round):
+        self.state_1_every_round_barrier = train_state_1_every_round
+        
     def send(self, content):
         try:
             send_data = pickle.dumps(content, pickle.HIGHEST_PROTOCOL)
@@ -88,11 +91,17 @@ class ClientHandler:
             print(f"Final server response: {server_final_response}")  #发送更新，接收结束
             self.round_1 += 1
             
-            if self.round_1 > 10:
-                self.send("This training process has converged.")
+            if server_final_response == 'over':
                 self.trainer.save_model(self.round_1)
                 break
             else:
-                self.send("Train continue")
-    
+                print(f'Round ${self.round_1} is over, wait for next round.')
+                self.state_1_every_round_barrier.wait()
+            # if self.round_1 > 10:
+            #     self.send("This training process has converged.")
+            #     self.trainer.save_model(self.round_1)
+            #     break
+            # else:
+            #     self.send("Train continue")
+
         self.client_socket.close()
