@@ -15,7 +15,7 @@ import os
 import numpy as np
 
 # 加载 .npz 文件
-data = np.load('/Users/ichibanmikan/Documents/Learn/ichibanFATE/client/FLASH/datasets/train/node_8/image.npz')
+data = np.load('/Users/ichibanmikan/Documents/Learn/ichibanFATE/client/FLASH/datasets/node_8/rf.npz')
 
 # 打印所有的键
 print("Keys in the .npz file:", data.keys())

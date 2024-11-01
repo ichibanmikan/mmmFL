@@ -134,4 +134,23 @@ class FLASH_main:
         str = ""
         for i in range(len(self.modality)):
             str += self.modality[i]
-        self.tr.train_tools.save_model(round, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models/', str + '.pth'))
+        
+        if(self.state == 1):
+            self.tr.train_tools.save_model(self.state, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models/', str + '_encoder.pth'))
+        else:
+            self.tr.train_tools.save_model(self.state, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models/', str + '.pth'))
+        
+    def set_encoder(self):
+        if self.state == 1:
+            return
+        
+        if len(self.modality) == 1:
+            self.model.encoder.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[0]+'_encoder.pth'), weights_only=True))
+        elif len(self.modality) == 2:
+            self.model.encoder.encoder_1.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[0]+'_encoder.pth'), weights_only=True)) #['model'].encoder
+            self.model.encoder.encoder_2.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[1]+'_encoder.pth'), weights_only=True))
+        else:
+            self.model.encoder.encoder_1.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[0]+'_encoder.pth'), weights_only=True))
+            self.model.encoder.encoder_2.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[1]+'_encoder.pth'), weights_only=True))
+            self.model.encoder.encoder_3.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[2]+'_encoder.pth'), weights_only=True))
+        

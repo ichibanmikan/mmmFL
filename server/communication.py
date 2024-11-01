@@ -2,9 +2,10 @@ from task_manager import TaskManager
 import pickle
 import sys
 import struct
+from abc import ABC, abstractmethod
 
-class ServerHandler:
-    def __init__(self, server_socket,server):
+class ServerHandler(ABC):
+    def __init__(self, server_socket, server):
         self.server_socket = server_socket
         # self.task_manager = task_manager
         self.server = server
@@ -66,11 +67,18 @@ class ServerHandler:
         
         self.send("received modality!")
         
-        self.server.train_state_1_wake_barrier.wait()
+        self.server.train_wake_barrier.wait()
+        self.handle_train()
         
-        self.handle_state_1()
+    @abstractmethod
+    def handle_train(self):
+        pass
 
-    def handle_state_1(self):
+class ServerHandler_step_1(ServerHandler):
+    def __init__(self, server_socket, server):
+        super().__init__(server_socket, server)
+
+    def handle_train(self):
         while True:
             if self.round != 0:
                 self.send(self.server.mmFedAvg[self.modality]) # 接收模态，发送全局encoder
@@ -80,8 +88,6 @@ class ServerHandler:
 
             self.server.mmFedAvg.update_param(encoder_update, self.modality)
             
-            # over_mess = self.recv()
-            # print("received over_mess: " ,over_mess)
             self.round += 1
             
             if self.round > 10:
@@ -89,9 +95,31 @@ class ServerHandler:
                 break
             else:
                 self.send("Train continue")
-            # if over_mess == "This training process has converged.":
-            #     break
-            # else:
-            #     continue
+    
+
+class ServerHandler_step_2(ServerHandler):
+    def __init__(self, server_socket, server):
+        super().__init__(server_socket, server)
+        
+    def handle_train(self):
+        while True:
+            if self.round != 0:
+                self.send(self.server.mmFedAvg[self.modality]) # 接收模态，发送全局模型
+                print("modality: ", self.server.mmFedAvg[self.modality])
+            encoder_update = self.recv()
+            print("received from client: ", encoder_update)
+
+            self.server.mmFedAvg.update_param(encoder_update, self.modality)
+            
+            self.round += 1
+            
+            if self.round > 10:
+                self.send("over")
+                break
+            else:
+                self.send("Train continue")
+            
+        
+        
 
         

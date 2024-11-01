@@ -46,11 +46,13 @@ class rdata:
                 x_tr_2 = np.load(os.path.join(data_dir, 'lidar.npz'))
                 x_tr_3 = np.load(os.path.join(data_dir, 'image.npz'))
                 y_tr = np.load(os.path.join(data_dir, 'rf.npz'))
-                for i in range(len(x_tr_1['gps'])):
-                    data_list_1 = (x_tr_1['gps'][i])
-                    data_list_2 = (x_tr_2['lidar'][i])
-                    data_list_3 = (x_tr_3['image'][i])
-                    labels_list = (y_tr['rf'][i])
+                # for i in range(len(x_tr_1['gps'])):
+                data_list_1 = (x_tr_1['gps'])
+                data_list_2 = (x_tr_2['lidar'])
+                data_list_3 = (x_tr_3['image'])
+                labels_list = (y_tr['rf'])
+                    
+        self.labels = np.array(labels_list)
         if len(data_list_1) > 0:
             self.data_1 = np.array(data_list_1, dtype='float')
         else:
@@ -65,7 +67,6 @@ class rdata:
             self.data_3 = np.array(data_list_3, dtype='float')
         else:
             self.data_3 = np.empty((0,))  # 或者选择其他合适的默认值
-            self.labels = np.array(labels_list)
 
     # def count_files_in_directory(self, dir_path):
     #     return sum(1 for item in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, item)))
@@ -104,8 +105,8 @@ class data_factory:
         self.rdata = rdata(data_dir, state, modality)
         self.config = config
     def get_dataset(self):
-        board_0 = round(len(self.rdata.data_1) * 0.7)
-        board_1 = round(len(self.rdata.data_1) * 0.7)+round(len(self.rdata.data_1) * 0.15)
+        board_0 = round(len(self.rdata.data_1) * 0.8)
+        board_1 = round(len(self.rdata.data_1) * 0.8)+round(len(self.rdata.data_1) * 0.15)
         
         train_data_1 = torch.tensor(self.rdata.data_1[:board_0])
         train_data_2 = torch.tensor(self.rdata.data_2[:board_0])

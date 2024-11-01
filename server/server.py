@@ -5,7 +5,7 @@ import socket
 import threading
 import configparser
 from task_manager import TaskManager
-from communication import ServerHandler
+from communication import *
 from mmFedAvg import mmFedAvg
 
 class Config:
@@ -59,7 +59,7 @@ class Server:
                         self.clients_processes.append(client_socket)
                     
                     # handler = ServerHandler(client_socket, self.task_manager, self)
-                    handler = ServerHandler(client_socket, self)
+                    handler = ServerHandler_step_1(client_socket, self)
                     thread=threading.Thread(target=handler.handle_pre)
                     self.threads.append(thread)
                     
@@ -68,8 +68,44 @@ class Server:
                     break
             
             
-            self.train_state_1_wake_barrier = threading.Barrier(len(self.threads))
-            self.train_state_1_every_round = threading.Barrier(len(self.threads)) 
+            self.train_wake_barrier = threading.Barrier(len(self.threads))
+            
+            for thread in self.threads:
+                thread.start()
+             
+            for thread in self.threads:
+                thread.join()
+
+            self.clear_connections()
+    
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.server_socket=server_socket
+            server_socket.bind((self.config.HOST, self.config.PORT))
+            server_socket.listen(self.config.MAX_CLIENTS)
+            print("Server is running, waiting for connections...")
+            
+            server_socket.settimeout(self.config.TIMEOUT)
+            
+            while True:
+                try:
+                    client_socket, addr = server_socket.accept()
+                    print(f"Connected by {addr}")
+                    
+                    with self.lock:
+                        self.clients_processes.append(client_socket)
+                    
+                    # handler = ServerHandler(client_socket, self.task_manager, self)
+                    handler = ServerHandler_step_2(client_socket, self)
+                    thread=threading.Thread(target=handler.handle_pre)
+                    self.threads.append(thread)
+                    
+                except socket.timeout:
+                    print(f"Timeout reached with {len(self.clients_processes)} clients.")
+                    break
+            
+            self.train_wake_barrier = threading.Barrier(len(self.threads))
+            # self.train_step_2_wake_barrier = threading.Barrier(len(self.threads))
             
             for thread in self.threads:
                 thread.start()

@@ -186,19 +186,19 @@ class MySingleModel(nn.Module):
             self.encoder = lidar_encoder()
             self.classifier = nn.Sequential(
                 nn.Linear(160, num_classes),
-                nn.Softmax(dim=1)
+                nn.Softmax(dim=0)
                 )
         elif modality == 'image':
             self.encoder = image_encoder()
             self.classifier = nn.Sequential(
                 nn.Linear(288, num_classes),
-                nn.Softmax(dim=1)
+                nn.Softmax(dim=0)
                 )        
         elif modality == 'gps':
             self.encoder = gps_encoder()
             self.classifier = nn.Sequential(
             nn.Linear(40, num_classes),
-            nn.Softmax(dim=1)
+            nn.Softmax()
             )
 
     def forward(self, x):
@@ -212,10 +212,7 @@ class MySingleModel(nn.Module):
 class Encoder2_1(nn.Module):
     def __init__(self):
         super().__init__()
-
-        self.encoder_1 = gps_encoder()
-        self.encoder_2 = lidar_encoder()
-
+        self.encoder = gps_encoder(), lidar_encoder()
     def forward(self, x1, x2):
 
         feature_1 = self.encoder_1(x1)
@@ -226,7 +223,6 @@ class Encoder2_1(nn.Module):
 class Encoder2_2(nn.Module):
     def __init__(self):
         super().__init__()
-
         self.encoder_1 = gps_encoder()
         self.encoder_2 = image_encoder()
 
@@ -240,7 +236,6 @@ class Encoder2_2(nn.Module):
 class Encoder2_3(nn.Module):
     def __init__(self):
         super().__init__()
-
         self.encoder_1 = lidar_encoder()
         self.encoder_2 = image_encoder()
 
@@ -263,21 +258,21 @@ class My2Model(nn.Module):
             self.encoder = Encoder2_1()
             self.classifier = nn.Sequential(
             nn.Linear(200, num_classes),
-            nn.Softmax(dim=1)
+            nn.Softmax(dim=0)
             )
 
         elif modality == 'gps image' or modality == 'image gps':
             self.encoder = Encoder2_2()
             self.classifier = nn.Sequential(
                 nn.Linear(328, num_classes),
-                nn.Softmax(dim=1)
+                nn.Softmax(dim=0)
                 ) 
 
         elif modality == 'lidar image' or modality == 'image lidar':
             self.encoder = Encoder2_3()
             self.classifier = nn.Sequential(
                 nn.Linear(448, num_classes),
-                nn.Softmax(dim=1)
+                nn.Softmax(dim=0)
                 )
      
 
@@ -318,7 +313,7 @@ class My3Model(nn.Module):
 
         self.classifier = nn.Sequential(
         nn.Linear(488, num_classes),
-        nn.Softmax(dim=1)
+        nn.Softmax(dim=0)
         )
      
     def forward(self, x1, x2, x3):
