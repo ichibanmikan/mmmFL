@@ -43,19 +43,16 @@ class Config:
 
 class FLASH_main:
     
-    def __init__(self, state, modality):
-        self.state = state
+    def __init__(self, modality):
         self.modality = modality
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
-        if self.state == 1:
+        
+        if len(self.modality) == 1:
             self.model = MySingleModel(self.config.num_classes, self.modality[0])
+        elif len(self.modality) == 2:
+            self.model = My2Model(self.config.num_classes, self.modality[0] + ' ' + self.modality[1])
         else:
-            if len(self.modality) == 1:
-                self.model = MySingleModel(self.config.num_classes, self.modality[0])
-            elif len(self.modality) == 2:
-                self.model = My2Model(self.config.num_classes, self.modality[0] + ' ' + self.modality[1])
-            else:
-                self.model = My3Model(self.config.num_classes)      
+            self.model = My3Model(self.config.num_classes)      
         
     def main(self, node_id):
         if torch.backends.mps.is_available():
@@ -65,10 +62,10 @@ class FLASH_main:
         else:
             device = torch.device("cpu")
         self.model = self.model.to(device)
-        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config, self.state, self.modality)
+        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config, self.modality)
         train_loader, valid_loader, test_loader = data_f.get_dataset()
 
-        self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device, self.state)
+        self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device)
 
         self.tr.train()
         print(self.tr.best_acc)
@@ -135,22 +132,5 @@ class FLASH_main:
         for i in range(len(self.modality)):
             str += self.modality[i]
         
-        if(self.state == 1):
-            self.tr.train_tools.save_model(self.state, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models/', str + '_encoder.pth'))
-        else:
-            self.tr.train_tools.save_model(self.state, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models/', str + '.pth'))
-        
-    def set_encoder(self):
-        if self.state == 1:
-            return
-        
-        if len(self.modality) == 1:
-            self.model.encoder.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[0]+'_encoder.pth'), weights_only=True))
-        elif len(self.modality) == 2:
-            self.model.encoder.encoder_1.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[0]+'_encoder.pth'), weights_only=True)) #['model'].encoder
-            self.model.encoder.encoder_2.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[1]+'_encoder.pth'), weights_only=True))
-        else:
-            self.model.encoder.encoder_1.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[0]+'_encoder.pth'), weights_only=True))
-            self.model.encoder.encoder_2.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[1]+'_encoder.pth'), weights_only=True))
-            self.model.encoder.encoder_3.load_state_dict(torch.load(os.path.join( os.path.dirname(os.path.abspath(__file__)),  'models', self.modality[2]+'_encoder.pth'), weights_only=True))
+        self.tr.train_tools.save_model(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models/', str + '.pth'))
         

@@ -19,7 +19,7 @@ from FLASH.train_tools import *
 from FLASH.data import *
 
 class Trainer:
-    def __init__(self, config, model, train_loader, valid_loader, device, state):
+    def __init__(self, config, model, train_loader, valid_loader, device):
         self.config = config
         self.device = device
         self.model = model

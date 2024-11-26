@@ -88,13 +88,10 @@ class train_tools:
                 param_group['lr'] = lr
 
 
-    def save_model(self, state, save_file):
+    def save_model(self, save_file):
         print('==> Saving...')
-        
-        if(state == 1):
-            torch.save(self.model.encoder.cpu().state_dict(), save_file)
-        else:
-            torch.save(self.model.cpu().state_dict(), save_file)
+
+        torch.save(self.model.cpu().state_dict(), save_file)
         # state = {
         #     'opt': self.config,
         #     'model': self.model.state_dict(),

@@ -14,6 +14,7 @@
 
 import torch
 import torch.nn as nn 
+import numpy as np
 
 class gps_encoder(nn.Module):
     
@@ -172,120 +173,6 @@ class image_encoder(nn.Module):
 
 
         return x
-    
-              
-
-class MySingleModel(nn.Module):
-
-    def __init__(self, num_classes, modality):
-        super().__init__()
-
-        # print("DEBUG: modality is: ", modality)
-
-        if modality == 'lidar':
-            self.encoder = lidar_encoder()
-            self.classifier = nn.Sequential(
-                nn.Linear(160, num_classes),
-                nn.Softmax(dim=0)
-                )
-        elif modality == 'image':
-            self.encoder = image_encoder()
-            self.classifier = nn.Sequential(
-                nn.Linear(288, num_classes),
-                nn.Softmax(dim=0)
-                )        
-        elif modality == 'gps':
-            self.encoder = gps_encoder()
-            self.classifier = nn.Sequential(
-            nn.Linear(40, num_classes),
-            nn.Softmax(dim=0)
-            )
-
-    def forward(self, x):
-        # print(x.shape)
-        feature = self.encoder(x)
-        output = self.classifier(feature)
-
-        return output
-
-
-class Encoder2_1(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder = gps_encoder(), lidar_encoder()
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-class Encoder2_2(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder_1 = gps_encoder()
-        self.encoder_2 = image_encoder()
-
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-class Encoder2_3(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder_1 = lidar_encoder()
-        self.encoder_2 = image_encoder()
-
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-
-class My2Model(nn.Module):
-
-    def __init__(self, num_classes, modality):
-        super().__init__()
-
-        # print("DEBUG: modality is: ", modality)
-
-        if modality == 'gps lidar' or modality == 'lidar gps':
-            self.encoder = Encoder2_1()
-            self.classifier = nn.Sequential(
-            nn.Linear(200, num_classes),
-            nn.Softmax(dim=0)
-            )
-
-        elif modality == 'gps image' or modality == 'image gps':
-            self.encoder = Encoder2_2()
-            self.classifier = nn.Sequential(
-                nn.Linear(328, num_classes),
-                nn.Softmax(dim=0)
-                ) 
-
-        elif modality == 'lidar image' or modality == 'image lidar':
-            self.encoder = Encoder2_3()
-            self.classifier = nn.Sequential(
-                nn.Linear(448, num_classes),
-                nn.Softmax(dim=0)
-                )
-     
-
-
-    def forward(self, x1, x2):
-        # print(x.shape)
-
-        feature_1, feature_2 = self.encoder(x1, x2)
-
-        feature = torch.cat((feature_1, feature_2), dim=1)
-        output = self.classifier(feature)
-
-        return output
 
 
 class Encoder3(nn.Module):
@@ -323,3 +210,67 @@ class My3Model(nn.Module):
         output = self.classifier(feature)
 
         return output
+
+class Flash:
+    def __init__(self):
+        self.model = My3Model(64)
+    
+    def get_model_params(self):
+            
+        params = []
+        for param in self.model.parameters():
+            if torch.cuda.is_available() or torch.backends.mps.is_available():
+                params.extend(param.view(-1).cpu().detach().numpy())
+            else :
+                params.extend(param.view(-1).detach().numpy())
+            # print(param)
+
+        # model_params = params.cpu().numpy()
+        model_params = np.array(params)
+        print("Shape of model weight: ", model_params.shape)#39456
+
+        return model_params
+
+    def reset_model_parameter(self, new_params):
+        temp_index = 0
+        with torch.no_grad():
+            for param in self.model.parameters():
+                if len(param.shape) == 2:
+
+                    para_len = int(param.shape[0] * param.shape[1])
+                    temp_weight = new_params[temp_index : temp_index + para_len].astype(float)
+                    param.copy_(torch.Tensor(temp_weight.reshape(param.shape[0], param.shape[1])).to(param.device))
+                    temp_index += para_len
+
+                elif len(param.shape) == 3:
+
+                    para_len = int(param.shape[0] * param.shape[1] * param.shape[2])
+                    temp_weight = new_params[temp_index : temp_index + para_len].astype(float)
+                    param.copy_(torch.Tensor(temp_weight.reshape(param.shape[0], param.shape[1], param.shape[2])).to(param.device))
+                    temp_index += para_len 
+
+                elif len(param.shape) == 4:
+
+                    para_len = int(param.shape[0] * param.shape[1] * param.shape[2] * param.shape[3])
+                    temp_weight = new_params[temp_index : temp_index + para_len].astype(float)
+                    param.copy_(torch.Tensor(temp_weight.reshape(param.shape[0], param.shape[1], param.shape[2], param.shape[3])).to(param.device))
+                    temp_index += para_len  
+
+                elif len(param.shape) == 5:
+
+                    para_len = int(param.shape[0] * param.shape[1] * param.shape[2] * param.shape[3] * param.shape[4])
+                    temp_weight = new_params[temp_index : temp_index + para_len].astype(float)
+                    param.copy_(torch.Tensor(temp_weight.reshape(param.shape[0], param.shape[1], param.shape[2], param.shape[3], param.shape[4])).to(param.device))
+                    temp_index += para_len  
+
+                else:
+
+                    para_len = param.shape[0]
+                    temp_weight = new_params[temp_index : temp_index + para_len].astype(float)
+                    param.copy_(torch.Tensor(temp_weight).to(param.device))
+                    temp_index += para_len    
+                    
+    def save_model(self, save_file):
+        print('==> Saving...')
+
+        torch.save(self.model.cpu().state_dict(), save_file)

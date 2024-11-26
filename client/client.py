@@ -29,11 +29,9 @@ class Config:
         with open(os.path.join(os.path.dirname(__file__), "client.json")) as js:
             data = json.load(js)
             parser = argparse.ArgumentParser(description="Process node ID.")
-    
-    # 添加 --node_id 参数
+
         parser.add_argument('--node_id', type=int, required=True, help='Node ID of the client')
 
-        # 解析命令行参数
         args = parser.parse_args()
         
         self.node_id = args.node_id
@@ -42,93 +40,24 @@ class Config:
         self.client_name = data["self"]["client_name"]
         self.datasets = data["datasets"]
 
-    def single_process_config(self, step, row, col=None):
-        single_config =  {
-            "server_address": self.server_address,
-            "port": self.port,
-            "client_name": self.client_name,
-            'step': step,
-            'node_id': self.node_id
-        }
-        
-        if col is not None:
-            single_config["modality"] = [self.datasets[row]["modalities_name"][col]]
-        else:
-            single_config["modality"] = self.datasets[row]["modalities_name"]
-            
-        return single_config
+    def modality(self, row):
+        return self.datasets[row]['modalities_name']
 
 class Client:
     def __init__(self, config):
         self.config=config
-        self.handlers = []
-        self.threads = []
+        self.trainers = []
         
     def start(self):
         for i in range(len(self.config.datasets)):
-            for j in range(self.config.datasets[i]["modalities_num"]):
-                single_config = self.config.single_process_config(1, i, j)
-                trainer = FLASH_main(1, single_config["modality"])
-                worker = ClientHandler_step_1(single_config, trainer)                
-                self.handlers.append(worker)
-        self.train_step_1_every_round = multiprocessing.Barrier(len(self.handlers))
+            trainer = FLASH_main(self.config.modality(i))        
+            self.trainers.append(trainer)
         
-        for i in range(len(self.handlers)):
-            self.handlers[i].set_barrier_every_round(self.train_step_1_every_round)
-            thread=threading.Thread(target=self.handlers[i].handle_pre)
-            self.threads.append(thread)
-            thread.start()
-                
-        for thread in self.threads:
-            thread.join()
-            
-        processes=[]
+        handler = ClientHandler(self.config, self.trainers)
         
-        for i in range(len(self.handlers)):
-            process = multiprocessing.Process(target=functools.partial(self.handlers[i].handle_train))
-            processes.append(process)
+        handler.handle()
         
-        for p in processes:
-            p.start()
-        
-        for p in processes:
-            p.join()
-        
-        '''''''step 2'''''''
-        
-        time.sleep(10)
-        
-        processes = []
-        self.handlers = []
-        self.threads = []
-        
-        for i in range(len(self.config.datasets)):
-            single_config = self.config.single_process_config(1, i)
-            trainer = FLASH_main(2, single_config["modality"])
-            trainer.set_encoder()
-            worker = ClientHandler_step_2(single_config, trainer)                
-            self.handlers.append(worker)
-        self.train_step_2_every_round = multiprocessing.Barrier(len(self.handlers))            
-        
-        for i in range(len(self.handlers)):
-            self.handlers[i].set_barrier_every_round(self.train_step_2_every_round)
-            thread=threading.Thread(target=self.handlers[i].handle_pre)
-            self.threads.append(thread)
-            thread.start()
-                
-        for thread in self.threads:
-            thread.join()
-        
-        for i in range(len(self.handlers)):
-            process = multiprocessing.Process(target=functools.partial(self.handlers[i].handle_train))
-            processes.append(process)
-        
-        for p in processes:
-            p.start()
-        
-        for p in processes:
-            p.join()
-        
+
         print("all over")
          
 if __name__ == "__main__":    

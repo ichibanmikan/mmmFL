@@ -1,10 +1,12 @@
 from task_manager import TaskManager
 import pickle
-import sys
+import random
 import struct
-from abc import ABC, abstractmethod
 
-class ServerHandler(ABC):
+def get_now_train_task(num):
+    return random.randrange(0, num)
+
+class ServerHandler():
     def __init__(self, server_socket, server):
         self.server_socket = server_socket
         # self.task_manager = task_manager
@@ -23,8 +25,7 @@ class ServerHandler(ABC):
         except Exception as e:
             print(f"Content: {content} \n Unexpected error: {e}")
             return False
-        return True
-        
+        return True  
         
     def recv(self):
         try:
@@ -62,64 +63,43 @@ class ServerHandler(ABC):
         # self.server_socket.sendall("Received name message".encode())
         self.send("Received name message")
         
-        self.modality = self.recv() # modality是个列表
-        print("Client modality:", self.modality)
+        self.datasets = self.recv() # datasets是个字典类型的列表
+        print("Client modality:", self.datasets)
         
         self.send("received modality!")
         
         self.server.train_wake_barrier.wait()
         self.handle_train()
         
-    @abstractmethod
-    def handle_train(self):
-        pass
-
-class ServerHandler_step_1(ServerHandler):
-    def __init__(self, server_socket, server):
-        super().__init__(server_socket, server)
-
     def handle_train(self):
         while True:
-            if self.round != 0:
-                self.send(self.server.mmFedAvg[self.modality]) # 接收模态，发送全局encoder
-                print("modality: ", self.server.mmFedAvg[self.modality])
-            encoder_update = self.recv()
-            print("received from client: ", encoder_update)
+            self.send("start a new round")
+            
+            now_task = get_now_train_task(len(self.datasets))
+            
+            self.send([now_task, self.server.global_models_manager.get_model_params(now_task)])
+            
 
-            self.server.mmFedAvg.update_param(encoder_update, self.modality)
+            recv_time = self.recv() #接收 接收全局模型 时间  
+            
+            print("received from client: ", recv_time)
+            
+            self.server.recv_global_barrier.wait() #第一次同步
+            
+            self.send("train start!")
+            
+            train_time = self.recv()
+            
+            self.server.local_train_barrier.wait() #第二次同步
+            
+            self.send("send start!")
+
+            now_params = self.recv()
+            send_time = self.recv()
+            
+            with self.server.lock:
+                self.server.current_round_all_params.append((now_task, now_params))
             
             self.round += 1
             
-            if self.round > 10:
-                self.send("over")
-                break
-            else:
-                self.send("Train continue")
-    
-
-class ServerHandler_step_2(ServerHandler):
-    def __init__(self, server_socket, server):
-        super().__init__(server_socket, server)
-        
-    def handle_train(self):
-        while True:
-            if self.round != 0:
-                self.send(self.server.mmFedAvg[self.modality]) # 接收模态，发送全局模型
-                print("modality: ", self.server.mmFedAvg[self.modality])
-            encoder_update = self.recv()
-            print("received from client: ", encoder_update)
-
-            self.server.mmFedAvg.update_param(encoder_update, self.modality)
-            
-            self.round += 1
-            
-            if self.round > 10:
-                self.send("over")
-                break
-            else:
-                self.send("Train continue")
-            
-        
-        
-
-        
+            self.server.next_round_barrier.wait()

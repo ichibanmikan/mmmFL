@@ -24,3 +24,5 @@ client/FLASH/models/gps_encoder.pth
 client/FLASH/models/gpslidarimage.pth
 client/FLASH/models/image_encoder.pth
 client/FLASH/models/lidar_encoder.pth
+client/FLASH/.DS_Store
+client/FLASH/models/.DS_Store

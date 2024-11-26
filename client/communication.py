@@ -2,20 +2,27 @@ import sys
 import struct
 import pickle
 import socket
+import time
 import numpy as np
-from abc import ABC, abstractmethod
 
-class ClientHandler(ABC):
-    def __init__(self, config, trainer):
-        self.config=config
-        self.trainer = trainer
+class ClientHandler():
+    def __init__(self, config, trainers):
+        self.config = config
+        self.trainers = trainers
         self.round = 0
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_socket.connect((self.config["server_address"], self.config["port"]))
-        print(f"Connected to server {self.config["server_address"]}:{self.config["port"]}")
+        self.client_socket.connect((self.config.server_address, self.config.port))
+        print(f"Connected to server {self.config.server_address}:{self.config.port}")
         
-    def set_barrier_every_round(self, barrier_every_round):
-        self.barrier_every_round = barrier_every_round
+        self.send(self.config.client_name) 
+
+        response = self.recv()
+        print(f"Server response: {response}") #发送名字，接受返回
+        
+        self.send(self.config.datasets)
+        modal_mess = self.recv()
+        
+        print("modal_mess: ", modal_mess)
         
     def send(self, content):
         try:
@@ -62,72 +69,36 @@ class ClientHandler(ABC):
             print(f"An unexpected error occurred: {e}")
             return None
         
-    def handle_pre(self):
-        self.send(self.config["client_name"]) 
-        
-        response = self.recv()
-        print(f"Server response: {response}") #发送名字，接受返回
-        
-        self.send(self.config["modality"])
-        modal_mess = self.recv()
-        
-        print("modal_mess: ", modal_mess)
 
-    @abstractmethod
-    def handle_train(self):
-        pass
-
-        
-class ClientHandler_step_1(ClientHandler):
-    def __init__(self, config, trainer_start_barrier):
-        super().__init__(config, trainer_start_barrier)
-    
-    def handle_train(self):
+    def handle(self):
         while True:
-            if self.round != 0:
-                now_global_encoder=self.recv()
-                print(f"Server modality response: {now_global_encoder}") #发送模态，接收全局encoder
-                
-                self.trainer.reset_model_parameter(now_global_encoder)
+            new_round_start_mess = self.recv() #第一次同步，轮次开始
+            print(new_round_start_mess)
             
-            """Train start"""
-            self.send(self.trainer.main(self.config["node_id"]))
+            start_time = time.time()
+            task__now_global_model = self.recv()
+            self.trainers[task__now_global_model[0]].reset_model_parameter(task__now_global_model[1])
+            end_time = time.time()
             
-            server_final_response = self.recv()
+            self.send(end_time - start_time)  #发送接收全局模型时间       
             
-            print(f"Final server response: {server_final_response}")  #发送更新，接收结束
+            train_start_mess = self.recv() #第一次同步，开始训练
+            print(train_start_mess)
+            
+            start_time = time.time()
+            new_params = self.trainers[task__now_global_model[0]].main(self.config.node_id)
+            end_time = time.time()
+            
+            self.send(end_time - start_time) #发送训练用时
+            
+            send_start_mess = self.recv()
+            print(send_start_mess) #第二次同步，开始发送模型
+            
+            start_time = time.time()
+            self.send(new_params)
+            end_time = time.time()
+            
+            self.send(end_time - start_time) # 发送发送模型用时
+            
             self.round += 1
             
-            if server_final_response == 'over':
-                self.trainer.save_model(self.round)
-                break
-            else:
-                print(f'Round ${self.round} is over, wait for next round.')
-                self.barrier_every_round.wait()
-        self.client_socket.close()
-class ClientHandler_step_2(ClientHandler):
-    def __init__(self, config, trainer):
-        super().__init__(config, trainer)
-        
-    def handle_train(self):
-        while True:
-            if self.round != 0:
-                now_global_model = self.recv()
-                print(f"Server modality response: {now_global_model}")
-                
-                self.trainer.reset_model_parameter(now_global_model)       
-                     
-            self.send(self.trainer.main(self.config["node_id"]))
-            
-            server_final_response = self.recv()
-            
-            print(f"Final server response: {server_final_response}")
-            self.round += 1
-            
-            if server_final_response == 'over':
-                self.trainer.save_model(self.round)
-                break
-            else:
-                print(f'Round ${self.round} is over, wait for next round.')
-                self.barrier_every_round.wait()
-        

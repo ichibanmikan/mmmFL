@@ -17,19 +17,19 @@ def get_memory_usage():
 '''modality是一个列表，记录了需要读取的所有的模态数据'''
 
 class rdata:
-    def __init__(self, data_dir, state, modality):
+    def __init__(self, data_dir, modality):
         data_list_1 = []
         data_list_2 = []
         data_list_3 = []
         labels_list = []
         
         # for root, d, files in os.walk(data_dir):
-        if state == 1 or len(modality) == 1:
+        if len(modality) == 1:
             x_tr = np.load(os.path.join(data_dir, modality[0] + '.npz'))
             y_tr = np.load(os.path.join(data_dir, 'rf.npz'))
             data_list_1 = (x_tr[modality[0]])
             labels_list = (y_tr['rf'])
-        elif state == 2:
+        else:
             if len(modality) == 2:
                 if modality[0]=='gps' or (modality[0]=='lidar' and modality[1]=='image'):
                     x_tr_1 = np.load(os.path.join(data_dir, modality[0] + '.npz'))
@@ -101,8 +101,8 @@ class data_set(Dataset):
 
     
 class data_factory:
-    def __init__(self, data_dir, config, state, modality):
-        self.rdata = rdata(data_dir, state, modality)
+    def __init__(self, data_dir, config, modality):
+        self.rdata = rdata(data_dir, modality)
         self.config = config
     def get_dataset(self):
         board_0 = round(len(self.rdata.data_1) * 0.8)
