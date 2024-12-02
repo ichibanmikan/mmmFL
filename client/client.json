@@ -8,6 +8,14 @@
     },
     "datasets": [
         {
+            "dataset_name": "MHAD",
+            "modalities_num": 2,
+            "modalities_name" : [
+                "acc",
+                "skeleton"
+            ]
+        },
+        {
             "dataset_name": "FLASH",
             "modalities_num": 3,
             "modalities_name" : [

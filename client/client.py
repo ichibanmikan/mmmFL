@@ -21,6 +21,7 @@ import threading
 import multiprocessing
 from communication import *
 from FLASH.main import FLASH_main
+from MHAD.main import MHAD_main
 
 
 
@@ -50,7 +51,7 @@ class Client:
         
     def start(self):
         for i in range(len(self.config.datasets)):
-            trainer = FLASH_main(self.config.modality(i))        
+            trainer = eval(f"{self.config.datasets[i]['dataset_name']}_main")(self.config.modality(i))
             self.trainers.append(trainer)
         
         handler = ClientHandler(self.config, self.trainers)

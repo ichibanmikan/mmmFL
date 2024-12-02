@@ -14,10 +14,12 @@
 import json
 import numpy as np
 from global_models.Flash_model import Flash
+from global_models.MHAD_model import MHAD
 
 class globel_models_manager:
     def __init__(self):
         self.models = []
+        self.models.append(MHAD())
         self.models.append(Flash())
         
     def get_model_params(self, task):
@@ -27,4 +29,8 @@ class globel_models_manager:
         new_params = np.mean(new_params_vec, axis=0)
         params_init = self.models[task].get_model_params()
         self.models[task].reset_model_parameter(params_init+new_params)
+    
+    def get_model_name(self, task):
+        print(task)
+        print(self.models[task].get_model_name())
         

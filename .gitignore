@@ -26,3 +26,5 @@ client/FLASH/models/image_encoder.pth
 client/FLASH/models/lidar_encoder.pth
 client/FLASH/.DS_Store
 client/FLASH/models/.DS_Store
+
+client/MHAD/datasets

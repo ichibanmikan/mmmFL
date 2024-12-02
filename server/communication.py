@@ -77,18 +77,21 @@ class ServerHandler():
             
             now_task = get_now_train_task(len(self.datasets))
             
+            self.server.global_models_manager.get_model_name(now_task)
+            
             self.send([now_task, self.server.global_models_manager.get_model_params(now_task)])
             
 
             recv_time = self.recv() #接收 接收全局模型 时间  
             
-            print("received from client: ", recv_time)
+            print("received recv_time from client: ", recv_time)
             
             self.server.recv_global_barrier.wait() #第一次同步
             
             self.send("train start!")
             
             train_time = self.recv()
+            print("received train_time from client: ", train_time)
             
             self.server.local_train_barrier.wait() #第二次同步
             
@@ -96,6 +99,7 @@ class ServerHandler():
 
             now_params = self.recv()
             send_time = self.recv()
+            print("received send_time from client: ", send_time)
             
             with self.server.lock:
                 self.server.current_round_all_params.append((now_task, now_params))

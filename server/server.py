@@ -14,7 +14,7 @@ class Config:
         self.PORT = config.getint('Host', 'port')
         self.MAX_CLIENTS = config.getint('Clients', 'max_clients')
         self.MIN_CLIENTS = config.getint('Clients', 'min_clients')
-        self.TIMEOUT = config.getint('Server', 'timeout', fallback=30)
+        self.TIMEOUT = config.getint('server', 'timeout', fallback=30)
         self.tasks_num = config.getint('tasks', 'num')
 
 class Server:

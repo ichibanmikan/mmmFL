@@ -274,3 +274,6 @@ class Flash:
         print('==> Saving...')
 
         torch.save(self.model.cpu().state_dict(), save_file)
+
+    def get_model_name(self):
+        return "FLASH"

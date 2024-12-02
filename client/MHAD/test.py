@@ -1,3 +1,6 @@
+import os
+import numpy as np
+
 # Copyright 2024 ichibanmikan
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,21 +14,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import numpy as np
 
 # 加载 .npz 文件
-data = np.load('/Users/ichibanmikan/Documents/Learn/ichibanFATE/client/FLASH/datasets/node_29/rf.npz')
+data = np.load('/Users/ichibanmikan/Documents/Learn/ichibanFATE/client/MHAD/datasets/node_29/x1.npy')
 
-# 打印所有的键
-print("Keys in the .npz file:", data.keys())
 
 # 遍历并打印每个数组的值
-for key in data.keys():
-    print(f"Data for key '{key}':", data[key])
+# for i in range(len(data)):
 
-    print(len(data[key]))
-    # print(len(data[key][0]))
-    # print(len(data[key][0][0]))
+print(len(data))
+print(len(data[0]))
+print(len(data[0][0]))
+    # print(len(data[i][0][0]))
     # print(len(data[key][0][0][0]))
 
