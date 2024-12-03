@@ -75,7 +75,7 @@ class ServerHandler():
         while True:
             self.send("start a new round")
             
-            now_task = get_now_train_task(len(self.datasets))
+            now_task = get_now_train_task(1)
             
             self.server.global_models_manager.get_model_name(now_task)
             

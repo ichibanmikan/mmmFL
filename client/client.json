@@ -8,6 +8,15 @@
     },
     "datasets": [
         {
+            "dataset_name": "AC",
+            "modalities_num": 3,
+            "modalities_name" : [
+                "audio",
+                "depth",
+                "radar"
+            ]
+        },
+        {
             "dataset_name": "MHAD",
             "modalities_num": 2,
             "modalities_name" : [

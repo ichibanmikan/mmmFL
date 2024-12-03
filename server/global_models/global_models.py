@@ -15,10 +15,12 @@ import json
 import numpy as np
 from global_models.Flash_model import Flash
 from global_models.MHAD_model import MHAD
+from global_models.AC_model import AC
 
 class globel_models_manager:
     def __init__(self):
         self.models = []
+        self.models.append(AC())
         self.models.append(MHAD())
         self.models.append(Flash())
         
