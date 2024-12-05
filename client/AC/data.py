@@ -50,5 +50,5 @@ class get_dataloaders:
         val_size = len(ds) - train_size
 
         train_dataset, val_dataset = random_split(ds, [train_size, val_size])
-        dls = [DataLoader(train_dataset, shuffle=True, batch_size=self.config.batch_size), DataLoader(val_dataset, shuffle=True, batch_size=self.config.batch_size)]
+        dls = [DataLoader(train_dataset, shuffle=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers), DataLoader(val_dataset, shuffle=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers)]
         return dls

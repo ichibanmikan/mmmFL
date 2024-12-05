@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-
+from torch.utils.data import Dataset, DataLoader
 # import numpy as np
 
 class acc_encoder(nn.Module):
@@ -155,12 +155,26 @@ class MyMMModel(nn.Module):
         output = self.classifier(fused_feature)
 
         return output
+
+class Mhad_set(Dataset):
+    def __init__(self) -> None:
+        super().__init__()
+        self.x1_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/MHAD/x1.npy'), dtype=torch.float32)
+        self.x2_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/MHAD/x2.npy'), dtype=torch.float32)
+        self.label_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/MHAD/y.npy'), dtype=torch.long)
+
+    def __len__(self):
+        return len(self.label_data)
     
+    def __getitem__(self, index):
+        return torch.unsqueeze(self.x1_data[index], dim=0), torch.unsqueeze(self.x2_data[index], dim=0), self.label_data[index]
+
 class MHAD:
-    
-    def __init__(self):
+    def __init__(self, device):
         self.model = MyMMModel(11)      
-        
+        self.model = self.model.to(device)
+        self.test_loader = DataLoader(Mhad_set(), batch_size=16, num_workers=16)
+        self.Tester = Tester(self.model, self.test_loader, device)
     def get_model_params(self):
     
         params = []
@@ -221,3 +235,61 @@ class MHAD:
         
     def get_model_name(self):
         return "MHAD"
+    
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+        # print(correct)
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
+
+class AverageMeter:
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+class Tester:
+    def __init__(self, model, test_loader, device):
+        self.model = model
+        self.test_loader = test_loader
+        self.device = device
+        
+    def test(self):
+        self.model.eval()
+        accs = AverageMeter()
+
+        with torch.no_grad():
+            for x1_data, x2_data, labels in self.test_loader:
+                x1_data = x1_data.to(self.device)
+                x2_data = x2_data.to(self.device)
+                labels = labels.to(self.device)  
+                output = self.model(x1_data, x2_data)
+                acc, _ = accuracy(output, labels, topk=(1, 5))
+
+                # calculate and store confusion matrix
+                accs.update(acc, x1_data.size(0))
+
+        return accs.avg.cpu().item()

@@ -320,6 +320,6 @@ class My3Model(nn.Module):
         feature_1, feature_2, feature_3 = self.encoder(x1, x2, x3)
 
         feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
-        output = self.classifier(feature)
+        output = self.classifier(feature).float()
 
         return output

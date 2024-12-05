@@ -75,12 +75,9 @@ class ServerHandler():
         while True:
             self.send("start a new round")
             
-            now_task = get_now_train_task(1)
+            now_task = get_now_train_task(len(self.datasets))
             
-            self.server.global_models_manager.get_model_name(now_task)
-            
-            self.send([now_task, self.server.global_models_manager.get_model_params(now_task)])
-            
+            self.send([now_task, self.server.global_models_manager.get_model_params(now_task)])        
 
             recv_time = self.recv() #接收 接收全局模型 时间  
             

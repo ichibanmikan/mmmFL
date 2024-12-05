@@ -23,7 +23,6 @@ class Trainer:
         self.config = config
         self.device = device
         self.model = model
-        self.model.train()
         self.criterion = torch.nn.CrossEntropyLoss().to(device)
         self.train_tools = train_tools(self.model, config)
         self.train_loader = train_loader
@@ -57,8 +56,9 @@ class Trainer:
                 
                 output = self.model(data_1, data_2)
                 
-                
-            
+            # print(output.dtype)
+            # print(labels.dtype)
+
             loss = self.criterion(output, labels)
 
             acc, _ = accuracy(output, labels, topk=(1, 5))
@@ -82,6 +82,7 @@ class Trainer:
         record_loss = np.zeros(self.config.epochs)
         record_acc = np.zeros(self.config.epochs)
         for epoch in range(0, self.config.epochs + 1):
+            self.model.train()
             self.train_tools.adjust_learning_rate(epoch)
             time1 = time.time()
             loss = self.every_epoch_train()
@@ -89,6 +90,7 @@ class Trainer:
             print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
             record_loss[epoch-1] = loss
             # evaluation
+            self.model.eval()
             loss, val_acc, _ = self.validater.validate()
             record_acc[epoch-1] = val_acc
             if val_acc > self.best_acc:

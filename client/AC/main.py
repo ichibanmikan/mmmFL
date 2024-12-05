@@ -45,7 +45,7 @@ class AC_main:
         else:
             device = torch.device("cpu")
         self.model = self.model.to(device)
-        gdl = get_dataloaders(os.path.join('/Users/ichibanmikan/Downloads/AC/datasets', 'node_'+f"{node_id}/"), self.config)
+        gdl = get_dataloaders(os.path.join('/home/chenxu/codes/AC/datasets', 'node_'+f"{node_id}/"), self.config)
         dls = gdl.get_dataloaders()
         
         self.tr = Trainer(self.config, self.model, dls[0], dls[1], device)

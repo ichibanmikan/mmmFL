@@ -15,6 +15,7 @@
 import torch
 import torch.nn as nn 
 import numpy as np
+from torch.utils.data import Dataset, DataLoader
 
 class gps_encoder(nn.Module):
     
@@ -211,10 +212,26 @@ class My3Model(nn.Module):
 
         return output
 
-class Flash:
-    def __init__(self):
-        self.model = My3Model(64)
+class Flash_set(Dataset):
+    def __init__(self) -> None:
+        super().__init__()
+        self.gps_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/gps.npz')['gps']
+        self.lidar_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/lidar.npz')['lidar']
+        self.image_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/image.npz')['image']
+        self.label_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/rf.npz')['rf']
+
+    def __len__(self):
+        return len(self.label_data)
     
+    def __getitem__(self, index):
+        return torch.tensor(self.gps_data[index], dtype=torch.float32), torch.tensor(self.lidar_data[index], dtype=torch.float32), torch.tensor(self.image_data[index], dtype=torch.float32), torch.tensor(self.label_data[index], dtype=torch.long)
+
+class Flash:
+    def __init__(self, device):
+        self.model = My3Model(64)
+        self.model = self.model.to(device)
+        self.test_loader = DataLoader(Flash_set(), batch_size=16, num_workers=16)
+        self.Tester = Tester(self.model, test_loader=self.test_loader, device=device)
     def get_model_params(self):
             
         params = []
@@ -277,3 +294,62 @@ class Flash:
 
     def get_model_name(self):
         return "FLASH"
+
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+        # print(correct)
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
+
+class AverageMeter:
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+class Tester:
+    def __init__(self, model, test_loader, device):
+        self.model = model
+        self.test_loader = test_loader
+        self.device = device
+        
+    def test(self):
+        self.model.eval()
+        accs = AverageMeter()
+
+        with torch.no_grad():
+            for gps_data, lidar_data, image_data, labels in self.test_loader:
+                gps_data = gps_data.to(self.device)
+                lidar_data = lidar_data.to(self.device)
+                image_data = image_data.to(self.device)
+                labels = labels.to(self.device)
+                output = self.model(gps_data, lidar_data, image_data)
+                acc, _ = accuracy(output, labels, topk=(1, 5))
+
+                # calculate and store confusion matrix
+                accs.update(acc, gps_data.size(0))
+
+        return accs.avg.cpu().item()

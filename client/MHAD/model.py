@@ -150,6 +150,6 @@ class MyMMModel(nn.Module):
         # fused_feature = torch.cat((acc_output,gyro_output), dim=1) #concate
         # print(fused_feature.shape)
 
-        output = self.classifier(fused_feature)
+        output = self.classifier(fused_feature).float()
 
         return output

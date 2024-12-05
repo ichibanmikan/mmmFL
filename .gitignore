@@ -28,3 +28,6 @@ client/FLASH/.DS_Store
 client/FLASH/models/.DS_Store
 
 client/MHAD/datasets
+
+server/test_datasets
+client/exe.bash

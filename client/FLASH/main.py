@@ -63,7 +63,7 @@ class FLASH_main:
             device = torch.device("cpu")
         self.model = self.model.to(device)
         data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config, self.modality)
-        train_loader, valid_loader, test_loader = data_f.get_dataset()
+        train_loader, valid_loader = data_f.get_dataset()
 
         self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device)
 

@@ -62,8 +62,7 @@ class Server:
             self.train_wake_barrier = threading.Barrier(len(self.threads))
             self.recv_global_barrier = threading.Barrier(len(self.threads))
             self.local_train_barrier = threading.Barrier(len(self.threads))
-            self.next_round_barrier = threading.Barrier(len(self.threads), action=self.update_global_models())
-            
+            self.next_round_barrier = threading.Barrier(len(self.threads), action=self.update_global_models)
             
             for thread in self.threads:
                 thread.start()
@@ -86,7 +85,10 @@ class Server:
         for i in range(len(current_round_update)):
             if(len(current_round_update[i])!=0):
                 self.global_models_manager.reset_models(i, np.array(current_round_update[i]))
-    
+
+        print("This round all tasks' acc are: ")
+        print(self.global_models_manager.test())
+        
     def register_client(self, client_name):
         with self.lock:
             if client_name not in self.clients:

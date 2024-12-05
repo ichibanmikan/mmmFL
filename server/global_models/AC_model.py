@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import numpy as np
 
@@ -252,7 +253,7 @@ class My3Model(nn.Module):
 
         self.classifier = nn.Sequential(
         nn.Linear(816, num_classes),
-        nn.Softmax()
+        nn.Softmax(dim=0)
         )#[8987]
      
     def forward(self, x1, x2, x3):
@@ -264,10 +265,24 @@ class My3Model(nn.Module):
 
         return output
 
+class ac_set(Dataset):
+    def __init__(self) -> None:
+        super().__init__()
+        self.label_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/label.npy', 'r'), dtype=torch.long)
+
+    def __len__(self):
+        return len(self.label_data)
+    
+    def __getitem__(self, index):
+        return torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/audio/' + str(index) + '.npy', 'r'), dtype=torch.float32), torch.unsqueeze(torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/depth/' + str(index) + '.npy', 'r'), dtype=torch.float32), dim=0), torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/radar/' + str(index) + '.npy', 'r'), dtype=torch.float32), self.label_data[index]
+    
 class AC:
-    def __init__(self):
+    def __init__(self, device):
         self.model = My3Model(11)
-        
+        self.model = self.model.to(device)
+        self.test_loader = DataLoader(ac_set(), batch_size=16, num_workers=16)
+        self.Tester = Tester(self.model, self.test_loader, device=device)
+
     def get_model_params(self):
         
         params = []
@@ -285,12 +300,12 @@ class AC:
         return model_params
 
 
-    def reset_model_parameter(new_params, model):
+    def reset_model_parameter(self, new_params):
 
         temp_index = 0
 
         with torch.no_grad():
-            for param in model.parameters():
+            for param in self.model.parameters():
 
                 # print(param.shape)
 
@@ -336,3 +351,65 @@ class AC:
 
     def get_model_name(self):
         return "AC"
+
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+        # print(correct)
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
+
+class AverageMeter:
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count  
+
+class Tester:
+    def __init__(self, model, test_loader, device):
+        self.model = model
+        self.test_loader = test_loader
+        self.device = device
+        
+    def test(self):
+        self.model.eval()
+        accs = AverageMeter()
+
+        with torch.no_grad():
+            for audio_data, depth_data, radar_data, labels in self.test_loader:
+                output = None
+                audio_data = audio_data.to(self.device)
+                depth_data = depth_data.to(self.device)            
+                radar_data = radar_data.to(self.device)
+                labels = labels.to(self.device)
+                bsz = audio_data.shape[0]
+                
+                output = self.model(audio_data, depth_data, radar_data)
+                acc, _ = accuracy(output, labels, topk=(1, 5))
+
+                # calculate and store confusion matrix
+                accs.update(acc, audio_data.size(0))
+
+        return accs.avg.cpu().item()

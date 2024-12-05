@@ -235,38 +235,6 @@ class radar_encoder(nn.Module):
         return out
 
 
-class MySingleModel(nn.Module):
-
-    def __init__(self, num_classes, modality):
-        super().__init__()
-
-        if modality == 'audio':#[1498907]
-            self.encoder = audio_encoder()#[1496256]
-            self.classifier = nn.Sequential(
-                nn.Linear(240, num_classes),
-                nn.Softmax()
-                )#[2651]
-        elif modality == 'depth':#[2223883]
-            self.encoder = depth_encoder()#[2221056]
-            self.classifier = nn.Sequential(
-                nn.Linear(256, num_classes),
-                nn.Softmax()
-                )#[2827]        
-        elif modality == 'radar':#[629771]
-            self.encoder = radar_encoder()#[626240]
-            self.classifier = nn.Sequential(
-            nn.Linear(320, num_classes),
-            nn.Softmax()
-            )#[3531]
-
-    def forward(self, x):
-        # print(x.shape)
-        feature = self.encoder(x)
-        output = self.classifier(feature)
-
-        return output
-
-
 class Encoder3(nn.Module):
     def __init__(self):
         super().__init__()
@@ -293,7 +261,7 @@ class My3Model(nn.Module):
 
         self.classifier = nn.Sequential(
         nn.Linear(816, num_classes),
-        nn.Softmax()
+        nn.Softmax(dim=0)
         )#[8987]
      
     def forward(self, x1, x2, x3):
@@ -301,84 +269,6 @@ class My3Model(nn.Module):
         feature_1, feature_2, feature_3 = self.encoder(x1, x2, x3)
 
         feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
-        output = self.classifier(feature)
-
-        return output
-
-
-class Encoder2_AD(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.encoder_1 = audio_encoder()
-        self.encoder_2 = depth_encoder()
-
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-class Encoder2_DR(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.encoder_1 = depth_encoder()
-        self.encoder_2 = radar_encoder()
-
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-class Encoder2_AR(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.encoder_1 = audio_encoder()
-        self.encoder_2 = radar_encoder()
-
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-
-class My2Model(nn.Module):
-
-    def __init__(self, num_classes, modality):#[4352539]
-        super().__init__()
-
-        #A, D , R: 240, 256, 320; 1496256, 2221056; 626240
-        if modality == "AD":#[3722779]
-            self.encoder = Encoder2_AD()#[3717312]
-            self.classifier = nn.Sequential(
-            nn.Linear(496, num_classes),
-            nn.Softmax()
-            )#[5467]
-        elif modality == "DR":#[2853643]
-            self.encoder = Encoder2_DR()#[2847296]
-            self.classifier = nn.Sequential(
-            nn.Linear(576, num_classes),
-            nn.Softmax()
-            )#[6347]
-        elif modality == "AR":#[2128667]
-            self.encoder = Encoder2_AR()#[2122496]
-            self.classifier = nn.Sequential(
-            nn.Linear(560, num_classes),
-            nn.Softmax()
-            )#[6171]
-
-    def forward(self, x1, x2):
-
-        feature_1, feature_2 = self.encoder(x1, x2)
-
-        feature = torch.cat((feature_1, feature_2), dim=1)
         output = self.classifier(feature)
 
         return output
