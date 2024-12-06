@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch.amp import autocast, GradScaler
 
 class TDNN(nn.Module):
     def __init__(
@@ -47,30 +47,31 @@ class TDNN(nn.Module):
         input : size (batch, seq_len, input_features)
         output: size (batch, new_seq_len, output_features)
         """
-        _, _, d = x.shape
-        assert (d == self.input_dim), 'Input dimension was wrong. Expected ({}), got ({})'.format(self.input_dim, d)
-        x = x.unsqueeze(1)
+        with autocast(device_type='cuda', dtype=torch.float16):
+            _, _, d = x.shape
+            assert (d == self.input_dim), 'Input dimension was wrong. Expected ({}), got ({})'.format(self.input_dim, d)
+            x = x.unsqueeze(1)
 
-        # Unfold input into smaller temporal contexts
-        x = F.unfold(
-            x,
-            (self.context_size, self.input_dim),
-            stride=(1, self.input_dim),
-            dilation=(self.dilation, 1)
-        )
+            # Unfold input into smaller temporal contexts
+            x = F.unfold(
+                x,
+                (self.context_size, self.input_dim),
+                stride=(1, self.input_dim),
+                dilation=(self.dilation, 1)
+            )
 
-        # N, output_dim*context_size, new_t = x.shape
-        x = x.transpose(1, 2)
-        x = self.kernel(x)
-        x = self.nonlinearity(x)
-
-        if self.dropout_p:
-            x = self.drop(x)
-
-        if self.batch_norm:
+            # N, output_dim*context_size, new_t = x.shape
             x = x.transpose(1, 2)
-            x = self.bn(x)
-            x = x.transpose(1, 2)
+            x = self.kernel(x)
+            x = self.nonlinearity(x)
+
+            if self.dropout_p:
+                x = self.drop(x)
+
+            if self.batch_norm:
+                x = x.transpose(1, 2)
+                x = self.bn(x)
+                x = x.transpose(1, 2)
 
         return x
 
@@ -98,24 +99,24 @@ class audio_encoder(nn.Module):
         self.gru = nn.GRU(128, 16, 2, batch_first=True)
 
     def forward(self, x):
+        with autocast(device_type='cuda', dtype=torch.float16):
+                # self.gru.flatten_parameters()
+            x = x.transpose(1,2)
 
-        # self.gru.flatten_parameters()
-        x = x.transpose(1,2)
+            x = self.tdnn1(x)
+            x = self.tdnn2(x)
+            x = self.tdnn3(x)
+            x = self.tdnn4(x)
+            x = self.tdnn5(x)
+            
+            # print("original audio feature:", x.shape)#[8, 15, 128]
 
-        x = self.tdnn1(x)
-        x = self.tdnn2(x)
-        x = self.tdnn3(x)
-        x = self.tdnn4(x)
-        x = self.tdnn5(x)
-        
-        # print("original audio feature:", x.shape)#[8, 15, 128]
+            x = x.reshape(x.size(0), -1, 128)#[bsz, 15, 128]
+            x, _ = self.gru(x)
 
-        x = x.reshape(x.size(0), -1, 128)#[bsz, 15, 128]
-        x, _ = self.gru(x)
+            # print("audio feature after gru:", x.shape)#[bsz, 15, 16]
 
-        # print("audio feature after gru:", x.shape)#[bsz, 15, 16]
-
-        out = x.reshape(x.size(0), -1)#[bsz, 240]
+            out = x.reshape(x.size(0), -1)#[bsz, 240]
 
         return out
 '''
@@ -164,21 +165,21 @@ class depth_encoder(nn.Module):
     def forward(self, x):
 
         # self.gru.flatten_parameters()
+        with autocast(device_type='cuda', dtype=torch.float16):
+            x = self.conv1(x)
+            x = self.conv2(x)
+            x = self.conv3(x)
+            x = self.conv4(x)
+            x = self.conv5(x)
 
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.conv5(x)
+            # print("original depth feature:", x.shape)#[bsz, 64, 1, 4, 4]
 
-        # print("original depth feature:", x.shape)#[bsz, 64, 1, 4, 4]
+            x = x.view(x.size(0), 16, -1)#[bsz, 16, 64]
+            x, _ = self.gru(x)
 
-        x = x.view(x.size(0), 16, -1)#[bsz, 16, 64]
-        x, _ = self.gru(x)
+            out = x.reshape(x.size(0), -1)#[bsz, 256]
 
-        out = x.reshape(x.size(0), -1)#[bsz, 256]
-
-        # print("depth feature after gru:", out.shape)
+            # print("depth feature after gru:", out.shape)
 
         return out
 
@@ -217,20 +218,21 @@ class radar_encoder(nn.Module):
 
 
     def forward(self, x):
-        bsz = x.size(0)
-        x = x.view(-1, 2, 16, 32, 16)
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
+        with autocast(device_type='cuda', dtype=torch.float16):
+            bsz = x.size(0)
+            x = x.view(-1, 2, 16, 32, 16)
+            x = self.conv1(x)
+            x = self.conv2(x)
+            x = self.conv3(x)
+            x = self.conv4(x)
 
-        # print("original radar feature:", x.shape)#[160, 64, 2, 4, 2]
-        x = x.view(bsz, 20, -1)  # [bsz, 20, 1024]
+            # print("original radar feature:", x.shape)#[160, 64, 2, 4, 2]
+            x = x.view(bsz, 20, -1)  # [bsz, 20, 1024]
 
-        out, _ = self.lstm(x)  # [bsz, 20, 32]
-        # print("radar feature after lstm:", out.shape)# [bsz, 20, 16]
+            out, _ = self.lstm(x)  # [bsz, 20, 32]
+            # print("radar feature after lstm:", out.shape)# [bsz, 20, 16]
 
-        out = out.reshape(out.size(0), -1)#[bsz, 320]
+            out = out.reshape(out.size(0), -1)#[bsz, 320]
 
         return out
 
@@ -244,10 +246,10 @@ class Encoder3(nn.Module):
         self.encoder_3 = radar_encoder()
 
     def forward(self, x1, x2, x3):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-        feature_3 = self.encoder_3(x3)
+        with autocast(device_type='cuda', dtype=torch.float16):
+            feature_1 = self.encoder_1(x1)
+            feature_2 = self.encoder_2(x2)
+            feature_3 = self.encoder_3(x3)
 
         return feature_1, feature_2, feature_3
 
@@ -266,11 +268,10 @@ class My3Model(nn.Module):
      
     def forward(self, x1, x2, x3):
 
-        feature_1, feature_2, feature_3 = self.encoder(x1, x2, x3)
-
-        feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
-        output = self.classifier(feature)
-
+        with autocast(device_type='cuda', dtype=torch.float16):
+            feature_1, feature_2, feature_3 = self.encoder(x1, x2, x3)
+            feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
+            output = self.classifier(feature)
         return output
     
 """

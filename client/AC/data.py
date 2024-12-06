@@ -28,9 +28,9 @@ class data_set(Dataset):
         data_2 = np.load(os.path.join(self.data_dir, './depth/' + str(index) + '.npy'))
         data_3 = np.load(os.path.join(self.data_dir, './radar/' + str(index) + '.npy'))
 
-        data_1 = torch.tensor(data_1, dtype=torch.float32)
-        data_2 = torch.tensor(data_2, dtype=torch.float32)
-        data_3 = torch.tensor(data_3, dtype=torch.float32)
+        data_1 = torch.tensor(data_1, dtype=torch.float16)
+        data_2 = torch.tensor(data_2, dtype=torch.float16)
+        data_3 = torch.tensor(data_3, dtype=torch.float16)
         
         # data_1 = torch.unsqueeze(data_1, 0)
         data_2 = torch.unsqueeze(data_2, 0)

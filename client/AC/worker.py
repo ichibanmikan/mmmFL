@@ -17,6 +17,7 @@ import time
 from AC.model import *
 from AC.train_tools import *
 from AC.data import *
+from torch.amp import autocast, GradScaler
 
 class Trainer:
     def __init__(self, config, model, train_loader, valid_loader, device):
@@ -34,7 +35,9 @@ class Trainer:
         data_time = AverageMeter()
         losses = AverageMeter()
         top1 = AverageMeter()
-        
+
+        scaler = GradScaler()
+
         end = time.time()
         for data_list, labels in self.train_loader:
             data_time.update(time.time() - end)
@@ -43,15 +46,16 @@ class Trainer:
             data_2 = data_list[1]
             data_3 = data_list[2]
             data_1 = data_1.to(self.device)
-            data_2 = data_2.to(self.device)            
+            data_2 = data_2.to(self.device)        
             data_3 = data_3.to(self.device)
             labels = labels.to(self.device)
             bsz = data_1.shape[0]
-            
-            output = self.model(data_1, data_2, data_3)
-                 
-            loss = self.criterion(output, labels)
 
+            with autocast(device_type='cuda', dtype=torch.float16):
+
+                output = self.model(data_1, data_2, data_3)
+
+                loss = self.criterion(output, labels)
             acc, _ = accuracy(output, labels, topk=(1, 5))
 
             # update metric
@@ -60,8 +64,14 @@ class Trainer:
 
             # SGD
             self.train_tools.optimizer.zero_grad()
-            loss.backward()
-            self.train_tools.optimizer.step()
+            scaler.scale(loss).backward()
+            scaler.step(self.train_tools.optimizer)
+            scaler.update()
+            
+            # self.train_tools.optimizer.zero_grad()
+            # loss.backward()
+            # self.train_tools.optimizer.step()
+            
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -119,9 +129,10 @@ class Validater:
                 data_3 = data_3.to(self.device)
                 labels = labels.to(self.device)
                 bsz = data_1.shape[0]
-                    
-                output = self.model(data_1, data_2, data_3)
-                
+
+                with autocast(device_type='cuda', dtype=torch.float16):
+                    output = self.model(data_1, data_2, data_3)
+
                 loss = self.criterion(output, labels)
 
                 # update metric

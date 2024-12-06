@@ -4,7 +4,7 @@ import random
 import struct
 
 def get_now_train_task(num):
-    return random.randrange(0, num)
+    return random.randrange(0, 1)
 
 class ServerHandler():
     def __init__(self, server_socket, server):

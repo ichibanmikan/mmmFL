@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import numpy as np
+from torch.amp import autocast, GradScaler
 
 class TDNN(nn.Module):
     def __init__(
@@ -257,12 +258,10 @@ class My3Model(nn.Module):
         )#[8987]
      
     def forward(self, x1, x2, x3):
-
-        feature_1, feature_2, feature_3 = self.encoder(x1, x2, x3)
-
-        feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
-        output = self.classifier(feature)
-
+        with autocast(device_type='cuda', dtype=torch.float16):
+            feature_1, feature_2, feature_3 = self.encoder(x1, x2, x3)
+            feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
+            output = self.classifier(feature)
         return output
 
 class ac_set(Dataset):
@@ -274,7 +273,7 @@ class ac_set(Dataset):
         return len(self.label_data)
     
     def __getitem__(self, index):
-        return torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/audio/' + str(index) + '.npy', 'r'), dtype=torch.float32), torch.unsqueeze(torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/depth/' + str(index) + '.npy', 'r'), dtype=torch.float32), dim=0), torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/radar/' + str(index) + '.npy', 'r'), dtype=torch.float32), self.label_data[index]
+        return torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/audio/' + str(index) + '.npy', 'r'), dtype=torch.float16), torch.unsqueeze(torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/depth/' + str(index) + '.npy', 'r'), dtype=torch.float16), dim=0), torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/radar/' + str(index) + '.npy', 'r'), dtype=torch.float16), self.label_data[index]
     
 class AC:
     def __init__(self, device):
@@ -405,8 +404,8 @@ class Tester:
                 radar_data = radar_data.to(self.device)
                 labels = labels.to(self.device)
                 bsz = audio_data.shape[0]
-                
-                output = self.model(audio_data, depth_data, radar_data)
+                with autocast(device_type='cuda', dtype=torch.float16):
+                    output = self.model(audio_data, depth_data, radar_data)                
                 acc, _ = accuracy(output, labels, topk=(1, 5))
 
                 # calculate and store confusion matrix

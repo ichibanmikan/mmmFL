@@ -34,7 +34,7 @@ class AC_main:
         self.modality = modality
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
         
-        self.model = My3Model(self.config.num_classes)      
+        self.model = My3Model(self.config.num_classes)   
         
     def main(self, node_id):
         if torch.backends.mps.is_available():
