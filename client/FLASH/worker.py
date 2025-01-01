@@ -28,6 +28,7 @@ class Trainer:
         self.train_loader = train_loader
         self.validater = Validater(self.model, valid_loader, config, self.criterion, device)
         self.best_acc = -100
+        
     def every_epoch_train(self):
         batch_time = AverageMeter()
         data_time = AverageMeter()
@@ -82,8 +83,8 @@ class Trainer:
         return losses.avg
     
     def train(self):
-        record_loss = np.zeros(self.config.epochs)
-        record_acc = np.zeros(self.config.epochs)
+        record_loss = np.zeros(self.config.epochs + 1)
+        record_acc = np.zeros(self.config.epochs + 1)
         for epoch in range(0, self.config.epochs + 1):
             self.model.train()
             self.train_tools.adjust_learning_rate(epoch)
@@ -91,11 +92,11 @@ class Trainer:
             loss = self.every_epoch_train()
             time2 = time.time()
             print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
-            record_loss[epoch-1] = loss
+            record_loss[epoch] = loss
             # evaluation
             self.model.eval()
             loss, val_acc, _ = self.validater.validate()
-            record_acc[epoch-1] = val_acc
+            record_acc[epoch] = val_acc
             if val_acc > self.best_acc:
                 self.best_acc = val_acc
                 # best_confusion = confusion
@@ -103,7 +104,14 @@ class Trainer:
             #     self.train_tools.save_model(epoch, os.path.join(os.getcwd(), 'model/best.pth'))
             #     break;
         print(record_acc)
-
+        return record_loss[self.config.epochs]
+    
+    def sample_one_epoch(self):
+        time1 = time.time()
+        loss = self.every_epoch_train()
+        time2 = time.time()
+        return time2 - time1, loss
+    
 class Validater:
     def __init__(self, model, valid_loader, config, criterion, device):
         self.model = model

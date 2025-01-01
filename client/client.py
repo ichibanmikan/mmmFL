@@ -16,15 +16,10 @@ import os
 import json
 import time
 import argparse
-import functools
-import threading
-import multiprocessing
-from communication import *
+from communication import ClientHandler
 from FLASH.main import FLASH_main
 from MHAD.main import MHAD_main
 from AC.main import AC_main
-
-
 
 class Config:
     def __init__(self):
@@ -52,7 +47,7 @@ class Client:
         
     def start(self):
         for i in range(len(self.config.datasets)):
-            trainer = eval(f"{self.config.datasets[i]['dataset_name']}_main")(self.config.modality(i))
+            trainer = eval(f"{self.config.datasets[i]['dataset_name']}_main")(self.config.modality(i), self.config.node_id)
             self.trainers.append(trainer)
         
         handler = ClientHandler(self.config, self.trainers)
@@ -65,4 +60,6 @@ class Client:
 if __name__ == "__main__":    
     config=Config()
     client=Client(config)
-    client.start()
+    for i in range(200): # RL rounds
+        client.start()
+        time.sleep(30)

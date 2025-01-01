@@ -32,4 +32,4 @@ client/MHAD/datasets
 server/test_datasets
 client/exe.bash
 
-server/RL/log_dir
+server/RL/reward_model

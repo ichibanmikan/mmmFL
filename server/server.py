@@ -1,9 +1,13 @@
 import os
 import time
+import json
 import socket
 import threading
+import numpy as np
 import configparser
 from communication import *
+from RL.SACContinuous import SAC
+from RL.utils import ReplayBuffer
 from global_models.global_models import *
 
 class Config:
@@ -14,22 +18,47 @@ class Config:
         self.PORT = config.getint('Host', 'port')
         self.MAX_CLIENTS = config.getint('Clients', 'max_clients')
         self.MIN_CLIENTS = config.getint('Clients', 'min_clients')
-        self.TIMEOUT = config.getint('server', 'timeout', fallback=30)
-        self.tasks_num = config.getint('tasks', 'num')
-
+        self.TIMEOUT = config.getint('Server', 'timeout', fallback=30)
+        self.jobs_num = config.getint('Jobs', 'num')
+        self.max_participant_time = config.getint('Clients', 'max_participant_time')
+        self.min_replay_buffer_size = config.getint('RL', 'min_size')
+        self.replay_buffer_batch_size = config.getint('RL', 'batch_size')
+        self.episode_round = config.getint('RL', 'episode_round')
+        
 class Server:
     def __init__(self, config):
         self.config = config
-        self.clients = {}  # 用于追踪唯一客户端名称
+        self.done = False
+        # self.clients = {}
+        self.jobs_unfinish = [] 
         self.threads = []
         self.lock = threading.Lock()
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager()
-
+        self.agent = SAC(N = self.config.jobs_num, hidden_dim=256, actor_lr = 1e-3, critic_lr = 1e-2, alpha_lr = 1e-2, device="cuda", tau=0.005, target_entropy=-1, gamma=0.9)
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
+            self.jobs = json.load(job_json)["Jobs"]
+        self.jobs_goal_sub = np.zeros(self.config.jobs_num)
+        self.jobs_model_size = np.zeros(self.config.jobs_num)
+        for i in range(len(self.jobs)):
+            self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
+            self.jobs_model_size[i] = self.jobs[i]["model_size"]
+            self.jobs_unfinish.append(False)
+        self.buffer = ReplayBuffer(device="cuda")
+        
     def clear_connections(self):
         """Release all current connections."""
         with self.lock:
-            self.clients.clear()  # 清除唯一客户端字典
+            self.done = False
+            self.buffer.save_data()
+            self.jobs_unfinish = [] 
+            self.current_round_all_params = []
+            # self.clients.clear()
+            self.global_models_manager = globel_models_manager()
+            for i in range(len(self.jobs)):
+                self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
+                self.jobs_model_size[i] = self.jobs[i]["model_size"]
+                self.jobs_unfinish.append(False)
             self.threads.clear()
             self.server_socket.close()
         print(f"All clients released. Sleeping for 5 seconds before next round...")
@@ -74,7 +103,7 @@ class Server:
 
     def update_global_models(self):
         current_round_update = []
-        for _ in range(self.config.tasks_num):
+        for _ in range(self.config.jobs_num):
             current_round_update.append([])
         for i in range(len(self.current_round_all_params)):
             current_round_update[self.current_round_all_params[i][0]].append(self.current_round_all_params[i][1])
@@ -86,17 +115,44 @@ class Server:
             if(len(current_round_update[i])!=0):
                 self.global_models_manager.reset_models(i, np.array(current_round_update[i]))
 
-        print("This round all tasks' acc are: ")
-        print(self.global_models_manager.test())
+        print("This round all jobs' acc are: ")
+        accs = self.global_models_manager.test()
         
-    def register_client(self, client_name):
-        with self.lock:
-            if client_name not in self.clients:
-                self.clients[client_name] = 1
-            else :
-                self.clients[client_name] += 1
+        for i in range(len(self.jobs)):
+            self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"] - accs[i]
+            
+        print(accs)
+        self.update_SAC()
+    
+    def update_SAC(self):
+        if len(self.buffer.states) > self.config.min_replay_buffer_size:
+            s, a, ns, r, dr, d = self.buffer.sample(self.config.replay_buffer_batch_size)
+            transition_dict = {'states': s,
+                            'actions': a,
+                            'rewards': r,
+                            'next_states': ns,
+                            'dense_reward': dr,
+                            'dones': d}
+            self.agent.update(transition_dict)
+            self.is_done()
+    
+    def is_done(self):
+        is_done = True
+        
+        for i in range(len(self.jobs)):
+            if self.jobs_unfinish[i] == False and self.jobs_goal_sub[i] <= 0:    
+                self.jobs_goal_sub[i] = 0
+                self.jobs_unfinish[i] = True
+                self.global_models_manager.save_model(i)
+                
+            is_done = is_done and self.jobs_unfinish[i]
+        
+        if is_done:
+            self.done = True
+            self.buffer.save_data()
 
 if __name__ == "__main__":
     config = Config()  # Initialize the config
     server = Server(config)
-    server.start()
+    for i in range(server.config.episode_round):
+        server.start()

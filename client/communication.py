@@ -17,12 +17,22 @@ class ClientHandler():
         self.send(self.config.client_name) 
 
         response = self.recv()
-        print(f"Server response: {response}") #发送名字，接受返回
+        print(f"Server response: {response}") # 发送名字，接受返回
         
         self.send(self.config.datasets)
         modal_mess = self.recv()
         
         print("modal_mess: ", modal_mess)
+
+        one_epoch_time = np.zeros(len(self.config.datasets))
+        one_epoch_loss = np.zeros(len(self.config.datasets))
+        
+        for i in range(len(self.config.datasets)):
+            one_epoch_time[i] = (self.trainers[i].sample_time()[0])
+            one_epoch_loss[i] = (self.trainers[i].sample_time()[1])
+        
+        self.send(one_epoch_time)
+        self.send(one_epoch_loss)
         
     def send(self, content):
         try:
@@ -75,30 +85,45 @@ class ClientHandler():
             new_round_start_mess = self.recv() #第一次同步，轮次开始
             print(new_round_start_mess)
             
+            if new_round_start_mess == "this eposide is over":
+                break
+            
             start_time = time.time()
             task__now_global_model = self.recv()
-            self.trainers[task__now_global_model[0]].reset_model_parameter(task__now_global_model[1])
             end_time = time.time()
             
-            self.send(end_time - start_time)  #发送接收全局模型时间       
+            if(task__now_global_model == "wait a round"):
+                pass
+            else:
+                self.trainers[task__now_global_model[0]].reset_model_parameter(task__now_global_model[1])
             
-            train_start_mess = self.recv() #第一次同步，开始训练
-            print(train_start_mess)
+                self.send(end_time - start_time)  #发送接收全局模型时间       
+                
+                train_start_mess = self.recv() #第一次同步，开始训练
+                print(train_start_mess)
+                
+                start_time = time.time()
+                new_params = self.trainers[task__now_global_model[0]].main()
+                end_time = time.time()
+                
+                self.send(end_time - start_time) #发送训练用时
+                
+                one_epoch_loss = np.zeros(len(self.trainers))
+                
+                for i in range(len(self.trainers)):
+                    one_epoch_loss[i] = self.trainers[i].now_loss
+                
+                self.send((end_time - start_time) / 20) # send train_time / epoches as one epoch time
+                self.send(one_epoch_loss) # send loss
+                
+                send_start_mess = self.recv()
+                print(send_start_mess) #第二次同步，开始发送模型
+                
+                start_time = time.time()
+                self.send(new_params)
+                end_time = time.time()
+                
+                self.send(end_time - start_time) # 发送发送模型用时
             
-            start_time = time.time()
-            new_params = self.trainers[task__now_global_model[0]].main(self.config.node_id)
-            end_time = time.time()
-            
-            self.send(end_time - start_time) #发送训练用时
-            
-            send_start_mess = self.recv()
-            print(send_start_mess) #第二次同步，开始发送模型
-            
-            start_time = time.time()
-            self.send(new_params)
-            end_time = time.time()
-            
-            self.send(end_time - start_time) # 发送发送模型用时
-            
-            self.round += 1
+                self.round += 1
             

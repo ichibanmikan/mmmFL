@@ -30,16 +30,14 @@ class Config:
 
 class AC_main:
     
-    def __init__(self, modality):
+    def __init__(self, modality, node_id):
         self.modality = modality
+        self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
         
         self.model = My3Model(self.config.num_classes)   
-        
-    def main(self, node_id):
         if torch.backends.mps.is_available():
             device = torch.device("cpu")
-            # device = torch.device("mps")
         elif torch.cuda.is_available():
             device = torch.device("cuda")
         else:
@@ -50,11 +48,16 @@ class AC_main:
         
         self.tr = Trainer(self.config, self.model, dls[0], dls[1], device)
 
-        self.tr.train()
+
+    def main(self):
+        self.now_loss = self.tr.train()
         print(self.tr.best_acc)
         
         return self.get_model_update()
-        
+    
+    def sample_time(self):
+        return self.tr.sample_one_epoch()
+            
     def get_model_update(self):
     
         params = []

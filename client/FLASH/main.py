@@ -42,9 +42,9 @@ class Config:
         return f"Config({self.__dict__})"
 
 class FLASH_main:
-    
-    def __init__(self, modality):
+    def __init__(self, modality, node_id):
         self.modality = modality
+        self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
         
         if len(self.modality) == 1:
@@ -53,8 +53,7 @@ class FLASH_main:
             self.model = My2Model(self.config.num_classes, self.modality[0] + ' ' + self.modality[1])
         else:
             self.model = My3Model(self.config.num_classes)      
-        
-    def main(self, node_id):
+
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
@@ -66,11 +65,15 @@ class FLASH_main:
         train_loader, valid_loader = data_f.get_dataset()
 
         self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device)
-
-        self.tr.train()
+        
+    def main(self):
+        self.now_loss = self.tr.train()
         print(self.tr.best_acc)
         
         return self.get_model_update()
+    
+    def sample_time(self):
+        return self.tr.sample_one_epoch()
         
     def get_model_update(self):
         

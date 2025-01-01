@@ -29,14 +29,13 @@ class Config:
         return f"Config({self.__dict__})"
 
 class MHAD_main:
-    
-    def __init__(self, modality):
+    def __init__(self, modality, node_id):
         self.modality = modality
+        self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
         
         self.model = MyMMModel(self.config.num_classes)      
-        
-    def main(self, node_id):
+
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
@@ -46,10 +45,11 @@ class MHAD_main:
         self.model = self.model.to(device)
         data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config, self.modality)
         train_loader, valid_loader, test_loader = data_f.get_dataset()
-
         self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device)
+        
+    def main(self):
 
-        self.tr.train()
+        self.now_loss = self.tr.train()
         print(self.tr.best_acc)
         
         return self.get_model_update()
@@ -110,6 +110,9 @@ class MHAD_main:
                     temp_weight = new_params[temp_index : temp_index + para_len].astype(float)
                     param.copy_(torch.Tensor(temp_weight))
                     temp_index += para_len      
+
+    def sample_time(self):
+        return self.tr.sample_one_epoch()
     
     def save_model(self, round):
         str = ""

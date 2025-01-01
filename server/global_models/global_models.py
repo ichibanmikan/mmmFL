@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import torch
 import numpy as np
 from global_models.Flash_model import Flash
@@ -32,19 +33,22 @@ class globel_models_manager:
         self.models.append(MHAD(device))
         self.models.append(Flash(device))
         
-    def get_model_params(self, task):
-        return self.models[task].get_model_params()
+    def get_model_params(self, job):
+        return self.models[job].get_model_params()
         
-    def reset_models(self, task, new_params_vec):
+    def reset_models(self, job, new_params_vec):
         new_params = np.mean(new_params_vec, axis=0)
-        params_init = self.models[task].get_model_params()
-        self.models[task].reset_model_parameter(params_init+new_params)
+        params_init = self.models[job].get_model_params()
+        self.models[job].reset_model_parameter(params_init+new_params)
     
-    def get_model_name(self, task):
-        return self.models[task].get_model_name()
+    def get_model_name(self, job):
+        return self.models[job].get_model_name()
         
     def test(self):
         accs = []
         for i in range(len(self.models)):
             accs.append(self.models[i].Tester.test())
         return accs
+    
+    def save_model(self, job_index):
+        self.models[job_index].save_model(os.path.join(os.getcwd(), f'models/{self.get_model_name(job_index)}.pth'))

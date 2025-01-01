@@ -1,6 +1,6 @@
 {
     "Host": {
-        "server_address": "127.0.0.1",
+        "server_address": "10.102.0.230",
         "port": 12345
     },
     "self": {
