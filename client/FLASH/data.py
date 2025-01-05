@@ -119,7 +119,10 @@ class data_factory:
         valid_labels = torch.tensor(self.rdata.labels[board_0 :], dtype=torch.long)  
 
         # print('aaa ', len(self.rdata.data_1))
-        datasets = [data_set(train_data_1, train_data_2, train_data_3, train_labels), data_set(valid_data_1, valid_data_2, valid_data_3, valid_labels)]
-        dataloaders = [DataLoader(datasets[0], shuffle=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers), DataLoader(datasets[1], shuffle=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers)]
+        datasets = [data_set(train_data_1, train_data_2, train_data_3, train_labels), 
+                    data_set(valid_data_1, valid_data_2, valid_data_3, valid_labels)
+                    ]
+        dataloaders = [DataLoader(datasets[0], shuffle=True, drop_last=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers), 
+                       DataLoader(datasets[1], shuffle=True, drop_last=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers)]
         # return datasets, dataloaders
         return dataloaders

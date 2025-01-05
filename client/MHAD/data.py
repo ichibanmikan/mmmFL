@@ -53,24 +53,26 @@ class data_factory:
         self.rdata = rdata(data_dir, modality)
         self.config = config
     def get_dataset(self):
-        board_0 = round(len(self.rdata.data_1) * 0.8)
-        board_1 = round(len(self.rdata.data_1) * 0.8)+round(len(self.rdata.data_1) * 0.15)
+        board_0 = round(len(self.rdata.data_1) * 0.9)
         
         train_data_1 = torch.tensor(self.rdata.data_1[:board_0], dtype=torch.float32)
         train_data_2 = torch.tensor(self.rdata.data_2[:board_0], dtype=torch.float32)
         train_labels = torch.tensor(self.rdata.labels[:board_0], dtype=torch.long)
          
-        test_data_1 = torch.tensor(self.rdata.data_1[board_0 : board_1], dtype=torch.float32)
-        test_data_2 = torch.tensor(self.rdata.data_2[board_0 : board_1], dtype=torch.float32)
+        # test_data_1 = torch.tensor(self.rdata.data_1[board_0 : board_1], dtype=torch.float32)
+        # test_data_2 = torch.tensor(self.rdata.data_2[board_0 : board_1], dtype=torch.float32)
         
-        test_labels = torch.tensor(self.rdata.labels[board_0 : board_1], dtype=torch.long)  
+        # test_labels = torch.tensor(self.rdata.labels[board_0 : board_1], dtype=torch.long)  
               
-        valid_data_1 = torch.tensor(self.rdata.data_1[board_1:], dtype=torch.float32)
-        valid_data_2 = torch.tensor(self.rdata.data_2[board_1:], dtype=torch.float32)
+        valid_data_1 = torch.tensor(self.rdata.data_1[board_0:], dtype=torch.float32)
+        valid_data_2 = torch.tensor(self.rdata.data_2[board_0:], dtype=torch.float32)
         
-        valid_labels = torch.tensor(self.rdata.labels[board_1:], dtype=torch.long)
+        valid_labels = torch.tensor(self.rdata.labels[board_0:], dtype=torch.long)
         # print('aaa ', len(self.rdata.data_1))
-        datasets = [data_set(train_data_1, train_data_2, train_labels), data_set(test_data_1, test_data_2, test_labels), data_set(valid_data_1, valid_data_2, valid_labels)]
-        dataloaders = [DataLoader(datasets[0], shuffle=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers), DataLoader(datasets[1], shuffle=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers), DataLoader(datasets[2], batch_size=self.config.batch_size, num_workers=self.config.num_workers)]
+        datasets = [ data_set(train_data_1, train_data_2, train_labels), 
+                     data_set(valid_data_1, valid_data_2, valid_labels)
+                ]
+        dataloaders = [ DataLoader(datasets[0], shuffle=True, drop_last=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers), 
+                       DataLoader(datasets[1], drop_last=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers)]
         # return datasets, dataloaders
         return dataloaders

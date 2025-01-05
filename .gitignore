@@ -33,3 +33,12 @@ server/test_datasets
 client/exe.bash
 
 server/RL/reward_model
+client/USC/datasets
+client/USC/models
+client/USC/.DS_Store
+
+client/CREMAD/datasets
+client/CREMAD/test.py
+client/CREMAD_lazyloading/datasets
+client/CREMAD_lazyloading/test.py
+/home/chenxu/codes/ichibanFATE/client/__MACOSX

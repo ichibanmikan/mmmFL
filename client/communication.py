@@ -24,14 +24,16 @@ class ClientHandler():
         
         print("modal_mess: ", modal_mess)
 
-        one_epoch_time = np.zeros(len(self.config.datasets))
+        self.one_epoch_time = np.zeros(len(self.config.datasets))
         one_epoch_loss = np.zeros(len(self.config.datasets))
         
         for i in range(len(self.config.datasets)):
-            one_epoch_time[i] = (self.trainers[i].sample_time()[0])
-            one_epoch_loss[i] = (self.trainers[i].sample_time()[1])
-        
-        self.send(one_epoch_time)
+            samp = self.trainers[i].sample_time()
+            self.one_epoch_time[i] = samp[0]
+            one_epoch_loss[i] = samp[1]
+            self.trainers[i].now_loss = samp[1]
+       
+        self.send(self.one_epoch_time)
         self.send(one_epoch_loss)
         
     def send(self, content):
@@ -107,13 +109,13 @@ class ClientHandler():
                 end_time = time.time()
                 
                 self.send(end_time - start_time) #发送训练用时
-                
                 one_epoch_loss = np.zeros(len(self.trainers))
-                
+                self.one_epoch_time[task__now_global_model[0]] = \
+                    (end_time - start_time) / \
+                        self.trainers[task__now_global_model[0]].config.epochs                
                 for i in range(len(self.trainers)):
-                    one_epoch_loss[i] = self.trainers[i].now_loss
-                
-                self.send((end_time - start_time) / 20) # send train_time / epoches as one epoch time
+                    one_epoch_loss[i] = self.trainers[i].now_loss          
+                self.send(self.one_epoch_time) # send train_time / epoches as one epoch time
                 self.send(one_epoch_loss) # send loss
                 
                 send_start_mess = self.recv()

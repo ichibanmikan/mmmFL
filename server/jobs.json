@@ -1,9 +1,9 @@
 {
     "Jobs": [
         {
-            "name": "AC",
-            "acc_goal": 0.42,
-            "model_size": 4352539
+            "name": "CREMAD",
+            "acc_goal": 0.54,
+            "model_size": 823468
         },    
         {
             "name": "MHAD",

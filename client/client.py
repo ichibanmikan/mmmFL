@@ -19,7 +19,7 @@ import argparse
 from communication import ClientHandler
 from FLASH.main import FLASH_main
 from MHAD.main import MHAD_main
-from AC.main import AC_main
+from CREMAD.main import CREMAD_main
 
 class Config:
     def __init__(self):

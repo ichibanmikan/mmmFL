@@ -72,7 +72,6 @@ class ServerHandler():
         
         self.one_epoch_time = self.recv()
         self.one_epoch_loss = self.recv()
-        
         self.server.train_wake_barrier.wait()
         self.handle_train()
         
@@ -108,7 +107,7 @@ class ServerHandler():
                 epochs_length += 1
                 
                 actions = self.server.agent.take_action(state)
-                print(f"actions[0]: {actions[0]}")
+
                 if actions[0] > 0.5:
                     now_job = int(min(actions[1], 1) * (self.server.config.jobs_num - 1))
                     job_now_acc_sub = self.server.jobs_goal_sub[now_job]
@@ -156,17 +155,27 @@ class ServerHandler():
                     self.server.local_train_barrier.wait()
                 
                 time_remain = np.array([self.time_remain])
-                one_epoch_time = (self.one_epoch_time - self.one_epoch_time.mean()) / self.one_epoch_time.std()
-                one_epoch_loss = (self.one_epoch_loss - self.one_epoch_loss.mean()) / self.one_epoch_loss.std()
-                jobs_goal_sub = (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean()) / self.server.jobs_goal_sub.std()
-                jobs_model_size = (self.server.jobs_model_size - self.server.jobs_model_size.mean()) / self.server.jobs_model_size.std()
+                one_epoch_time = (self.one_epoch_time - self.one_epoch_time.mean())\
+                    / self.one_epoch_time.std()
+                one_epoch_loss = (self.one_epoch_loss - self.one_epoch_loss.mean())\
+                    / self.one_epoch_loss.std()
+                jobs_goal_sub = \
+                    (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean())\
+                        / self.server.jobs_goal_sub.std()
+                jobs_model_size = \
+                    (self.server.jobs_model_size - \
+                        self.server.jobs_model_size.mean()) / \
+                            self.server.jobs_model_size.std()
                 
-                next_state = np.concatenate(
-                    [time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub, jobs_model_size]
-                )    
+                next_state = np.concatenate([
+                    time_remain, one_epoch_time, one_epoch_loss, \
+                        jobs_goal_sub, jobs_model_size
+                ])    
 
                 with self.server.lock:
-                    self.server.buffer.add(state, actions, next_state, reward, reward, done)                    
+                    self.server.buffer.add(
+                        state, actions, next_state, reward, reward, done
+                    )                    
                 
                 self.round += 1
                 self.server.next_round_barrier.wait()

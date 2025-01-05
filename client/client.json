@@ -8,12 +8,11 @@
     },
     "datasets": [
         {
-            "dataset_name": "AC",
-            "modalities_num": 3,
+            "dataset_name": "CREMAD",
+            "modalities_num": 2,
             "modalities_name" : [
                 "audio",
-                "depth",
-                "radar"
+                "video"
             ]
         },
         {

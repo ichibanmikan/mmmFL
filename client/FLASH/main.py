@@ -24,19 +24,15 @@ class Config:
     def load_config(self) -> None:
         with open(self.config_path, 'r') as f:
             config_data = json.load(f)
-
-        self.print_freq = config_data.get('print_freq', 5)
-        self.save_freq = config_data.get('save_freq', 20)
         self.batch_size = config_data.get('batch_size', 16)
         self.num_workers = config_data.get('num_workers', 16)
         self.epochs = config_data.get('epochs', 99)
         self.learning_rate = config_data.get('learning_rate', 0.001)
-        self.lr_decay_epochs = config_data.get('lr_decay_epochs', '50,100,150')
         self.lr_decay_rate = config_data.get('lr_decay_rate', 0.9)
         self.weight_decay = config_data.get('weight_decay', 0.0001)
         self.momentum = config_data.get('momentum', 0.9)
-        self.cosine = config_data.get('cosine', True)
         self.num_classes = config_data.get('num_classes', 12)
+        self.total_epochs = config_data.get('total_epochs', 200)
 
     def __repr__(self) -> str:
         return f"Config({self.__dict__})"
