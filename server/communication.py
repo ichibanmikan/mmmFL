@@ -59,14 +59,14 @@ class ServerHandler():
             return None
 
     def handle_pre(self):
-        self.client_name = self.recv()
-        print("Received from client: "+self.client_name)        
+        self.client_id = self.recv()
+        print("Received from client: "+str(self.client_id))    
         
         # self.server_socket.sendall("Received name message".encode())
         self.send("Received name message")
         
         self.datasets = self.recv() # datasets是个字典类型的列表
-        print("Client modality:", self.datasets)
+        print("Received Client modality: ", self.client_id)
         
         self.send("received modality! Start sample!")
         
@@ -90,14 +90,15 @@ class ServerHandler():
         epochs_length = 0
         epochs_return = 0
         
-        done = False
+        self.lazy_time = 0
         
+        done = False
         while True:
             if self.server.done:
-                self.send("this eposide is over")
+                self.send("This eposide is over")
                 break
             else:
-                self.send("start a new round")
+                self.send("Start a new round")
                 
                 # self.time_remain: (1)
                 # one_epoch_time: np.array(N)
@@ -107,53 +108,64 @@ class ServerHandler():
                 epochs_length += 1
                 
                 actions = self.server.agent.take_action(state)
-
                 if actions[0] > 0.5:
-                    now_job = int(min(actions[1], 1) * (self.server.config.jobs_num - 1))
+                    now_job = int(3 * actions[1])
                     job_now_acc_sub = self.server.jobs_goal_sub[now_job]
-                    self.send([now_job, self.server.global_models_manager.get_model_params(now_job)])        
+                    self.send([
+                        now_job, self.server.global_models_manager.get_model_params(now_job)
+                    ])        
                 
                     recv_time = self.recv() #接收 接收全局模型 时间  
                     self.time_remain -= recv_time
-                    print("received recv_time from client: ", recv_time)
+                    print(f"Received recv_time from client {self.client_id} in job {self.now_job}: "\
+                        , recv_time)
                     
                     self.server.recv_global_barrier.wait() #第一次同步
                     
-                    self.send("train start!")
+                    self.send("Train start!")
                     
                     train_time = self.recv()
                     self.time_remain -= train_time
                     
-                    print("received train_time from client: ", train_time)
+                    print(f"Received train_time from client {self.client_id} in job {self.now_job}: "\
+                        , train_time)
                     
                     self.one_epoch_time = self.recv()
                     self.one_epoch_loss = self.recv()
                     
                     self.server.local_train_barrier.wait() #第二次同步
                     
-                    self.send("send start!")
+                    self.send("Send start!")
 
                     now_params = self.recv()
                     send_time = self.recv()
                     self.time_remain -= send_time
-                    print("received send_time from client: ", send_time)
+                    print(f"Received send_time from client {self.client_id} in job {self.now_job}: "\
+                        , send_time)
                     
                     with self.server.lock:
-                        self.server.current_round_all_params.append((now_job, now_params))
+                        self.server.current_round_all_params.append((
+                            now_job, now_params
+                        ))
                         
                     if(self.server.config.max_participant_time < train_time):
                         reward = -1
                     else:
-                        reward = job_now_acc_sub - self.server.jobs_goal_sub[now_job] # (goal - now_acc_before_this_round) - (goal - now_acc_after_this_round)
-                    
+                        reward = (job_now_acc_sub - self.server.jobs_goal_sub[now_job])/100 
+                        # (goal - now_acc_before_this_round) - (goal - now_acc_after_this_round)
                     epochs_return += reward
                     
                 else:
-                    reward = 0
-                    self.send("wait a round")
+                    self.lazy_time += 1
+                    if self.lazy_time > 5:
+                        reward = -1
+                        self.lazy_time = 0
+                    else:
+                        reward = 0
+                    self.send("Wait a round")
                     self.server.recv_global_barrier.wait()
                     self.server.local_train_barrier.wait()
-                
+                print(f"Node {self.client_id} has a reward: ", reward)
                 time_remain = np.array([self.time_remain])
                 one_epoch_time = (self.one_epoch_time - self.one_epoch_time.mean())\
                     / self.one_epoch_time.std()

@@ -126,6 +126,7 @@ class Server:
     
     def update_SAC(self):
         if len(self.buffer.states) > self.config.min_replay_buffer_size:
+            print("This round start update_SAC()")
             s, a, ns, r, dr, d = self.buffer.sample(self.config.replay_buffer_batch_size)
             transition_dict = {'states': s,
                             'actions': a,
@@ -134,7 +135,7 @@ class Server:
                             'dense_reward': dr,
                             'dones': d}
             self.agent.update(transition_dict)
-            self.is_done()
+        self.is_done()
     
     def is_done(self):
         is_done = True
@@ -150,6 +151,7 @@ class Server:
         if is_done:
             self.done = True
             self.buffer.save_data()
+            self.agent.save_model()
 
 if __name__ == "__main__":
     config = Config()  # Initialize the config

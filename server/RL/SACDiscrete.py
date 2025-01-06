@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import numpy as np
+import os
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_width):
@@ -26,7 +27,9 @@ class QValueNet(nn.Module):
 class SAC:
     def __init__(self, state_dim, action_dim, hidden_width,
                  actor_lr, critic_lr, alpha_lr,
-                 target_entropy, tau, gamma, device):
+                 target_entropy, tau, gamma, device, 
+                 model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SAC.pth')
+                 ):
 
         self.actor = Actor(state_dim, action_dim, hidden_width).to(device)
         
@@ -35,9 +38,6 @@ class SAC:
 
         self.target_critic_1 = QValueNet(state_dim, action_dim, hidden_width).to(device)
         self.target_critic_2 = QValueNet(state_dim, action_dim, hidden_width).to(device)
- 
-        self.target_critic_1.load_state_dict(self.critic_1.state_dict())
-        self.target_critic_2.load_state_dict(self.critic_2.state_dict())
         
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic_1_optimizer = torch.optim.Adam(self.critic_1.parameters(), lr=critic_lr)
@@ -52,7 +52,14 @@ class SAC:
         self.gamma = gamma
         self.tau = tau
         self.device = device
-
+        self.model_path = model_path
+        if os.path.exists(model_path):
+            print(f"Loading model from {self.model_path}...")
+            self.load_model(model_path)
+        else:
+            self.target_critic_1.load_state_dict(self.critic_1.state_dict())
+            self.target_critic_2.load_state_dict(self.critic_2.state_dict())
+            
     def take_action(self, state):
         # numpy[n_states]-->tensor[1,n_states]
         state = torch.tensor(state[np.newaxis,:], dtype=torch.float).to(self.device)
@@ -133,3 +140,38 @@ class SAC:
  
         self.soft_update(self.critic_1, self.target_critic_1)
         self.soft_update(self.critic_2, self.target_critic_2)
+
+    def save_model(self):
+        torch.save({
+            'actor_state_dict': self.actor.state_dict(),
+            'critic_1_state_dict': self.critic_1.state_dict(),
+            'critic_2_state_dict': self.critic_2.state_dict(),
+            'target_critic_1_state_dict': self.target_critic_1.state_dict(),
+            'target_critic_2_state_dict': self.target_critic_2.state_dict(),
+            'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
+            'critic_1_optimizer_state_dict': self.critic_1_optimizer.state_dict(),
+            'critic_2_optimizer_state_dict': self.critic_2_optimizer.state_dict(),
+            'log_alpha': self.log_alpha,
+            'log_alpha_optimizer_state_dict': self.log_alpha_optimizer.state_dict(),
+        }, self.model_path)
+        print(f"Model saved to {self.model_path}")
+
+    def load_model(self):
+        checkpoint = torch.load(self.model_path, map_location=self.device, weights_only=True)
+        self.actor.load_state_dict(checkpoint['actor_state_dict'])
+        self.critic_1.load_state_dict(checkpoint['critic_1_state_dict'])
+        self.critic_2.load_state_dict(checkpoint['critic_2_state_dict'])
+        self.target_critic_1.load_state_dict(checkpoint['target_critic_1_state_dict'])
+        self.target_critic_2.load_state_dict(checkpoint['target_critic_2_state_dict'])
+        self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
+        self.critic_1_optimizer.load_state_dict(
+            checkpoint['critic_1_optimizer_state_dict']
+        )
+        self.critic_2_optimizer.load_state_dict(
+            checkpoint['critic_2_optimizer_state_dict']
+        )
+        self.log_alpha = checkpoint['log_alpha']
+        self.log_alpha_optimizer.load_state_dict(
+            checkpoint['log_alpha_optimizer_state_dict']
+        )
+        print(f"Model loaded from {self.model_path}")

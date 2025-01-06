@@ -42,3 +42,8 @@ client/CREMAD/test.py
 client/CREMAD_lazyloading/datasets
 client/CREMAD_lazyloading/test.py
 /home/chenxu/codes/ichibanFATE/client/__MACOSX
+client/__MACOSX/USC-data/._.DS_Store
+server/models
+server/RL/RLModel
+
+*.log

@@ -69,8 +69,9 @@ class Trainer:
     def train(self):
         record_loss = np.zeros(self.config.epochs)
         record_acc = np.zeros(self.config.epochs)
+        self.model.to(self.device)
+        self.model.train()
         for epoch in range(0, self.config.epochs):
-            self.model.train()
             self.train_tools.adjust_learning_rate(epoch)
             time1 = time.time()
             loss = self.every_epoch_train()
@@ -83,10 +84,13 @@ class Trainer:
             record_acc[epoch] = val_acc
             if val_acc > self.best_acc:
                 self.best_acc = val_acc
+            self.model.train()
         print(record_acc)
         return record_loss[self.config.epochs - 1]
     
     def sample_one_epoch(self):
+        self.model.to(self.device)
+        self.model.train()
         time1 = time.time()
         loss = self.every_epoch_train()
         time2 = time.time()
@@ -100,6 +104,7 @@ class Validater:
         self.valid_loader = valid_loader
         self.device = device
     def validate(self):
+        self.model.to(self.device)
         self.model.eval()
         batch_time = AverageMeter()
         losses = AverageMeter()
@@ -146,6 +151,7 @@ class Tester:
         self.device = device
         
     def test(self):
+        self.model.to(self.device)
         self.model.eval()
         accs = AverageMeter()
 

@@ -14,7 +14,7 @@ class ClientHandler():
         self.client_socket.connect((self.config.server_address, self.config.port))
         print(f"Connected to server {self.config.server_address}:{self.config.port}")
         
-        self.send(self.config.client_name) 
+        self.send(self.config.node_id) 
 
         response = self.recv()
         print(f"Server response: {response}") # 发送名字，接受返回
@@ -87,14 +87,14 @@ class ClientHandler():
             new_round_start_mess = self.recv() #第一次同步，轮次开始
             print(new_round_start_mess)
             
-            if new_round_start_mess == "this eposide is over":
+            if new_round_start_mess == "This eposide is over":
                 break
             
             start_time = time.time()
             task__now_global_model = self.recv()
             end_time = time.time()
             
-            if(task__now_global_model == "wait a round"):
+            if(task__now_global_model == "Wait a round"):
                 pass
             else:
                 self.trainers[task__now_global_model[0]].reset_model_parameter(task__now_global_model[1])

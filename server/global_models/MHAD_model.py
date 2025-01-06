@@ -187,7 +187,7 @@ class MHAD:
 
         # model_params = params.cpu().numpy()
         model_params = np.array(params)
-        print("Shape of model weight: ", model_params.shape)#39456
+        # print("Shape of model weight: ", model_params.shape)#39456
 
         return model_params
 
