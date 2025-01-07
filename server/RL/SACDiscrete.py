@@ -5,39 +5,46 @@ import numpy as np
 import os
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_width):
+    def __init__(self, N, hidden_width = 128, action_width = 4):
         super(Actor, self).__init__()
-        self.l1 = nn.Linear(state_dim, hidden_width)
-        self.l2 = nn.Linear(hidden_width, action_dim)
-        
+        self.l1 = nn.Linear(4 * N + 1, hidden_width) 
+        # (bsz, 4N + 1) @ (4N + 1, hidden_width)
+        self.l2 = nn.Linear(hidden_width, action_width) 
+        # (bsz, hidden_width) @ (hidden_width, 4)
     def forward(self, x):
         x = F.relu(self.l1(x))
-        return F.softmax(self.l2(x), dim = 1)
- 
-class QValueNet(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_width):
-        super(QValueNet, self).__init__()
-        self.l1 = nn.Linear(state_dim, hidden_width)
-        self.l2 = nn.Linear(hidden_width, action_dim)
+        return F.softmax(self.l2(x), dim = -1)
+        # (batch_size, 4), means \pai(.|x)
+    #Action a means select job (a - 1) unless a == 0
 
-    def forward(self, x):  
-        x = F.relu(self.l1(x))  
-        return self.l2(x)
+class QValueNet(nn.Module):
+    def __init__(self, N, hidden_width, action_width = 4):
+        super(QValueNet, self).__init__()
+        self.l1 = nn.Linear(4 * N + 1, hidden_width)
+        # (bsz, 4 * N + 1) @ (4 * N + 1, h_d)
+        self.l2 = nn.Linear(hidden_width, action_width)
+        # (bsz, h_d) @ (h_d, 4)
+
+    def forward(self, state):  
+        # state: (bsz, 4 * N + 1) 
+        state = F.relu(self.l1(state))
+        return self.l2(state)
+        # (bsz, 4)
  
 class SAC:
-    def __init__(self, state_dim, action_dim, hidden_width,
+    def __init__(self, N, hidden_dim,
                  actor_lr, critic_lr, alpha_lr,
                  target_entropy, tau, gamma, device, 
                  model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SAC.pth')
                  ):
 
-        self.actor = Actor(state_dim, action_dim, hidden_width).to(device)
+        self.actor = Actor(N = N, hidden_width = hidden_dim).to(device)
         
-        self.critic_1 = QValueNet(state_dim, action_dim, hidden_width).to(device)
-        self.critic_2 = QValueNet(state_dim, action_dim, hidden_width).to(device)
+        self.critic_1 = QValueNet(N = N, hidden_width = hidden_dim).to(device)
+        self.critic_2 = QValueNet(N = N, hidden_width = hidden_dim).to(device)
 
-        self.target_critic_1 = QValueNet(state_dim, action_dim, hidden_width).to(device)
-        self.target_critic_2 = QValueNet(state_dim, action_dim, hidden_width).to(device)
+        self.target_critic_1 = QValueNet(N = N, hidden_width = hidden_dim).to(device)
+        self.target_critic_2 = QValueNet(N = N, hidden_width = hidden_dim).to(device)
         
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic_1_optimizer = torch.optim.Adam(self.critic_1.parameters(), lr=critic_lr)
@@ -61,32 +68,34 @@ class SAC:
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
             
     def take_action(self, state):
-        # numpy[n_states]-->tensor[1,n_states]
-        state = torch.tensor(state[np.newaxis,:], dtype=torch.float).to(self.device)
-        # [1,n_actions]
-        probs = self.actor(state)
-        
-        action_dist = torch.distributions.Categorical(probs)
-        action = action_dist.sample().item()
-        
+        state = torch.tensor(state, dtype=torch.float).to(self.device) 
+        # (4 * N + 1) or (bsz, 4 * N + 1)
+        probs = self.actor(state) # (batch_size, 4)
+        action_dis = torch.distributions.Categorical(probs)  
+        action = action_dis.sample().item()
         return action
     
     # now state_value
     def calc_target(self, rewards, next_states, dones):
-        # [b,n_states]-->[b,n_actions]
-        next_probs = self.actor(next_states)
-        # [b,n_actions]
-        next_log_probs = torch.log(next_probs + 1e-8)
-        # [b,1]
-        entropy = -torch.sum(next_probs * next_log_probs, dim=1, keepdims=True)
-        # [b,n_actions]
-        q1_value = self.target_critic_1(next_states)
-        q2_value = self.target_critic_2(next_states)
-        # [b, 1]
-        min_qvalue = torch.sum(next_probs * torch.min(q1_value,q2_value), dim=1, keepdims=True)
-        # [b, 1]
+        next_prob = self.actor(next_states) # (batch_size, 4)
+        next_prob = torch.clamp(next_prob, min=1e-8) # (batch_size, 4)
+        
+        next_log_probs = torch.log(next_prob) # (batch_size, 4)
+        
+        entropy = -torch.sum(next_prob * next_log_probs, dim = -1, keepdims=True) 
+        # (batch_size, 1)
+
+        q1 = self.target_critic_1(next_states) 
+        # (batch_size, 4)
+        q2= self.target_critic_2(next_states)
+        # (batch_size, 4)
+        
+        min_qvalue = torch.sum(next_prob * torch.min(q1, q2), dim = -1, keepdims=True)
+        # (batch_size, 1)
+
         next_value = min_qvalue + self.log_alpha.exp() * entropy
-        # [b, n_actions]
+        # (batch_size, 1)
+        
         td_target = rewards + self.gamma * next_value * (1-dones)
         return td_target.float()
     

@@ -27,6 +27,16 @@ class ReplayBuffer:
         # self.sum_reward = 0
     
     def add(self, state, action, next_state, reward, dense_reward, done):
+        
+        state = state.astype(np.float32) if state.dtype == np.float64 else state
+        next_state = next_state.astype(np.float32) \
+            if next_state.dtype == np.float64 else next_state
+        reward = reward.astype(np.float32) \
+            if isinstance(reward, np.ndarray) and reward.dtype == np.float64 else reward
+        dense_reward = dense_reward.astype(np.float32) \
+            if isinstance(dense_reward, np.ndarray) and dense_reward.dtype == np.float64\
+                else dense_reward
+
         assert done == False
         
         if self.isFirst:
@@ -42,7 +52,13 @@ class ReplayBuffer:
         # self.a_log_probs.append(a_log_prob)
         # self.sum_reward += reward
 
-    def add_done(self, state, action, next_state, reward, dense_reward, eposide_length, eposide_reward):
+    def add_done(self, state, action, next_state, reward,\
+        dense_reward, eposide_length, eposide_reward):
+
+        state = state.astype(np.float32) if state.dtype == np.float64 else state
+        next_state = next_state.astype(np.float32) \
+            if next_state.dtype == np.float64 else next_state
+
         self.states.append(state)
         self.actions.append(action)
         self.next_states.append(next_state)
@@ -56,7 +72,9 @@ class ReplayBuffer:
         self.episode_return.append(eposide_reward)
         self.episode_length.append(eposide_length)
         
-        assert eposide_length == self.traj_end_id[len(self.traj_end_id) - 1] - self.traj_head_id[len(self.traj_head_id) - 1] + 1
+        assert eposide_length == \
+            self.traj_end_id[len(self.traj_end_id) - 1] - \
+                self.traj_head_id[len(self.traj_head_id) - 1] + 1
         assert len(self.traj_end_id) == len(self.traj_head_id)
         assert len(self.episode_return) == len(self.episode_length)
         
@@ -76,12 +94,14 @@ class ReplayBuffer:
         sampled_dense_rewards = [self.dense_rewards[i] for i in indices]
         sampled_dones = [self.dones[i] for i in indices]
 
-        sampled_states = torch.tensor(np.array(sampled_states), device=self.device)
-        sampled_actions = torch.tensor(np.array(sampled_actions), dtype = torch.float32, device=self.device)
-        sampled_next_states = torch.tensor(np.array(sampled_next_states), device=self.device)
-        sampled_rewards = torch.tensor(np.array(sampled_rewards), device=self.device)
-        sampled_dense_rewards = torch.tensor(np.array(sampled_dense_rewards), device=self.device)
-        sampled_dones = torch.tensor(np.array(sampled_dones), dtype=torch.float, device=self.device)
+        sampled_states = torch.tensor(np.array(sampled_states)).to(self.device)
+        sampled_actions = torch.tensor(
+            np.array(sampled_actions).astype(np.int64)
+        ).to(self.device)
+        sampled_next_states = torch.tensor(np.array(sampled_next_states)).to(self.device)
+        sampled_rewards = torch.tensor(np.array(sampled_rewards).astype(np.float32)).to(self.device)
+        sampled_dense_rewards = torch.tensor(np.array(sampled_dense_rewards).astype(np.float32)).to(self.device)
+        sampled_dones = torch.tensor(np.array(sampled_dones), dtype=torch.float).to(self.device)
 
         return (sampled_states, sampled_actions, sampled_next_states,
                 sampled_rewards, sampled_dense_rewards, sampled_dones)
@@ -117,10 +137,10 @@ class ReplayBuffer:
 
         return (
             torch.tensor(np.array(sampled_states)).to(self.device),
-            torch.tensor(np.array(sampled_actions)).to(self.device),
+            torch.tensor(np.array(sampled_actions).astype(np.int64)).to(self.device),
             torch.tensor(np.array(sampled_next_states)).to(self.device),
-            torch.tensor(np.array(sampled_rewards)).to(self.device),
-            torch.tensor(np.array(sampled_dense_rewards)).to(self.device),
+            torch.tensor(np.array(sampled_rewards).astype(np.float32)).to(self.device),
+            torch.tensor(np.array(sampled_dense_rewards).astype(np.float32)).to(self.device),
             torch.tensor(np.array(sampled_dones)).to(self.device),  
             torch.tensor(np.array(sampled_episode_returns)).to(self.device),
             torch.tensor(np.array(sampled_episode_lengths)).to(self.device)
@@ -152,7 +172,8 @@ class ReplayBuffer:
               
     def load_data(self):
 
-        file_path = os.path.join(os.path.dirname(__file__), 'data', 'replay_buffer.pkl')
+        file_path = os.path.join(os.path.dirname(__file__), \
+            'data', 'replay_buffer.pkl')
 
         if not os.path.exists(file_path):
             print(f"File {file_path} does not exist.")

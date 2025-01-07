@@ -63,7 +63,6 @@ class CREMAD_main:
         
     def main(self):
         self.now_loss = self.tr.train()
-        print(self.tr.best_acc)
         
         return self.get_model_update()
     

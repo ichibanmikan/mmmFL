@@ -107,9 +107,10 @@ class ServerHandler():
                 # self.server.jobs_model_size: np.array(N)  
                 epochs_length += 1
                 
-                actions = self.server.agent.take_action(state)
-                if actions[0] > 0.5:
-                    now_job = int(3 * actions[1])
+                action = self.server.agent.take_action(state)
+                action = 1
+                if action > 0:
+                    now_job = action - 1
                     job_now_acc_sub = self.server.jobs_goal_sub[now_job]
                     self.send([
                         now_job, self.server.global_models_manager.get_model_params(now_job)
@@ -117,7 +118,7 @@ class ServerHandler():
                 
                     recv_time = self.recv() #接收 接收全局模型 时间  
                     self.time_remain -= recv_time
-                    print(f"Received recv_time from client {self.client_id} in job {self.now_job}: "\
+                    print(f"Received recv_time from client {self.client_id} in job {now_job}: "\
                         , recv_time)
                     
                     self.server.recv_global_barrier.wait() #第一次同步
@@ -127,7 +128,7 @@ class ServerHandler():
                     train_time = self.recv()
                     self.time_remain -= train_time
                     
-                    print(f"Received train_time from client {self.client_id} in job {self.now_job}: "\
+                    print(f"Received train_time from client {self.client_id} in job {now_job}: "\
                         , train_time)
                     
                     self.one_epoch_time = self.recv()
@@ -140,7 +141,7 @@ class ServerHandler():
                     now_params = self.recv()
                     send_time = self.recv()
                     self.time_remain -= send_time
-                    print(f"Received send_time from client {self.client_id} in job {self.now_job}: "\
+                    print(f"Received send_time from client {self.client_id} : in job {now_job}"\
                         , send_time)
                     
                     with self.server.lock:
@@ -183,11 +184,10 @@ class ServerHandler():
                     time_remain, one_epoch_time, one_epoch_loss, \
                         jobs_goal_sub, jobs_model_size
                 ])    
-
                 with self.server.lock:
                     self.server.buffer.add(
-                        state, actions, next_state, reward, reward, done
-                    )                    
+                        state, action, next_state, reward, reward, done
+                    )
                 
                 self.round += 1
                 self.server.next_round_barrier.wait()

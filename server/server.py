@@ -6,7 +6,7 @@ import threading
 import numpy as np
 import configparser
 from communication import *
-from RL.SACContinuous import SAC
+from RL.SACDiscrete import SAC
 from RL.utils import ReplayBuffer
 from global_models.global_models import *
 

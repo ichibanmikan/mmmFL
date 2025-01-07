@@ -11,9 +11,8 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
         self.N = N
         self.l1 = nn.Linear(4 * N + 1, hidden_dim)
-        self.l_mean = nn.Linear(hidden_dim, 3)
-        self.l_std = nn.Linear(hidden_dim, 3) 
-        # merge down and up bandwidth
+        self.l_mean = nn.Linear(hidden_dim, 1)
+        self.l_std = nn.Linear(hidden_dim, 1) 
 
     def forward(self, x):
         x = F.relu(self.l1(x))
@@ -27,32 +26,25 @@ class Actor(nn.Module):
         action = (torch.tanh(normal_sample) + 1) / 2
         
         log_prob = log_prob.sum(dim = -1, keepdim = True)  
-        # Sum of 4 independent actions. Here we assume that \
-            # 4 elements in action is independent with each other. 
         log_prob = log_prob - torch.log(1 - action.pow(2) + 1e-7)\
-            .sum(dim = -1, keepdim = True)
+            .sum(dim = -1)
         
         return action, log_prob
 
 class QValueNet(nn.Module):
     def __init__(self, N, hidden_dim):
         super(QValueNet, self).__init__()
-        self.l1 = nn.Linear(4 * N + 1 + 3, hidden_dim * 2) 
-        # state: [4N+1]; action: [3]. (1, 4 * N + 4) -> (1, h_d * 2)
+        self.l1 = nn.Linear(4 * N + 1 + 1, hidden_dim * 2) 
+        # state: [4N+1]; action: [1]. (b, 4 * N + 2) -> (b, h_d * 2)
         self.l2 = nn.Linear(hidden_dim * 2, hidden_dim) 
-        # (1, h_d * 2) -> (1, h_d)
+        # (b, h_d * 2) -> (b, h_d)
         self.l3 = nn.Linear(hidden_dim, 1) 
-        #(1, h_d) -> (1, 1)
+        #(b, h_d) -> (b, 1)
 
     def forward(self, state, action):
-        x = torch.cat([state, action], dim = 2)  
-        # ((batch_size, 1, 4N + 1), (batch_size, 1, 3)) -> 
-            # (batch_size, 1, 4N + 4)
-        # x = x * mask  # (batch_size, 1, 4 * N + 4)
-        x = x.mean(dim = 1)
-        # nonzero_count = mask.sum(dim = 1, keepdim = True) + 1e-8  
-        # (batch_size, 1, 1)
-
+        x = torch.cat([state, action], dim = -1)  
+        # ((batch_size, 4N + 1), (batch_size, 1)) -> 
+            # (batch_size, 4N + 2)
         x = F.relu(self.l1(x))
         x = F.relu(self.l2(x))
         return self.l3(x)
@@ -80,7 +72,7 @@ class SAC:
             self.critic_2.parameters(), lr=critic_lr
         )
 
-        self.log_alpha = torch.tensor(np.log(0.01), dtype=torch.float)
+        self.log_alpha = torch.tensor(np.log(0.0001), dtype=torch.float)
         self.log_alpha.requires_grad = True 
         self.log_alpha_optimizer = torch.optim.Adam(
             [self.log_alpha], lr=alpha_lr
@@ -98,25 +90,17 @@ class SAC:
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
             
     def take_action(self, state):
-        state = torch.tensor(state, dtype=torch.float).to(self.device)
-        action = self.actor(state)[0]
-        return action
+        state = torch.tensor(state, dtype=torch.float).to(self.device) # (4 * N + 1)
+        action = self.actor(state)[0] # (1)
+        return action.cpu().detach().numpy()
 
     def calc_target(self, rewards, next_states, dones): 
         next_actions, log_prob = self.actor(next_states)
-        log_prob = log_prob.sum(dim = 1, keepdim = True)
-        # print(log_prob)
-        log_prob = log_prob.squeeze(1)
-        # print(log_prob)
         entropy = -log_prob
         q1_value = self.target_critic_1(next_states, next_actions)
         q2_value = self.target_critic_2(next_states, next_actions)
         
-        # print(q1_value.shape)
-        # print(q1_value.shape)
-        # print(entropy.shape)
-        
-        next_value = torch.min(q1_value, q2_value) \
+        next_value = torch.minimum(q1_value, q2_value) \
             + self.log_alpha.exp() * entropy
         td_target = rewards + self.gamma * next_value * (1 - dones)
         return td_target.float()
