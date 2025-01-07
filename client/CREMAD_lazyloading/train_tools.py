@@ -67,7 +67,7 @@ class train_tools:
         lr = self.config.learning_rate
         eta_min = lr * (self.config.lr_decay_rate ** 3)
         lr = eta_min + (lr - eta_min) * (
-                1 + math.cos(math.pi * epoch / self.config.epochs)) / 2
+                1 + math.cos(math.pi * epoch / self.config.total_epochs)) / 2
 
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = lr

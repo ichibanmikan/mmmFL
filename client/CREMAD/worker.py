@@ -28,6 +28,7 @@ class Trainer:
         self.train_loader = train_loader
         self.validater = Validater(self.model, valid_loader, config, self.criterion, device)
         self.best_acc = -100
+        self.now_epoch = 0
         
     def every_epoch_train(self):
         batch_time = AverageMeter()
@@ -72,7 +73,8 @@ class Trainer:
         self.model.to(self.device)
         self.model.train()
         for epoch in range(0, self.config.epochs):
-            self.train_tools.adjust_learning_rate(epoch)
+            self.now_epoch += 1
+            self.train_tools.adjust_learning_rate(self.now_epoch)
             time1 = time.time()
             loss = self.every_epoch_train()
             time2 = time.time()
