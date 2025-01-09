@@ -66,12 +66,12 @@ class FLASH_main:
         self.now_loss = self.tr.train()
         print(self.tr.best_acc)
         
-        return self.get_model_update()
+        return self.get_model_param()
     
     def sample_time(self):
         return self.tr.sample_one_epoch()
         
-    def get_model_update(self):
+    def get_model_param(self):
         
         params = []
         for param in self.model.parameters():

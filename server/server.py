@@ -20,6 +20,7 @@ class Config:
         self.MIN_CLIENTS = config.getint('Clients', 'min_clients')
         self.TIMEOUT = config.getint('Server', 'timeout', fallback=30)
         self.jobs_num = config.getint('Jobs', 'num')
+        self.max_round_time = config.getint('Clients', 'max_round_time')
         self.max_participant_time = config.getint('Clients', 'max_participant_time')
         self.min_replay_buffer_size = config.getint('RL', 'min_size')
         self.replay_buffer_batch_size = config.getint('RL', 'batch_size')
@@ -30,7 +31,7 @@ class Server:
         self.config = config
         self.done = False
         # self.clients = {}
-        self.jobs_unfinish = [] 
+        self.jobs_finish = [] 
         self.threads = []
         self.lock = threading.Lock()
         self.current_round_all_params = []
@@ -43,7 +44,7 @@ class Server:
         for i in range(len(self.jobs)):
             self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
             self.jobs_model_size[i] = self.jobs[i]["model_size"]
-            self.jobs_unfinish.append(False)
+            self.jobs_finish.append(False)
         self.buffer = ReplayBuffer(device="cuda")
         
     def clear_connections(self):
@@ -51,14 +52,14 @@ class Server:
         with self.lock:
             self.done = False
             self.buffer.save_data()
-            self.jobs_unfinish = [] 
+            self.jobs_finish = [] 
             self.current_round_all_params = []
             # self.clients.clear()
             self.global_models_manager = globel_models_manager()
             for i in range(len(self.jobs)):
                 self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
                 self.jobs_model_size[i] = self.jobs[i]["model_size"]
-                self.jobs_unfinish.append(False)
+                self.jobs_finish.append(False)
             self.threads.clear()
             self.server_socket.close()
         print(f"All clients released. Sleeping for 5 seconds before next round...")
@@ -91,7 +92,8 @@ class Server:
             self.train_wake_barrier = threading.Barrier(len(self.threads))
             self.recv_global_barrier = threading.Barrier(len(self.threads))
             self.local_train_barrier = threading.Barrier(len(self.threads))
-            self.next_round_barrier = threading.Barrier(len(self.threads), action=self.update_global_models)
+            self.update_params_barrier = threading.Barrier(len(self.threads), action=self.update_global_models)
+            self.next_round_barrier = threading.Barrier(len(self.threads), action=self.update_SAC)
             
             for thread in self.threads:
                 thread.start()
@@ -110,19 +112,19 @@ class Server:
         
         with self.lock: 
             self.current_round_all_params.clear()
-        
-        for i in range(len(current_round_update)):
-            if(len(current_round_update[i])!=0):
-                self.global_models_manager.reset_models(i, np.array(current_round_update[i]))
+            for i in range(len(current_round_update)):
+                if(len(current_round_update[i])!=0):
+                    self.global_models_manager.reset_models(i, np.array(current_round_update[i]))
 
-        print("This round all jobs' acc are: ")
         accs = self.global_models_manager.test()
         
         for i in range(len(self.jobs)):
             self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"] - accs[i]
+
+        with open("/home/chenxu/codes/ichibanFATE/server/server.log", "a") as log:
+            log.write(f"This round all jobs' acc are: {accs}\n")
             
-        print(accs)
-        self.update_SAC()
+        # self.update_SAC()
     
     def update_SAC(self):
         if len(self.buffer.states) > self.config.min_replay_buffer_size:
@@ -141,12 +143,12 @@ class Server:
         is_done = True
         
         for i in range(len(self.jobs)):
-            if self.jobs_unfinish[i] == False and self.jobs_goal_sub[i] <= 0:    
+            if self.jobs_finish[i] == False and self.jobs_goal_sub[i] <= 0:    
                 self.jobs_goal_sub[i] = 0
-                self.jobs_unfinish[i] = True
+                self.jobs_finish[i] = True
                 self.global_models_manager.save_model(i)
                 
-            is_done = is_done and self.jobs_unfinish[i]
+            is_done = is_done and self.jobs_finish[i]
         
         if is_done:
             self.done = True

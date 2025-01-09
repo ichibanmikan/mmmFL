@@ -52,4 +52,4 @@ class globel_models_manager:
         return accs
     
     def save_model(self, job_index):
-        self.models[job_index].save_model(os.path.join(os.getcwd(), f'models/{self.get_model_name(job_index)}.pth'))
+        self.models[job_index].save_model(os.path.join(os.path.dirname(os.path.abspath(__file__)), f'models/{self.get_model_name(job_index)}.pth'))

@@ -32,6 +32,7 @@ class Config:
         self.weight_decay = config_data.get('weight_decay', 0.0001)
         self.momentum = config_data.get('momentum', 0.9)
         self.num_classes = config_data.get('num_classes', 6)
+        self.total_epochs = config_data.get('total_epochs', 200)
 
     def __repr__(self) -> str:
         return f"Config({self.__dict__})"
@@ -43,7 +44,7 @@ class CREMAD_main:
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
         
         self.model = MMActionClassifier(num_classes=self.config.num_classes)  
-
+        
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
@@ -64,12 +65,12 @@ class CREMAD_main:
     def main(self):
         self.now_loss = self.tr.train()
         
-        return self.get_model_update()
+        return self.get_model_param()
     
     def sample_time(self):
         return self.tr.sample_one_epoch()
         
-    def get_model_update(self):
+    def get_model_param(self):
         
         params = []
         for param in self.model.parameters():

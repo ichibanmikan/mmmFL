@@ -74,7 +74,7 @@ class Trainer:
         self.model.train()
         for epoch in range(0, self.config.epochs):
             self.now_epoch += 1
-            self.train_tools.adjust_learning_rate(self.now_epoch)
+            # self.train_tools.adjust_learning_rate(self.now_epoch)
             time1 = time.time()
             loss = self.every_epoch_train()
             time2 = time.time()

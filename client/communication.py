@@ -98,7 +98,7 @@ class ClientHandler():
                 pass
             else:
                 self.trainers[task__now_global_model[0]].reset_model_parameter(task__now_global_model[1])
-            
+                
                 self.send(end_time - start_time)  #发送接收全局模型时间       
                 
                 train_start_mess = self.recv() #第一次同步，开始训练
@@ -107,6 +107,8 @@ class ClientHandler():
                 start_time = time.time()
                 new_params = self.trainers[task__now_global_model[0]].main()
                 end_time = time.time()
+                
+                param_update = new_params - task__now_global_model[1]
                 
                 self.send(end_time - start_time) #发送训练用时
                 one_epoch_loss = np.zeros(len(self.trainers))
@@ -122,10 +124,9 @@ class ClientHandler():
                 print(send_start_mess) #第二次同步，开始发送模型
                 
                 start_time = time.time()
-                self.send(new_params)
+                self.send(param_update)
                 end_time = time.time()
                 
                 self.send(end_time - start_time) # 发送发送模型用时
             
                 self.round += 1
-            

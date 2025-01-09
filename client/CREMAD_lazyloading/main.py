@@ -32,6 +32,7 @@ class Config:
         self.weight_decay = config_data.get('weight_decay', 0.0001)
         self.momentum = config_data.get('momentum', 0.9)
         self.num_classes = config_data.get('num_classes', 6)
+        self.total_epochs = config_data.get('total_epochs', 200)
 
     def __repr__(self) -> str:
         return f"Config({self.__dict__})"
@@ -65,12 +66,12 @@ class CREMAD_main:
         self.now_loss = self.tr.train()
         print(self.tr.best_acc)
         
-        return self.get_model_update()
+        return self.get_model_param()
     
     def sample_time(self):
         return self.tr.sample_one_epoch()
         
-    def get_model_update(self):
+    def get_model_param(self):
         
         params = []
         for param in self.model.parameters():

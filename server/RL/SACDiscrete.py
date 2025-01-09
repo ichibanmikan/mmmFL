@@ -3,6 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import numpy as np
 import os
+import random
 
 class Actor(nn.Module):
     def __init__(self, N, hidden_width = 128, action_width = 4):
@@ -67,12 +68,15 @@ class SAC:
             self.target_critic_1.load_state_dict(self.critic_1.state_dict())
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
             
-    def take_action(self, state):
-        state = torch.tensor(state, dtype=torch.float).to(self.device) 
+    def take_action(self, state, epoch):
+        if epoch < 50:
+            return random.randint(0, 3)
+        state = torch.tensor(state, dtype=torch.float).to(self.device)
         # (4 * N + 1) or (bsz, 4 * N + 1)
-        probs = self.actor(state) # (batch_size, 4)
-        action_dis = torch.distributions.Categorical(probs)  
-        action = action_dis.sample().item()
+        probs = self.actor(state)
+        action_dist = torch.distributions.Categorical(probs)
+        
+        action = action_dist.sample().item()
         return action
     
     # now state_value
@@ -127,10 +131,10 @@ class SAC:
         self.critic_1_optimizer.step()
         self.critic_2_optimizer.step()
  
-        probs = self.actor(states)  # [b,n_actions]
-        log_probs = torch.log(probs + 1e-8)  # [b,n_actions]
-        # [b,1]
-        entropy = -torch.sum(probs * log_probs, dim=1, keepdim=True)
+        probs = self.actor(states)
+        action_dist = torch.distributions.Categorical(probs)
+        log_probs = action_dist.log_prob(actions.squeeze())
+        entropy = -torch.mean(log_probs)
 
         q1_value = self.critic_1(states)  # [b,n_actions]
         q2_value = self.critic_2(states)

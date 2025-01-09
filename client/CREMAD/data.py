@@ -19,7 +19,7 @@ class DataSet(Dataset):
             [f for f in os.listdir(self.wav_dir) if f.endswith(".wav")]
         )
         self.flv_files = sorted(
-            [f for f in os.listdir(self.flv_dir) if f.endswith(".flv")]
+            [f for f in os.listdir(self.flv_dir) if f.endswith(".npy")]
         )
 
         # self.mobilenet = models.mobilenet_v2(

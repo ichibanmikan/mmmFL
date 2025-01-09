@@ -76,8 +76,7 @@ class ServerHandler():
         self.handle_train()
         
     def handle_train(self):
-        
-        time_remain = np.array([self.time_remain])
+        time_remain = np.array([self.time_remain / self.server.config.max_participant_time])
         one_epoch_time = (self.one_epoch_time - self.one_epoch_time.mean()) / self.one_epoch_time.std()
         one_epoch_loss = (self.one_epoch_loss - self.one_epoch_loss.mean()) / self.one_epoch_loss.std()
         jobs_goal_sub = (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean()) / self.server.jobs_goal_sub.std()
@@ -89,8 +88,6 @@ class ServerHandler():
         
         epochs_length = 0
         epochs_return = 0
-        
-        self.lazy_time = 0
         
         done = False
         while True:
@@ -107,10 +104,9 @@ class ServerHandler():
                 # self.server.jobs_model_size: np.array(N)  
                 epochs_length += 1
                 
-                action = self.server.agent.take_action(state)
-                action = 1
-                if action > 0:
-                    now_job = action - 1
+                action = self.server.agent.take_action(state, epochs_length)
+                now_job = action - 1
+                if action > 0 and self.time_remain > 0 and not self.job_finish(now_job):
                     job_now_acc_sub = self.server.jobs_goal_sub[now_job]
                     self.send([
                         now_job, self.server.global_models_manager.get_model_params(now_job)
@@ -148,26 +144,27 @@ class ServerHandler():
                         self.server.current_round_all_params.append((
                             now_job, now_params
                         ))
+                    
+                    self.server.update_params_barrier.wait()
                         
-                    if(self.server.config.max_participant_time < train_time):
-                        reward = -1
+                    if(self.server.config.max_round_time < train_time):
+                        reward = -0.05
                     else:
                         reward = (job_now_acc_sub - self.server.jobs_goal_sub[now_job])/100 
                         # (goal - now_acc_before_this_round) - (goal - now_acc_after_this_round)
                     epochs_return += reward
                     
                 else:
-                    self.lazy_time += 1
-                    if self.lazy_time > 5:
-                        reward = -1
-                        self.lazy_time = 0
+                    if (self.time_remain <= 0 and action > 0) or self.job_finish(now_job):
+                        reward = -0.1
                     else:
                         reward = 0
                     self.send("Wait a round")
                     self.server.recv_global_barrier.wait()
                     self.server.local_train_barrier.wait()
+                    self.server.update_params_barrier.wait()
                 print(f"Node {self.client_id} has a reward: ", reward)
-                time_remain = np.array([self.time_remain])
+                time_remain = np.array([self.time_remain / self.server.config.max_participant_time])
                 one_epoch_time = (self.one_epoch_time - self.one_epoch_time.mean())\
                     / self.one_epoch_time.std()
                 one_epoch_loss = (self.one_epoch_loss - self.one_epoch_loss.mean())\
@@ -191,3 +188,8 @@ class ServerHandler():
                 
                 self.round += 1
                 self.server.next_round_barrier.wait()
+    
+    def job_finish(self, job):
+        if(job <= 0):
+            return False
+        return self.server.jobs_finish[job]
