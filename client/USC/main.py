@@ -24,9 +24,6 @@ class Config:
     def load_config(self) -> None:
         with open(self.config_path, 'r') as f:
             config_data = json.load(f)
-
-        self.print_freq = config_data.get('print_freq', 5)
-        self.save_freq = config_data.get('save_freq', 20)
         self.batch_size = config_data.get('batch_size', 16)
         self.num_workers = config_data.get('num_workers', 16)
         self.epochs = config_data.get('epochs', 99)
@@ -34,7 +31,7 @@ class Config:
         self.lr_decay_rate = config_data.get('lr_decay_rate', 0.9)
         self.weight_decay = config_data.get('weight_decay', 0.0001)
         self.momentum = config_data.get('momentum', 0.9)
-        self.num_classes = config_data.get('num_classes', 13)
+        self.num_classes = config_data.get('num_classes', 11)
         self.total_epochs = config_data.get('total_epochs', 200)
 
     def __repr__(self) -> str:
@@ -55,31 +52,23 @@ class USC_main:
         else:
             device = torch.device("cpu")
         self.model = self.model.to(device)
-        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config, self.modality)
-        train_loader, valid_loader = data_f.get_dataset()
-        self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device)
-        
+        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), \
+            'datasets/node_'+f"{node_id}/"), self.config)
+        train_loader = data_f.get_dataset()
+        # for fold, (train_loader, valid_loader) in enumerate(data_f.get_dataset()):
+        self.tr = Trainer(self.config, self.model, train_loader, node_id, device)
+        self.node_id = node_id
     def main(self):
 
         self.now_loss = self.tr.train()
-        print(self.tr.best_acc)
-        
+        # print(self.tr.best_acc)
         return self.get_model_param()
         
     def get_model_param(self):
-    
         params = []
         for param in self.model.parameters():
-            if torch.cuda.is_available() or torch.backends.mps.is_available():
-                params.extend(param.view(-1).cpu().detach().numpy())
-            else:
-                params.extend(param.view(-1).detach().numpy())
-            # print(param)
-
-        # model_params = params.cpu().numpy()
+            params.extend(param.view(-1).cpu().detach().numpy())
         model_params = np.array(params)
-        print("Shape of model weight: ", model_params.shape)#39456
-
         return model_params
 
     def reset_model_parameter(self, new_params):
@@ -94,14 +83,16 @@ class USC_main:
                 if len(param.shape) == 2:
 
                     para_len = int(param.shape[0] * param.shape[1])
-                    # print(para_len)
-                    # print(temp_index)
-                    # print(len(new_params))
                     temp_weight = new_params[temp_index : temp_index + para_len].astype(float)
-                    # print(len(temp_weight))
                     param.copy_(torch.Tensor(temp_weight.reshape(param.shape[0], param.shape[1])))
                     temp_index += para_len
-
+                    
+                elif len(param.shape) == 3:
+                    para_len = int(param.shape[0] * param.shape[1] * param.shape[2])
+                    temp_weight = new_params[temp_index : temp_index + para_len].astype(float)
+                    param.copy_(torch.Tensor(temp_weight.reshape(param.shape[0], param.shape[1], param.shape[2])))
+                    temp_index += para_len
+                    
                 elif len(param.shape) == 4:
 
                     para_len = int(param.shape[0] * param.shape[1] * param.shape[2] * param.shape[3])

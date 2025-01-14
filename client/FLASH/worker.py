@@ -66,11 +66,12 @@ class Trainer:
             
             loss = self.criterion(output, labels)
 
-            acc, _ = accuracy(output, labels, topk=(1, 5))
+            acc1, acc5 = accuracy(output, labels, topk=(1, 5))
+            top1.update(acc5[0], bsz)
 
             # update metric
             losses.update(loss.item(), bsz)
-            top1.update(acc[0], bsz)
+            top1.update(acc5[0], bsz)
 
             # SGD
             self.train_tools.optimizer.zero_grad()
@@ -105,8 +106,7 @@ class Trainer:
             # if self.best_acc > 65.01:
             #     self.train_tools.save_model(epoch, os.path.join(os.getcwd(), 'model/best.pth'))
             #     break;
-        print(record_acc)
-        return record_loss[self.config.epochs - 1]
+        return record_loss[self.config.epochs - 1], record_acc[self.config.epochs - 1]
     
     def sample_one_epoch(self):
         time1 = time.time()
@@ -156,9 +156,9 @@ class Validater:
                 loss = self.criterion(output, labels)
 
                 # update metric
-                acc, _ = accuracy(output, labels, topk=(1, 5))
+                acc1, acc5 = accuracy(output, labels, topk=(1, 5))
                 losses.update(loss.item(), bsz)
-                top1.update(acc[0], bsz)
+                top1.update(acc5[0], bsz)
 
                 # calculate and store confusion matrix
                 # rows = labels.cpu().numpy()

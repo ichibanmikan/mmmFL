@@ -201,7 +201,7 @@ class My3Model(nn.Module):
 
         self.classifier = nn.Sequential(
         nn.Linear(488, num_classes),
-        nn.Softmax(dim=0)
+        nn.Softmax(dim=-1)
         )
      
     def forward(self, x1, x2, x3):

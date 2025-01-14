@@ -39,14 +39,15 @@ class MHAD_main:
         else:
             device = torch.device("cpu")
         self.model = self.model.to(device)
-        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config, self.modality)
+        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config)
         train_loader, valid_loader = data_f.get_dataset()
         self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device)
+        self.node_id = node_id
         
     def main(self):
-
-        self.now_loss = self.tr.train()
-        print(self.tr.best_acc)
+        self.now_loss, acc = self.tr.train()
+        print(f'Accuracy of node {self.node_id} is {acc}')
+        # print(self.tr.best_acc)
         
         return self.get_model_param()
         
@@ -62,7 +63,7 @@ class MHAD_main:
 
         # model_params = params.cpu().numpy()
         model_params = np.array(params)
-        print("Shape of model weight: ", model_params.shape)#39456
+        # print("Shape of model weight: ", model_params.shape)
 
         return model_params
 

@@ -105,6 +105,7 @@ class ServerHandler():
                 epochs_length += 1
                 
                 action = self.server.agent.take_action(state, epochs_length)
+                action = 3
                 now_job = action - 1
                 if action > 0 and self.time_remain > 0 and not self.job_finish(now_job):
                     job_now_acc_sub = self.server.jobs_goal_sub[now_job]

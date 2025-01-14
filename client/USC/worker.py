@@ -19,16 +19,17 @@ from USC.train_tools import *
 from USC.data import *
 
 class Trainer:
-    def __init__(self, config, model, train_loader, valid_loader, device):
+    def __init__(self, config, model, train_loader, node_id, device):
         self.config = config
         self.device = device
         self.model = model
         self.criterion = torch.nn.CrossEntropyLoss().to(device)
         self.train_tools = train_tools(self.model, config)
         self.train_loader = train_loader
-        self.validater = Validater(self.model, valid_loader, config, self.criterion, device)
-        self.best_acc = -100
+        # self.validater = Validater(self.model, valid_loader, config, self.criterion, device)
+        # self.best_acc = -100
         self.now_epoch = 0
+        self.node_id = node_id
     def every_epoch_train(self):
         batch_time = AverageMeter()
         data_time = AverageMeter()
@@ -36,24 +37,13 @@ class Trainer:
         top1 = AverageMeter()
         
         end = time.time()
-        for data_list, labels in self.train_loader:
-            data_time.update(time.time() - end)
-            output = None
-            data_1 = data_list[0]
-            data_1 = data_1.to(self.device)
+        for acc_data, gyr, labels in self.train_loader: 
+            acc_data = acc_data.to(self.device)
+            gyr = gyr.to(self.device)
             labels = labels.to(self.device)
-            bsz = data_1.shape[0]
-            
-            data_2 = data_list[1]
-            data_2 = data_2.to(self.device)
-            
-            print(data_1.shape)
-            print(data_2.shape)
-            
-            output = self.model(data_1, data_2)
-                
-            # print(output.dtype)
-            # print(labels.dtype)
+            data_time.update(time.time() - end)
+            output = self.model(acc_data, gyr) # (bsz, 3, 200), (bsz, 3, 200)
+            bsz = len(acc_data)
 
             loss = self.criterion(output, labels)
 
@@ -71,12 +61,11 @@ class Trainer:
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
-        print("loss: %f", loss.item())
+        print(f"Node {self.node_id} loss: {loss.item()}")
         return losses.avg
     
     def train(self):
         record_loss = np.zeros(self.config.epochs)
-        record_acc = np.zeros(self.config.epochs)
         for epoch in range(0, self.config.epochs):
             self.model.train()
             self.train_tools.adjust_learning_rate(self.now_epoch)
@@ -84,16 +73,16 @@ class Trainer:
             time1 = time.time()
             loss = self.every_epoch_train()
             time2 = time.time()
-            print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
+            print('Node {} epoch {}, total time {:.2f}'.format(self.node_id, epoch, time2 - time1))
             record_loss[epoch] = loss
             # evaluation
-            self.model.eval()
-            loss, val_acc, _ = self.validater.validate()
-            record_acc[epoch] = val_acc
-            if val_acc > self.best_acc:
-                self.best_acc = val_acc
-                # best_confusion = confusion
-        print(record_acc)
+            # self.model.eval()
+            # loss, val_acc, _ = self.validater.validate()
+            # record_acc[epoch] = val_acc
+            # if val_acc > self.best_acc:
+            #     self.best_acc = val_acc
+            #     # best_confusion = confusion
+        # print(record_acc)
         return record_loss[self.config.epochs - 1]
     
     def sample_one_epoch(self):
@@ -102,78 +91,37 @@ class Trainer:
         time2 = time.time()
         return time2 - time1, loss
     
-class Validater:
-    def __init__(self, model, valid_loader, config, criterion, device):
-        self.model = model
-        self.config = config
-        self.criterion = criterion
-        self.valid_loader = valid_loader
-        self.device = device
-    def validate(self):
-        self.model.eval()
-        batch_time = AverageMeter()
-        losses = AverageMeter()
-        top1 = AverageMeter()
+# class Validater:
+#     def __init__(self, model, valid_loader, config, criterion, device):
+#         self.model = model
+#         self.config = config
+#         self.criterion = criterion
+#         self.valid_loader = valid_loader
+#         self.device = device
+#     def validate(self):
+#         self.model.eval()
+#         batch_time = AverageMeter()
+#         losses = AverageMeter()
+#         top1 = AverageMeter()
 
-        confusion = np.zeros((self.config.num_classes, self.config.num_classes))
+#         confusion = np.zeros((self.config.num_classes, self.config.num_classes))
 
-        with torch.no_grad():
-            end = time.time()
-            for data_list, labels in self.valid_loader:  
-                output = None
-                data_1 = data_list[0]
-                data_1 = data_1.to(self.device)
-                labels = labels.to(self.device)
-                bsz = data_1.shape[0]
-                
-                if len(data_list) == 1:
-                    output = self.model(data_1)  
-                elif len(data_list) == 2:
-                    data_2 = data_list[1]
-                    data_2 = data_2.to(self.device)
-                    
-                    output = self.model(data_1, data_2)
-                
-                loss = self.criterion(output, labels)
+#         with torch.no_grad():
+#             end = time.time()
+#             for acc_data, gyr, labels in self.valid_loader:  
+#                 acc_data = acc_data.to(self.device)
+#                 gyr = gyr.to(self.device)
+#                 labels = labels.to(self.device)                    
+#                 output = self.model(acc_data, gyr)
+#                 bsz = len(acc_data)
+#                 loss = self.criterion(output, labels)
 
-                # update metric
-                acc, _ = accuracy(output, labels, topk=(1, 5))
-                losses.update(loss.item(), bsz)
-                top1.update(acc[0], bsz)
+#                 # update metric
+#                 acc, _ = accuracy(output, labels, topk=(1, 5))
+#                 losses.update(loss.item(), bsz)
+#                 top1.update(acc[0], bsz)
 
-                batch_time.update(time.time() - end)
-                end = time.time()
+#                 batch_time.update(time.time() - end)
+#                 end = time.time()
 
-        return losses.avg, top1.avg, confusion
-
-class Tester:
-    def __init__(self, model, test_loader, device):
-        self.model = model
-        self.test_loader = test_loader
-        self.device = device
-        
-    def test(self):
-        self.model.eval()
-        accs = AverageMeter()
-
-        with torch.no_grad():
-            for data_list, labels in self.test_loader:
-                output = None
-                data_1 = data_list[0]
-                data_1 = data_1.to(self.device)
-                labels = labels.to(self.device)
-                bsz = data_1.shape[0]
-                
-                if len(data_list) == 1:
-                    output = self.model(data_1)  
-                elif len(data_list) == 2:
-                    data_2 = data_list[1]
-                    data_2 = data_2.to(self.device)
-                    
-                    output = self.model(data_1, data_2)
-                acc, _ = accuracy(output, labels, topk=(1, 5))
-
-                # calculate and store confusion matrix
-                accs.update(acc, data_1.size(0))
-
-        return accs.avg
+#         return losses.avg, top1.avg, confusion

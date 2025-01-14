@@ -30,6 +30,7 @@ client/FLASH/models/.DS_Store
 client/MHAD/datasets
 
 server/test_datasets
+server/global_models/models
 client/exe.bash
 
 server/RL/reward_model
@@ -47,3 +48,4 @@ server/models
 server/RL/RLModel
 
 *.log
+client/USC-data

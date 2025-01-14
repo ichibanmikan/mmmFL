@@ -64,13 +64,15 @@ class train_tools:
 
     
     def adjust_learning_rate(self, epoch):
-        lr = self.config.learning_rate
-        eta_min = lr * (self.config.lr_decay_rate ** 3)
-        lr = eta_min + (lr - eta_min) * (
-                1 + math.cos(math.pi * epoch / self.config.total_epochs)) / 2
+        if epoch >= 75 :
+            epc = epoch - 74
+            lr = self.config.learning_rate
+            eta_min = lr * (self.config.lr_decay_rate ** 3)
+            lr = eta_min + (lr - eta_min) * (
+                    1 + math.cos(math.pi * epc / self.config.total_epochs)) / 2
 
-        for param_group in self.optimizer.param_groups:
-            param_group['lr'] = lr
+            for param_group in self.optimizer.param_groups:
+                param_group['lr'] = lr
 
 
     def warmup_learning_rate(self, epoch, batch_id, total_batches):

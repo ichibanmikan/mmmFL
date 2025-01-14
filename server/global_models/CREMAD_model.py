@@ -274,7 +274,11 @@ class CREMADSet(Dataset):
             mfcc_features = np.vstack((mfcc_features, padding))
         else:
             mfcc_features = mfcc_features[:max_frames, :]
-
+            
+        feature_mean = np.mean(mfcc_features, axis=0)
+        feature_std = np.std(mfcc_features, axis=0)
+        mfcc_features = (mfcc_features - feature_mean) / (feature_std + 1e-5)
+        
         return mfcc_features  # [600, 80]
 
     # def extract_video_features(self, flv_path, max_frames=6):
@@ -317,7 +321,7 @@ class CREMAD:
 
         # model_params = params.cpu().numpy()
         model_params = np.array(params)
-        # print("Shape of model weight: ", model_params.shape)#39456
+        # print("Shape of model weight: ", model_params.shape) # 823468
 
         return model_params
 

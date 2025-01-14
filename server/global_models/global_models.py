@@ -18,6 +18,7 @@ from global_models.Flash_model import Flash
 from global_models.MHAD_model import MHAD
 from global_models.AC_model import AC
 from global_models.CREMAD_model import CREMAD
+from global_models.USC_model import USC
 
 class globel_models_manager:
     def __init__(self):
@@ -32,7 +33,7 @@ class globel_models_manager:
         
         self.models.append(CREMAD(device))
         self.models.append(MHAD(device))
-        self.models.append(Flash(device))
+        self.models.append(USC(device))
         
     def get_model_params(self, job):
         return self.models[job].get_model_params()

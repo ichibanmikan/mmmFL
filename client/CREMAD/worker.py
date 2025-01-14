@@ -87,8 +87,8 @@ class Trainer:
             if val_acc > self.best_acc:
                 self.best_acc = val_acc
             self.model.train()
-        print(record_acc)
-        return record_loss[self.config.epochs - 1]
+        # print(record_acc)
+        return record_loss[self.config.epochs - 1], record_acc[self.config.epochs - 1]
     
     def sample_one_epoch(self):
         self.model.to(self.device)

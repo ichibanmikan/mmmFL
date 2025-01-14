@@ -20,6 +20,7 @@ from communication import ClientHandler
 from FLASH.main import FLASH_main
 from MHAD.main import MHAD_main
 from CREMAD.main import CREMAD_main
+from USC.main import USC_main
 
 class Config:
     def __init__(self):

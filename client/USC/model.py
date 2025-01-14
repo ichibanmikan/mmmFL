@@ -20,21 +20,25 @@ class encoder_acc(nn.Module):
         # Extract features, 2D conv layers
         self.features = nn.Sequential(
             nn.Conv2d(input_size, 64, 2),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Dropout(),
 
             nn.Conv2d(64, 64, 2),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Dropout(),
 
             nn.Conv2d(64, 32, 1),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.Dropout(),
 
             nn.Conv2d(32, 16, 1),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(16),
             nn.ReLU(inplace=True),
 
@@ -64,21 +68,25 @@ class encoder_gyr(nn.Module):
         # Extract features, 2D conv layers
         self.features = nn.Sequential(
             nn.Conv2d(input_size, 64, 2),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Dropout(),
 
             nn.Conv2d(64, 64, 2),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Dropout(),
 
             nn.Conv2d(64, 32, 1),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.Dropout(),
 
             nn.Conv2d(32, 16, 1),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(16),
             nn.ReLU(inplace=True),
 
@@ -114,7 +122,7 @@ class MMModel(nn.Module):
 
         self.encoder = Encoder(input_size)
 
-        self.gru = nn.GRU(198, 120, 2, batch_first=True)
+        self.gru = nn.GRU(198, 120, 2, batch_first=True, dropout=0.3)
 
         # Classify output, fully connected layers
         self.classifier = nn.Sequential(
@@ -122,10 +130,12 @@ class MMModel(nn.Module):
             nn.Linear(1920, 1280),
             nn.BatchNorm1d(1280),
             nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
 
             nn.Linear(1280, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(inplace=True),
+            nn.Dropout(0.3),
 
             nn.Linear(128, num_classes),
             )

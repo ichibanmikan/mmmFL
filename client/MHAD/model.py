@@ -19,20 +19,23 @@ class acc_encoder(nn.Module):
         # Extract features, 2D conv layers
         self.features = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size = (2,2), padding=(1, 1)),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(32),
             nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
 
             nn.Conv2d(32, 64, kernel_size = (2,2), padding=(1, 1)),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(64),
             nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
 
             nn.Conv2d(64, 64, kernel_size = (2,2), padding=(1, 1)),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(64),
             nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
 
             )
 
-        self.gru = nn.GRU(64, 16, 2, batch_first=True)
+        self.gru = nn.GRU(64, 16, 2, batch_first=True, dropout=0.3)
 
     def forward(self, x):
 
@@ -69,18 +72,22 @@ class skeleton_encoder(nn.Module):
         # Extract features, 2D conv layers
         self.features = nn.Sequential(
             nn.Conv3d(1, 32, kernel_size=(3, 2, 3), padding=(1, 1, 1)),
+            nn.Dropout3d(0.2),
             nn.BatchNorm3d(32),
             nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2)),
 
             nn.Conv3d(32, 64, kernel_size=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Dropout3d(0.2),
             nn.BatchNorm3d(64),
             nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2)),
 
             nn.Conv3d(64, 128, kernel_size=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Dropout3d(0.2),
             nn.BatchNorm3d(128),
             nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2)),
 
             nn.Conv3d(128, 256, kernel_size=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Dropout3d(0.2),
             nn.BatchNorm3d(256),
             nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2)),
 
@@ -90,7 +97,7 @@ class skeleton_encoder(nn.Module):
 
             )
 
-        self.gru = nn.GRU(192, 16, 2, batch_first=True)
+        self.gru = nn.GRU(192, 16, 2, batch_first=True, dropout=0.3)
 
     def forward(self, x):
 
@@ -135,12 +142,14 @@ class MyMMModel(nn.Module):
         # Classify output, fully connected layers
         # self.classifier = nn.Linear(1920, num_classes)
         self.classifier = nn.Sequential(
-
-            nn.Linear(256, 64),
-            nn.BatchNorm1d(64),
-
-            nn.Linear(64, num_classes),
-            )
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(64, num_classes)
+        )
 
     def forward(self, x1, x2):
 

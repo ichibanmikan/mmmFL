@@ -57,11 +57,10 @@ class train_tools:
         self.set_optimizer()
         
     def set_optimizer(self):
-        self.optimizer = optim.SGD(self.model.parameters(),
-                        lr=self.config.learning_rate,
-                        momentum=self.config.momentum,
-                        weight_decay=self.config.weight_decay)
-
+        self.optimizer = optim.Adam([ 
+            {'params': self.model.encoder.parameters(), 'lr': 1e-4},
+            {'params': self.model.classifier.parameters(), 'lr': self.config.learning_rate}],
+            weight_decay=self.config.weight_decay)
     
     def adjust_learning_rate(self, epoch):
         if(self.config.total_epochs <= epoch):

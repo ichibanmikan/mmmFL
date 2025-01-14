@@ -36,10 +36,9 @@ class Trainer:
         top1 = AverageMeter()
         
         end = time.time()
-        for data_list, labels in self.train_loader:
+        for data_1, data_2, labels in self.train_loader:
             data_time.update(time.time() - end)
             output = None
-            data_1 = data_list[0]
             data_1 = data_1.to(self.device)
             labels = labels.to(self.device)
             bsz = data_1.shape[0]
@@ -48,14 +47,10 @@ class Trainer:
             # for i in range(len(data_1.shape)):
             #     print(data_1.shape[i])
             # print("1222221")
+
+            data_2 = data_2.to(self.device)
             
-            if len(data_list) == 1:
-                output = self.model(data_1)  
-            elif len(data_list) == 2:
-                data_2 = data_list[1]
-                data_2 = data_2.to(self.device)
-                
-                output = self.model(data_1, data_2)
+            output = self.model(data_1, data_2)
                 
             # print(output.dtype)
             # print(labels.dtype)
@@ -101,8 +96,8 @@ class Trainer:
             # if self.best_acc > 65.01:
             #     self.train_tools.save_model(epoch, os.path.join(os.getcwd(), 'model/best.pth'))
             #     break;
-        print(record_acc)
-        return record_loss[self.config.epochs - 1]
+        # print(record_acc)
+        return record_loss[self.config.epochs - 1], record_acc[self.config.epochs - 1]
     
     def sample_one_epoch(self):
         time1 = time.time()
@@ -127,20 +122,15 @@ class Validater:
 
         with torch.no_grad():
             end = time.time()
-            for data_list, labels in self.valid_loader:  
+            for data_1, data_2, labels in self.valid_loader:  
                 output = None
-                data_1 = data_list[0]
                 data_1 = data_1.to(self.device)
                 labels = labels.to(self.device)
                 bsz = data_1.shape[0]
+
+                data_2 = data_2.to(self.device)
                 
-                if len(data_list) == 1:
-                    output = self.model(data_1)  
-                elif len(data_list) == 2:
-                    data_2 = data_list[1]
-                    data_2 = data_2.to(self.device)
-                    
-                    output = self.model(data_1, data_2)
+                output = self.model(data_1, data_2)
                 
                 loss = self.criterion(output, labels)
 

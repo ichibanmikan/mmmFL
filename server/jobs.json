@@ -11,9 +11,9 @@
             "model_size": 405835
         },    
         {
-            "name": "Flash",
+            "name": "USC",
             "acc_goal": 42,
-            "model_size": 386828
+            "model_size": 2868988
         }
     ]
 }

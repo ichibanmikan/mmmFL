@@ -58,14 +58,14 @@ class CREMAD_main:
                 'datasets/nodesets/node_'+f"{node_id}/"), self.config
             )
         train_loader, valid_loader = df.get_dataloader()
-
+        self.node_id = node_id
         self.tr = Trainer(self.config, self.model, train_loader, \
             valid_loader, device)
         
     def main(self):
-        self.now_loss = self.tr.train()
-        print(self.tr.best_acc)
-        
+        self.now_loss, acc = self.tr.train()
+        print(f'Accuracy of node {self.node_id} is {acc}')
+        # print(self.tr.best_acc)
         return self.get_model_param()
     
     def sample_time(self):
@@ -83,7 +83,7 @@ class CREMAD_main:
 
         # model_params = params.cpu().numpy()
         model_params = np.array(params)
-        print("Shape of model weight: ", model_params.shape)#39456
+        # print("Shape of model weight: ", model_params.shape) #823468
 
         return model_params
 

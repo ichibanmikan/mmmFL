@@ -24,12 +24,11 @@
             ]
         },
         {
-            "dataset_name": "FLASH",
-            "modalities_num": 3,
+            "dataset_name": "USC",
+            "modalities_num": 2,
             "modalities_name" : [
-                "gps",
-                "lidar",
-                "image"
+                "acc",
+                "gyr"
             ]
         }
     ]
