@@ -64,17 +64,21 @@ class lidar_encoder(nn.Module):
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels=20, out_channels=32, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True)
         )
 
         self.layer2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace = True),
         
             nn.Conv2d(64, 128, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace = True),
 
             nn.Conv2d(128, 32, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True)
 
         )
@@ -127,25 +131,31 @@ class image_encoder(nn.Module):
 
         self.layer0 = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=self.channel, kernel_size = (7,7), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True)
         )
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(self.channel, 32, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True)
         )
 
         self.layer2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace = True),
         
             nn.Conv2d(64, 128, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace = True),
 
             nn.Conv2d(128, 64, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace = True),
 
             nn.Conv2d(64, 32, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True),
 
         )
@@ -175,7 +185,6 @@ class image_encoder(nn.Module):
 
         return x
 
-
 class Encoder3(nn.Module):
     def __init__(self):
         super().__init__()
@@ -200,19 +209,20 @@ class My3Model(nn.Module):
         self.encoder = Encoder3()
 
         self.classifier = nn.Sequential(
-        nn.Linear(488, num_classes),
-        nn.Softmax(dim=-1)
+            nn.Linear(488, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.5),
+            nn.Linear(256, num_classes)
         )
      
     def forward(self, x1, x2, x3):
         feature_1, feature_2, feature_3 = self.encoder(x1, x2, x3)
 
         feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
-        output = self.classifier(feature)
-
+        output = self.classifier(feature).float()
         return output
 
-class Flash_set(Dataset):
+class FLASH_set(Dataset):
     def __init__(self) -> None:
         super().__init__()
         self.gps_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/gps.npz')['gps']
@@ -226,11 +236,11 @@ class Flash_set(Dataset):
     def __getitem__(self, index):
         return torch.tensor(self.gps_data[index], dtype=torch.float32), torch.tensor(self.lidar_data[index], dtype=torch.float32), torch.tensor(self.image_data[index], dtype=torch.float32), torch.tensor(self.label_data[index], dtype=torch.long)
 
-class Flash:
+class FLASH:
     def __init__(self, device):
         self.model = My3Model(64)
         self.model = self.model.to(device)
-        self.test_loader = DataLoader(Flash_set(), batch_size=16, num_workers=16)
+        self.test_loader = DataLoader(FLASH_set(), batch_size=16, num_workers=16)
         self.Tester = Tester(self.model, test_loader=self.test_loader, device=device)
     def get_model_params(self):
             

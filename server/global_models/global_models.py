@@ -14,11 +14,11 @@
 import os
 import torch
 import numpy as np
-from global_models.Flash_model import Flash
 from global_models.MHAD_model import MHAD
 from global_models.AC_model import AC
 from global_models.CREMAD_model import CREMAD
 from global_models.USC_model import USC
+from global_models.FLASH_model import FLASH
 
 class globel_models_manager:
     def __init__(self):
@@ -34,6 +34,7 @@ class globel_models_manager:
         self.models.append(CREMAD(device))
         self.models.append(MHAD(device))
         self.models.append(USC(device))
+        self.models.append(FLASH(device))
         
     def get_model_params(self, job):
         return self.models[job].get_model_params()

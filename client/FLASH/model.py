@@ -62,17 +62,21 @@ class lidar_encoder(nn.Module):
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(in_channels=20, out_channels=32, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True)
         )
 
         self.layer2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace = True),
         
             nn.Conv2d(64, 128, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace = True),
 
             nn.Conv2d(128, 32, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True)
 
         )
@@ -125,25 +129,31 @@ class image_encoder(nn.Module):
 
         self.layer0 = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=self.channel, kernel_size = (7,7), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True)
         )
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(self.channel, 32, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True)
         )
 
         self.layer2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace = True),
         
             nn.Conv2d(64, 128, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace = True),
 
             nn.Conv2d(128, 64, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace = True),
 
             nn.Conv2d(64, 32, kernel_size = (3,3), padding = (1,1)),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace = True),
 
         )
@@ -172,121 +182,6 @@ class image_encoder(nn.Module):
 
 
         return x
-    
-              
-
-class MySingleModel(nn.Module):
-
-    def __init__(self, num_classes, modality):
-        super().__init__()
-
-        # print("DEBUG: modality is: ", modality)
-
-        if modality == 'lidar':
-            self.encoder = lidar_encoder()
-            self.classifier = nn.Sequential(
-                nn.Linear(160, num_classes),
-                nn.Softmax(dim = -1)
-                )
-        elif modality == 'image':
-            self.encoder = image_encoder()
-            self.classifier = nn.Sequential(
-                nn.Linear(288, num_classes),
-                nn.Softmax(dim = -1)
-                )        
-        elif modality == 'gps':
-            self.encoder = gps_encoder()
-            self.classifier = nn.Sequential(
-            nn.Linear(40, num_classes),
-            nn.Softmax(dim = -1)
-            )
-
-    def forward(self, x):
-        # print(x.shape)
-        feature = self.encoder(x)
-        output = self.classifier(feature)
-
-        return output
-
-
-class Encoder2_1(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder = gps_encoder(), lidar_encoder()
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-class Encoder2_2(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder_1 = gps_encoder()
-        self.encoder_2 = image_encoder()
-
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-class Encoder2_3(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder_1 = lidar_encoder()
-        self.encoder_2 = image_encoder()
-
-    def forward(self, x1, x2):
-
-        feature_1 = self.encoder_1(x1)
-        feature_2 = self.encoder_2(x2)
-
-        return feature_1, feature_2
-
-
-class My2Model(nn.Module):
-
-    def __init__(self, num_classes, modality):
-        super().__init__()
-
-        # print("DEBUG: modality is: ", modality)
-
-        if modality == 'gps lidar' or modality == 'lidar gps':
-            self.encoder = Encoder2_1()
-            self.classifier = nn.Sequential(
-            nn.Linear(200, num_classes),
-            nn.Softmax(dim = -1)
-            )
-
-        elif modality == 'gps image' or modality == 'image gps':
-            self.encoder = Encoder2_2()
-            self.classifier = nn.Sequential(
-                nn.Linear(328, num_classes),
-                nn.Softmax(dim = -1)
-                ) 
-
-        elif modality == 'lidar image' or modality == 'image lidar':
-            self.encoder = Encoder2_3()
-            self.classifier = nn.Sequential(
-                nn.Linear(448, num_classes),
-                nn.Softmax(dim = -1)
-                )
-     
-
-
-    def forward(self, x1, x2):
-        # print(x.shape)
-
-        feature_1, feature_2 = self.encoder(x1, x2)
-
-        feature = torch.cat((feature_1, feature_2), dim=1)
-        output = self.classifier(feature)
-
-        return output
-
 
 class Encoder3(nn.Module):
     def __init__(self):
@@ -312,8 +207,10 @@ class My3Model(nn.Module):
         self.encoder = Encoder3()
 
         self.classifier = nn.Sequential(
-        nn.Linear(488, num_classes),
-        nn.Softmax(dim = -1)
+            nn.Linear(488, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.5),
+            nn.Linear(256, num_classes)
         )
      
     def forward(self, x1, x2, x3):
@@ -321,5 +218,4 @@ class My3Model(nn.Module):
 
         feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
         output = self.classifier(feature).float()
-
         return output

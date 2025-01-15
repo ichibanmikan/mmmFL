@@ -14,6 +14,11 @@
             "name": "USC",
             "acc_goal": 42,
             "model_size": 2868988
+        },
+        {
+            "dataset_name": "FLASH",
+            "acc_goal": 56,
+            "model_size": 405835
         }
     ]
 }

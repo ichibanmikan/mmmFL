@@ -42,13 +42,8 @@ class FLASH_main:
         self.modality = modality
         self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
-        
-        if len(self.modality) == 1:
-            self.model = MySingleModel(self.config.num_classes, self.modality[0])
-        elif len(self.modality) == 2:
-            self.model = My2Model(self.config.num_classes, self.modality[0] + ' ' + self.modality[1])
-        else:
-            self.model = My3Model(self.config.num_classes)      
+
+        self.model = My3Model(self.config.num_classes)      
 
         if torch.backends.mps.is_available():
             device = torch.device("mps")
@@ -57,14 +52,13 @@ class FLASH_main:
         else:
             device = torch.device("cpu")
         self.model = self.model.to(device)
-        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config, self.modality)
-        train_loader, valid_loader = data_f.get_dataset()
+        data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config)
+        train_loader = data_f.get_dataset()
 
-        self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device)
+        self.tr = Trainer(self.config, self.model, train_loader, device)
         
     def main(self):
         self.now_loss = self.tr.train()
-        print(self.tr.best_acc)
         
         return self.get_model_param()
     
