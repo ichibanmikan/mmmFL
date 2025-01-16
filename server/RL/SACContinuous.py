@@ -6,15 +6,36 @@ import numpy as np
 from torch.distributions import Normal
 from RL.utils import ReplayBuffer
 
+class AttentionLayer(nn.Module):
+    def __init__(self, state_dim, hidden_dim):
+        super(AttentionLayer, self).__init__()
+        self.query = nn.Linear(state_dim, hidden_dim)
+        self.key = nn.Linear(state_dim, hidden_dim)
+        self.value = nn.Linear(state_dim, hidden_dim)
+
+    def forward(self, ti, other_states):
+        Q = self.query(ti.unsqueeze(0))  # (bsz, 1, hidden_dim)
+        K = self.key(other_states)         # (bsz, n - 1, hidden_dim)
+        V = self.value(other_states)       # (bsz, n - 1, hidden_dim)
+        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) \
+            / (K.size(-1) ** 0.5) # (bsz, 1, n - 1)
+        attention_weights = nn.Softmax(attention_scores, dim = -1)  # (bsz, 1, n - 1)
+        context = torch.matmul(attention_weights, V)  # (bsz, 1, hidden_dim)
+        
+        return context, attention_weights # (bsz, 1, hidden_dim), (bsz, 1, n - 1)
+
 class Actor(nn.Module):
     def __init__(self, N, hidden_dim):
         super(Actor, self).__init__()
         self.N = N
-        self.l1 = nn.Linear(4 * N + 1, hidden_dim)
+        self.attention = AttentionLayer(1, hidden_dim)
+        self.l1 = nn.Linear(hidden_dim, hidden_dim)
         self.l_mean = nn.Linear(hidden_dim, 1)
         self.l_std = nn.Linear(hidden_dim, 1) 
 
     def forward(self, x):
+        # input x: (bsz, N)
+        x, _ = self.attention(x[:, 0], x[:, 1:])
         x = F.relu(self.l1(x))
         
         x_mean = self.l_mean(x) 
@@ -24,10 +45,7 @@ class Actor(nn.Module):
         normal_sample = dist.rsample()
         log_prob = dist.log_prob(normal_sample)
         action = (torch.tanh(normal_sample) + 1) / 2
-        
-        log_prob = log_prob.sum(dim = -1, keepdim = True)  
-        log_prob = log_prob - torch.log(1 - action.pow(2) + 1e-7)\
-            .sum(dim = -1)
+        log_prob -= torch.log(1 - action.pow(2) + 1e-7)
         
         return action, log_prob
 
@@ -90,8 +108,8 @@ class SAC:
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
             
     def take_action(self, state):
-        state = torch.tensor(state, dtype=torch.float).to(self.device) # (4 * N + 1)
-        action = self.actor(state)[0] # (1)
+        state = torch.tensor(state, dtype=torch.float).to(self.device) # (N)
+        action = self.actor(state) # (1)
         return action.cpu().detach().numpy()
 
     def calc_target(self, rewards, next_states, dones): 
