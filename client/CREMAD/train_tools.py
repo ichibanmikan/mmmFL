@@ -57,10 +57,13 @@ class train_tools:
         self.set_optimizer()
         
     def set_optimizer(self):
-        self.optimizer = optim.SGD(self.model.parameters(),
-                        lr=self.config.learning_rate,
-                        momentum=self.config.momentum,
-                        weight_decay=self.config.weight_decay)
+        self.optimizer = optim.Adam(
+            self.model.parameters(),
+            lr=self.config.learning_rate,          # Learning rate
+            betas=(0.9, 0.999),                    # Default values for beta1 and beta2
+            eps=1e-8,                              # Default value for epsilon
+            weight_decay=self.config.weight_decay  # Weight decay (L2 regularization)
+        )
 
     
     def adjust_learning_rate(self, epoch):

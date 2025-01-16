@@ -2,6 +2,7 @@ import pickle
 import random
 import struct
 import numpy as np
+from pympler import asizeof
 # from RL.SACContinuous import SAC
 
 # def get_now_train_job(num):
@@ -18,7 +19,7 @@ class ServerHandler():
         try:
             send_data = pickle.dumps(content, pickle.HIGHEST_PROTOCOL)
             send_header = struct.pack('i', len(send_data))
-            
+            print(f"Content memory size (bytes): {asizeof.asizeof(content)}")
             self.server_socket.sendall(send_header)
             self.server_socket.sendall(send_data)
         except (OSError, ConnectionResetError) as e:
@@ -105,7 +106,7 @@ class ServerHandler():
                 epochs_length += 1
                 
                 action = self.server.agent.take_action(state, epochs_length)
-                action = 3
+                action = 1
                 now_job = action - 1
                 if action > 0 and self.time_remain > 0 and not self.job_finish(now_job):
                     job_now_acc_sub = self.server.jobs_goal_sub[now_job]

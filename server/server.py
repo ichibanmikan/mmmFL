@@ -19,7 +19,6 @@ class Config:
         self.MAX_CLIENTS = config.getint('Clients', 'max_clients')
         self.MIN_CLIENTS = config.getint('Clients', 'min_clients')
         self.TIMEOUT = config.getint('Server', 'timeout', fallback=30)
-        self.jobs_num = config.getint('Jobs', 'num')
         self.max_round_time = config.getint('Clients', 'max_round_time')
         self.max_participant_time = config.getint('Clients', 'max_participant_time')
         self.min_replay_buffer_size = config.getint('RL', 'min_size')
@@ -31,16 +30,16 @@ class Server:
         self.config = config
         self.done = False
         # self.clients = {}
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
+            self.jobs = json.load(job_json)["Jobs"]
         self.jobs_finish = [] 
         self.threads = []
         self.lock = threading.Lock()
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager()
-        self.agent = SAC(N = self.config.jobs_num, hidden_dim=256, actor_lr = 1e-3, critic_lr = 1e-2, alpha_lr = 1e-2, device="cuda", tau=0.005, target_entropy=-1, gamma=0.9)
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
-            self.jobs = json.load(job_json)["Jobs"]
-        self.jobs_goal_sub = np.zeros(self.config.jobs_num)
-        self.jobs_model_size = np.zeros(self.config.jobs_num)
+        self.agent = SAC(N = len(self.jobs), hidden_dim=256, actor_lr = 1e-3, critic_lr = 1e-2, alpha_lr = 1e-2, device="cuda", tau=0.005, target_entropy=-1, gamma=0.9)
+        self.jobs_goal_sub = np.zeros(len(self.jobs))
+        self.jobs_model_size = np.zeros(len(self.jobs))
         for i in range(len(self.jobs)):
             self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
             self.jobs_model_size[i] = self.jobs[i]["model_size"]
@@ -105,7 +104,7 @@ class Server:
 
     def update_global_models(self):
         current_round_update = []
-        for _ in range(self.config.jobs_num):
+        for _ in range(len(self.jobs)):
             current_round_update.append([])
         for i in range(len(self.current_round_all_params)):
             current_round_update[self.current_round_all_params[i][0]].append(self.current_round_all_params[i][1])

@@ -3,22 +3,17 @@
         {
             "name": "CREMAD",
             "acc_goal": 54,
-            "model_size": 823468
+            "model_size": 27875744
         },    
         {
             "name": "MHAD",
-            "acc_goal": 70,
-            "model_size": 405835
+            "acc_goal": 99,
+            "model_size": 1721880
         },    
         {
             "name": "USC",
-            "acc_goal": 42,
-            "model_size": 2868988
-        },
-        {
-            "dataset_name": "FLASH",
-            "acc_goal": 56,
-            "model_size": 405835
+            "acc_goal": 89,
+            "model_size": 1201624
         }
     ]
 }
