@@ -49,7 +49,13 @@ def plot(time_table,
     ax.set_title(f'Client Time Distribution in Round {round}', fontsize=16)
 
     max_time = max(client['end'] for client in valid_clients)
-    ax.set_xticks(np.arange(0, max_time + 5, 5))
+    
+    if max_time > 100 and max_time <= 500:
+        ax.set_xticks(np.arange(0, max_time + 50, 50))
+    elif max_time > 500:
+        ax.set_xticks(np.arange(0, max_time + 100, 100))
+    else:
+        ax.set_xticks(np.arange(0, max_time + 5, 5))
 
     ax.tick_params(axis='both', labelsize=12)
     legend_handles = [
@@ -69,13 +75,13 @@ def plot(time_table,
     
     print(f"Picture is saved at: {output_path}")
 
-# for example
-if __name__ == "__main__":
-    example_data = np.array([
-        [12.5, 10],   # Client 1
-        [12.5, 20],   # Client 2
-        [7.5, 25],    # Client 3
-        [12.5, 10]    # Client 4
-    ])
+# # for example
+# if __name__ == "__main__":
+#     example_data = np.array([
+#         [12.5, 10],   # Client 1
+#         [12.5, 20],   # Client 2
+#         [7.5, 25],    # Client 3
+#         [12.5, 10]    # Client 4
+#     ])
     
-    plot(example_data, 0)
+#     plot(example_data, 0)

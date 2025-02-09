@@ -23,6 +23,7 @@ class Config:
         self.band_width = config.getint('Server', 'band_width')
         self.round_time_plot_freq = config.getint('Server', 'round_time_plot_freq')
         self.context_file = config.get('Server', 'context_file')
+        self.save_std_freq = config.getint('Server', 'save_std_freq')
         self.max_participant_clients = config.getint('Clients', 'max_participant_clients')
         self.max_round_time = config.getint('Clients', 'max_round_time')
         self.max_participant_time = config.getint('Clients', 'max_participant_time')
@@ -68,7 +69,7 @@ class Server:
         self.lock = threading.Lock()
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager()
-        
+        self.stds = np.zeros(self.config.save_std_freq)
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
@@ -254,7 +255,16 @@ class Server:
             self.band_width_reward = std
         else:
             self.band_width_reward = -1 * std
-    
+
+        if (self.global_round - 1) > 0 \
+            and (self.global_round - 1) % self.config.save_std_freq == 0:
+                with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
+                    np.savetxt(log, self.stds, fmt='%d', delimiter=' ')
+
+        self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        
+
+        
     def update_Agent(self):
         # self.every_round_train_time = np.zeros(len(self.threads))
         if len(self.buffer.states) > self.config.min_replay_buffer_size:
