@@ -244,7 +244,7 @@ class ServerHandler():
                 
                 if Ptcp:
                     next_action = self.server.agent.job_selection(
-                        next_state_job_selection
+                        next_state_job_selection, take_next = True
                     )
                     
                     if(next_action > 0):

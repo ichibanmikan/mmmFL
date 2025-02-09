@@ -22,6 +22,7 @@ class Config:
         self.TIMEOUT = config.getint('Server', 'timeout', fallback=30)
         self.band_width = config.getint('Server', 'band_width')
         self.round_time_plot_freq = config.getint('Server', 'round_time_plot_freq')
+        self.context_file = config.get('Server', 'context_file')
         self.max_participant_clients = config.getint('Clients', 'max_participant_clients')
         self.max_round_time = config.getint('Clients', 'max_round_time')
         self.max_participant_time = config.getint('Clients', 'max_participant_time')
@@ -60,6 +61,10 @@ class Server:
             self.jobs = json.load(job_json)["Jobs"]
         self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
         self.threads = []
+        self.global_round = 0
+        if os.path.exists(os.path.join(os.path.dirname(__file__), self.config.context_file)):
+            with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'rb') as context:
+                self.global_round = pickle.load(context)
         self.lock = threading.Lock()
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager()
@@ -91,6 +96,9 @@ class Server:
             self.done = False
             self.buffer.save_data()
             self.agent.save_model()
+            with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
+                binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
+                context.write(binary_round)
             self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
             self.current_round_all_params = []
             # self.clients.clear()
@@ -220,9 +228,10 @@ class Server:
         for i in range(len(self.jobs)):
             self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"] - accs[i]
 
-        with open("/home/chenxu/codes/ichibanFATE/server/server.log", "a") as log:
+        with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
             log.write(f"This round all jobs' acc are: {accs}\n")
-    
+        self.global_round += 1
+        
     def round_clean(self):
         self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
         self.clients_part = np.zeros(len(self.threads), dtype = bool)
@@ -237,9 +246,9 @@ class Server:
     def round_time_reward(self):
         part_mask = (self.round_time > 0)
         part_time = self.round_time[part_mask]
-        if self.agent.high_agent.epochs > 0 \
-            and self.agent.high_agent.epochs % self.config.round_time_plot_freq == 0:
-                plot(self.round_time_part, self.agent.high_agent.epochs)
+        if self.global_round > 0 \
+            and self.global_round % self.config.round_time_plot_freq == 0:
+                plot(self.round_time_part, self.global_round)
         std = np.std(part_time)
         if std == 0:
             self.band_width_reward = std
@@ -259,8 +268,11 @@ class Server:
                             'dones': d}
             self.agent.update(transition_dict)
         
-        if self.agent.high_agent.epochs > 0\
-            and self.agent.high_agent.epochs % self.config.save_data_freq == 0:
+        if self.global_round > 0\
+            and self.global_round % self.config.save_data_freq == 0:
+                with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
+                    binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
+                    context.write(binary_round)
                 self.buffer.save_data()
                 self.agent.save_model()
         
@@ -280,6 +292,9 @@ class Server:
         
         if is_done:
             self.done = True
+            with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
+                binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
+                context.write(binary_round)
             self.buffer.save_data()
             self.agent.save_model()
 

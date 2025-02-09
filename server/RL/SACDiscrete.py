@@ -69,8 +69,9 @@ class SACDiscrete:
             self.target_critic_1.load_state_dict(self.critic_1.state_dict())
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
             
-    def take_action(self, state):
-        self.epochs += 1
+    def take_action(self, state, take_next = False):
+        if take_next == False:
+            self.epochs += 1
         # print("state shape is: ", state.shape)
         if self.epochs <= 50:
             return random.randint(0, 3)

@@ -39,8 +39,8 @@ class Agent:
             gamma = Low_config.gamma
         )
     
-    def job_selection(self, state):
-        return self.high_agent.take_action(state)
+    def job_selection(self, state, take_next = False):
+        return self.high_agent.take_action(state, take_next)
     
     def bandwidth_attribute(self, state):
         return self.low_agent.take_action(state)
