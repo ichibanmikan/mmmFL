@@ -90,16 +90,16 @@ class ClientHandler():
             if new_round_start_mess == "This eposide is over":
                 break
             
-            start_time = time.time()
+            #start_time = time.time()
             task__now_global_model = self.recv()
-            end_time = time.time()
+            #end_time = time.time()
             
             if(task__now_global_model == "Wait a round"):
                 pass
             else:
                 self.trainers[task__now_global_model[0]].reset_model_parameter(task__now_global_model[1])
                 
-                self.send(end_time - start_time)  #发送接收全局模型时间       
+                # self.send(end_time - start_time)     
                 
                 train_start_mess = self.recv() #第一次同步，开始训练
                 print(train_start_mess)
@@ -110,7 +110,7 @@ class ClientHandler():
                 
                 param_update = new_params - task__now_global_model[1]
                 
-                self.send(end_time - start_time) #发送训练用时
+                self.send(end_time - start_time)
                 one_epoch_loss = np.zeros(len(self.trainers))
                 self.one_epoch_time[task__now_global_model[0]] = \
                     (end_time - start_time) / \
@@ -123,10 +123,10 @@ class ClientHandler():
                 send_start_mess = self.recv()
                 print(send_start_mess) #第二次同步，开始发送模型
                 
-                start_time = time.time()
+                # start_time = time.time()
                 self.send(param_update)
-                end_time = time.time()
+                # end_time = time.time()
                 
-                self.send(end_time - start_time) # 发送发送模型用时
+                # self.send(end_time - start_time) # 发送发送模型用时
             
                 self.round += 1

@@ -8,8 +8,8 @@ import random
 class Actor(nn.Module):
     def __init__(self, N, hidden_width = 128, action_width = 4):
         super(Actor, self).__init__()
-        self.l1 = nn.Linear(4 * N + 1, hidden_width) 
-        # (bsz, 4N + 1) @ (4N + 1, hidden_width)
+        self.l1 = nn.Linear(3 * N + 1, hidden_width) 
+        # (bsz, 3N + 1) @ (3N + 1, hidden_width)
         self.l2 = nn.Linear(hidden_width, action_width) 
         # (bsz, hidden_width) @ (hidden_width, 4)
     def forward(self, x):
@@ -21,22 +21,22 @@ class Actor(nn.Module):
 class QValueNet(nn.Module):
     def __init__(self, N, hidden_width, action_width = 4):
         super(QValueNet, self).__init__()
-        self.l1 = nn.Linear(4 * N + 1, hidden_width)
-        # (bsz, 4 * N + 1) @ (4 * N + 1, h_d)
+        self.l1 = nn.Linear(3 * N + 1, hidden_width)
+        # (bsz, 3 * N + 1) @ (3 * N + 1, h_d)
         self.l2 = nn.Linear(hidden_width, action_width)
         # (bsz, h_d) @ (h_d, 4)
 
     def forward(self, state):  
-        # state: (bsz, 4 * N + 1) 
+        # state: (bsz, 3 * N + 1) 
         state = F.relu(self.l1(state))
         return self.l2(state)
         # (bsz, 4)
  
-class SAC:
+class SACDiscrete:
     def __init__(self, N, hidden_dim,
                  actor_lr, critic_lr, alpha_lr,
                  target_entropy, tau, gamma, device, 
-                 model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SAC.pth')
+                 model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SACDiscrete.pth')
                  ):
 
         self.actor = Actor(N = N, hidden_width = hidden_dim).to(device)
@@ -61,18 +61,20 @@ class SAC:
         self.tau = tau
         self.device = device
         self.model_path = model_path
+        self.epochs = 0
         if os.path.exists(model_path):
             print(f"Loading model from {self.model_path}...")
-            self.load_model(model_path)
+            self.load_model()
         else:
             self.target_critic_1.load_state_dict(self.critic_1.state_dict())
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
             
-    def take_action(self, state, epoch):
-        if epoch < 50:
+    def take_action(self, state):
+        self.epochs += 1
+        # print("state shape is: ", state.shape)
+        if self.epochs <= 50:
             return random.randint(0, 3)
         state = torch.tensor(state, dtype=torch.float).to(self.device)
-        # (4 * N + 1) or (bsz, 4 * N + 1)
         probs = self.actor(state)
         action_dist = torch.distributions.Categorical(probs)
         
@@ -113,6 +115,8 @@ class SAC:
         rewards = rewards = transition_dict['rewards'].view(-1, 1)  # [b,1]
         next_states = transition_dict['next_states']  # [b,n_states]
         dones = transition_dict['dones'].view(-1,1)  # [b,1]
+
+        # print("high transition_dict state shape is: ", transition_dict['states'].shape)
 
         td_target = self.calc_target(rewards, next_states, dones)
         
@@ -166,6 +170,7 @@ class SAC:
             'critic_2_optimizer_state_dict': self.critic_2_optimizer.state_dict(),
             'log_alpha': self.log_alpha,
             'log_alpha_optimizer_state_dict': self.log_alpha_optimizer.state_dict(),
+            'epochs': self.epochs
         }, self.model_path)
         print(f"Model saved to {self.model_path}")
 
@@ -187,4 +192,5 @@ class SAC:
         self.log_alpha_optimizer.load_state_dict(
             checkpoint['log_alpha_optimizer_state_dict']
         )
+        self.epochs = checkpoint['epochs']
         print(f"Model loaded from {self.model_path}")

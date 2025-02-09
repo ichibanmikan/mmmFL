@@ -34,7 +34,7 @@ class globel_models_manager:
         self.models.append(CREMAD(device))
         self.models.append(MHAD(device))
         self.models.append(USC(device))
-        self.models.append(FLASH(device))
+        # self.models.append(FLASH(device))
         
     def get_model_params(self, job):
         return self.models[job].get_model_params()

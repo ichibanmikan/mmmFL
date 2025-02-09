@@ -30,15 +30,6 @@
                 "acc",
                 "gyr"
             ]
-        },
-        {
-            "dataset_name": "FLASH",
-            "modalities_num": 3,
-            "modalities_name" : [
-                "gps",
-                "image",
-                "lidar"
-            ]
         }
     ]
 }

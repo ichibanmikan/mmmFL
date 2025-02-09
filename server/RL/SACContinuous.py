@@ -4,38 +4,41 @@ from torch import nn
 from torch.nn import functional as F
 import numpy as np
 from torch.distributions import Normal
-from RL.utils import ReplayBuffer
 
-class AttentionLayer(nn.Module):
-    def __init__(self, state_dim, hidden_dim):
-        super(AttentionLayer, self).__init__()
-        self.query = nn.Linear(state_dim, hidden_dim)
-        self.key = nn.Linear(state_dim, hidden_dim)
-        self.value = nn.Linear(state_dim, hidden_dim)
+# class AttentionLayer(nn.Module):
+#     def __init__(self, state_dim, hidden_dim):
+#         super(AttentionLayer, self).__init__()
+#         self.query = nn.Linear(state_dim, hidden_dim)
+#         self.key = nn.Linear(state_dim, hidden_dim)
+#         self.value = nn.Linear(state_dim, hidden_dim)
 
-    def forward(self, ti, other_states):
-        Q = self.query(ti.unsqueeze(0))  # (bsz, 1, hidden_dim)
-        K = self.key(other_states)         # (bsz, n - 1, hidden_dim)
-        V = self.value(other_states)       # (bsz, n - 1, hidden_dim)
-        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) \
-            / (K.size(-1) ** 0.5) # (bsz, 1, n - 1)
-        attention_weights = nn.Softmax(attention_scores, dim = -1)  # (bsz, 1, n - 1)
-        context = torch.matmul(attention_weights, V)  # (bsz, 1, hidden_dim)
+#     def forward(self, ti, other_states):
+#         Q = self.query(ti.unsqueeze(-1))  # (bsz, 1, hidden_dim)
+#         K = self.key(other_states.unsqueeze(-1))  # (bsz, k' - 1, hidden_dim)
+#         V = self.value(other_states.unsqueeze(-1)) # (bsz, k' - 1, hidden_dim)
+#         attention_scores = torch.matmul(Q, K.transpose(-2, -1)) \
+#             / (K.size(-1) ** 0.5) # (bsz, 1, k' - 1)
+#         attention_weights = nn.Softmax(attention_scores, dim = -1)  # (bsz, 1, k' - 1)
+#         context = torch.matmul(attention_weights, V)  # (bsz, 1, hidden_dim)
         
-        return context, attention_weights # (bsz, 1, hidden_dim), (bsz, 1, n - 1)
+#         return context.squeeze(dim = 1), \
+#             attention_weights.squeeze(dim = 1) # (bsz, hidden_dim), (bsz, k' - 1)
 
 class Actor(nn.Module):
-    def __init__(self, N, hidden_dim):
+    def __init__(self, hidden_dim):
         super(Actor, self).__init__()
-        self.N = N
-        self.attention = AttentionLayer(1, hidden_dim)
-        self.l1 = nn.Linear(hidden_dim, hidden_dim)
+        # self.attention = AttentionLayer(1, hidden_dim)
+        # self.l1 = nn.Linear(hidden_dim + 2, hidden_dim + 2)
+        self.l1 = nn.Linear(3, hidden_dim)
         self.l_mean = nn.Linear(hidden_dim, 1)
         self.l_std = nn.Linear(hidden_dim, 1) 
 
     def forward(self, x):
-        # input x: (bsz, N)
-        x, _ = self.attention(x[:, 0], x[:, 1:])
+        # Input x: (bsz, 3), 
+        # Ιnclude ti, model_size, T_remain.
+        # s_r = x[:, -2:] # (bsz, 2)
+        # x, _ = self.attention(x[:, 0].unsqueeze(-1), x[:, 1:-2]) # (bsz, h_d)
+        # x = torch.cat([x, s_r]) # (bsz, h_d + 2)
         x = F.relu(self.l1(x))
         
         x_mean = self.l_mean(x) 
@@ -45,40 +48,46 @@ class Actor(nn.Module):
         normal_sample = dist.rsample()
         log_prob = dist.log_prob(normal_sample)
         action = (torch.tanh(normal_sample) + 1) / 2
+        action = action.clamp(min=1e-4, max=1.0 - 1e-4)
         log_prob -= torch.log(1 - action.pow(2) + 1e-7)
         
         return action, log_prob
 
 class QValueNet(nn.Module):
-    def __init__(self, N, hidden_dim):
+    def __init__(self, hidden_dim):
         super(QValueNet, self).__init__()
-        self.l1 = nn.Linear(4 * N + 1 + 1, hidden_dim * 2) 
-        # state: [4N+1]; action: [1]. (b, 4 * N + 2) -> (b, h_d * 2)
-        self.l2 = nn.Linear(hidden_dim * 2, hidden_dim) 
-        # (b, h_d * 2) -> (b, h_d)
-        self.l3 = nn.Linear(hidden_dim, 1) 
-        #(b, h_d) -> (b, 1)
-
+        # self.attention = AttentionLayer(1, hidden_dim)
+        # self.l1 = nn.Linear(hidden_dim + 2, (hidden_dim + 2) * 2) 
+        # self.l2 = nn.Linear((hidden_dim + 2) * 2, hidden_dim + 2)
+        # self.l3 = nn.Linear(hidden_dim + 2, 1)
+        self.l1 = nn.Linear(3 + 1, (hidden_dim) * 2) 
+        self.l2 = nn.Linear((hidden_dim) * 2, hidden_dim)
+        self.l3 = nn.Linear(hidden_dim, 1)
+        
     def forward(self, state, action):
-        x = torch.cat([state, action], dim = -1)  
-        # ((batch_size, 4N + 1), (batch_size, 1)) -> 
-            # (batch_size, 4N + 2)
-        x = F.relu(self.l1(x))
-        x = F.relu(self.l2(x))
-        return self.l3(x)
+        # action.unsqueeze(-1)
+        # print("1111111111111")
+        # print(state.shape)
+        # print(action.shape)
+        if action.dim() == 1:
+            action = action.unsqueeze(-1)
+        x = torch.cat([state, action], dim = -1) # (bsz, h_d + 2)
+        x = F.relu(self.l1(x)) # (bsz, (hidden_dim + 2) * 2)
+        x = F.relu(self.l2(x)) # (bsz, (hidden_dim + 2))
+        return self.l3(x) # (bsz, 1)
  
-class SAC:
+class SACContinuous:
     def __init__(
-        self, N, hidden_dim, actor_lr, critic_lr, alpha_lr,\
+        self, hidden_dim, actor_lr, critic_lr, alpha_lr,\
             target_entropy, tau, gamma, device,\
                 model_path = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SAC.pth'
+                    os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SACContinuous.pth'
         )):
-        self.actor = Actor(N, hidden_dim).to(device)
-        self.critic_1 = QValueNet(N, hidden_dim).to(device)
-        self.critic_2 = QValueNet(N, hidden_dim).to(device)
-        self.target_critic_1 = QValueNet(N, hidden_dim).to(device)
-        self.target_critic_2 = QValueNet(N, hidden_dim).to(device)
+        self.actor = Actor(hidden_dim).to(device)
+        self.critic_1 = QValueNet(hidden_dim).to(device)
+        self.critic_2 = QValueNet(hidden_dim).to(device)
+        self.target_critic_1 = QValueNet(hidden_dim).to(device)
+        self.target_critic_2 = QValueNet(hidden_dim).to(device)
         
         self.actor_optimizer = torch.optim.Adam(
             self.actor.parameters(), lr=actor_lr
@@ -100,6 +109,7 @@ class SAC:
         self.tau = tau
         self.device = device
         self.model_path = model_path
+        self.epochs = 0
         if os.path.exists(model_path):
             print(f"Loading model from {self.model_path}...")
             self.load_model()
@@ -108,15 +118,28 @@ class SAC:
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
             
     def take_action(self, state):
-        state = torch.tensor(state, dtype=torch.float).to(self.device) # (N)
-        action = self.actor(state) # (1)
-        return action.cpu().detach().numpy()
+        state = torch.tensor(state, dtype=torch.float32).to(self.device) # (N)
+        state = state.squeeze(0) # batch_size: 1
+        self.epochs += 1
+        if self.epochs <= 50:
+            b = np.random.rand()
+            if b < 1e-4:
+                b = 1e-4
+            elif b >= 1 - 1e-4:
+                b = 1 - 1e-4
+            return b
+        action = self.actor(state)[0] # (1)
+        return action.cpu().detach().item()
 
-    def calc_target(self, rewards, next_states, dones): 
-        next_actions, log_prob = self.actor(next_states)
-        entropy = -log_prob
-        q1_value = self.target_critic_1(next_states, next_actions)
-        q2_value = self.target_critic_2(next_states, next_actions)
+    def calc_target(self, rewards, next_states = None, dones = 1): 
+        if rewards.dim() == 1:
+            rewards = rewards.unsqueeze(-1)
+        if dones.dim() == 1:
+            dones = dones.unsqueeze(-1)
+        next_actions, log_probs = self.actor(next_states) # (bsz, 1), (bsz, 1)
+        entropy = -log_probs # (bsz, 1)
+        q1_value = self.target_critic_1(next_states, next_actions) # (bsz, 1)
+        q2_value = self.target_critic_2(next_states, next_actions) # (bsz, 1)
         
         next_value = torch.minimum(q1_value, q2_value) \
             + self.log_alpha.exp() * entropy
@@ -129,12 +152,46 @@ class SAC:
                 * (1.0 - self.tau) + param.data * self.tau)
 
     def update(self, transition_dict):
-        states = transition_dict['states']  # (b, 1, 4 * N + 1)
-        actions = transition_dict['actions']  # (b, 1, 4)
-        rewards = transition_dict['rewards'].unsqueeze(-1)  # (b, 1, 1)
-        next_states = transition_dict['next_states']  # (b, 1, 4 * N + 1)
-        dones = transition_dict['dones'].unsqueeze(-1)  # (b, 1, 1)
+        states = transition_dict['states']         # (b, 3)
+        actions = transition_dict['actions']         # (b, 1)
+        rewards = transition_dict['rewards']  # (b, 1)
+        next_states = transition_dict['next_states'] # (b, 3)
+        dones = transition_dict['dones']      # (b, 1)
+        
+        filtered_states = []
+        filtered_actions = []
+        filtered_rewards = []
+        filtered_dones = []
+        filtered_next_states = []
+        
+        for idx, s in enumerate(states):
+            if s[0] == -1.0 and s[1] == -1.0 and s[2] == -1.0:
+                continue
+            else:
+                filtered_states.append(s)
+                filtered_actions.append(actions[idx])
+                filtered_rewards.append(rewards[idx])
+                filtered_dones.append(dones[idx])
+                ns = next_states[idx]
+                if ns[0] == -1.0 and ns[1] == -1.0 and ns[2] == -1.0:
+                    filtered_next_states.append(torch.full_like(ns, 0))
+                else:
+                    filtered_next_states.append(ns)
 
+        states_tensor = torch.stack(filtered_states).float()
+        actions_tensor = torch.stack(filtered_actions).float()
+        rewards_tensor = torch.stack(filtered_rewards).float()
+        dones_tensor = torch.stack(filtered_dones).float()
+        next_states_tensor = torch.stack(filtered_next_states).float()
+
+        states = states_tensor.to(self.device)
+        actions = actions_tensor.to(self.device)
+        rewards = rewards_tensor.to(self.device)
+        dones = dones_tensor.to(self.device)
+        next_states = next_states_tensor.to(self.device)
+        
+        # print("low transition_dict state shape is: ", states.shape)
+        
         td_target = self.calc_target(rewards, next_states, dones)
         critic_1_loss = torch.mean(
             F.mse_loss(self.critic_1(states, actions), td_target.detach()))
@@ -147,11 +204,10 @@ class SAC:
         critic_2_loss.backward()
         self.critic_2_optimizer.step()
 
-        new_actions, log_prob = self.actor(states)
-        log_prob = log_prob.sum(dim = 1, keepdim = True)
-        entropy = -log_prob
-        q1_value = self.critic_1(states, new_actions)
-        q2_value = self.critic_2(states, new_actions)
+        new_actions, log_probs = self.actor(states) # (bsz, 1)
+        entropy = -log_probs # (bsz, 1)
+        q1_value = self.critic_1(states, new_actions) # (bsz, 1)
+        q2_value = self.critic_2(states, new_actions) # (bsz, 1)
         actor_loss = torch.mean(-self.log_alpha.exp() * entropy -
                                 torch.min(q1_value, q2_value))
         self.actor_optimizer.zero_grad()
@@ -179,6 +235,7 @@ class SAC:
             'critic_2_optimizer_state_dict': self.critic_2_optimizer.state_dict(),
             'log_alpha': self.log_alpha,
             'log_alpha_optimizer_state_dict': self.log_alpha_optimizer.state_dict(),
+            'epochs': self.epochs
         }, self.model_path)
         print(f"Model saved to {self.model_path}")
         
@@ -200,4 +257,5 @@ class SAC:
         self.log_alpha_optimizer.load_state_dict(
             checkpoint['log_alpha_optimizer_state_dict']
         )
+        self.epochs = checkpoint['epochs']
         print(f"Model loaded from {self.model_path}")

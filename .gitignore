@@ -49,3 +49,6 @@ server/RL/RLModel
 
 *.log
 client/USC-data
+
+server/jobs_backup
+server/Experiment/client_graph

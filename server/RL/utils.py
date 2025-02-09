@@ -4,6 +4,11 @@ import random
 import pickle
 import numpy as np
 
+
+"""_summary_
+state: 
+"""
+
 class ReplayBuffer:
     def __init__(self, device = 'cpu'):
 
@@ -25,6 +30,7 @@ class ReplayBuffer:
         
         self.isFirst = True #record a traj
         # self.sum_reward = 0
+        self.load_data()
     
     def add(self, state, action, next_state, reward, dense_reward, done):
         
