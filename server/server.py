@@ -201,6 +201,8 @@ class Server:
                                     (1 - self.config.train_time_decay) * update_time[~mask]
                               
     def reattribute(self):
+        if self.num_part == 0:
+            return
         selected_indices = [i for i, is_selected in enumerate(self.clients_part) if is_selected]
         selected_bandwidths = [self.clients_band_width[i] for i in selected_indices]
 
@@ -211,6 +213,8 @@ class Server:
             self.clients_band_width[idx] = norm_value
        
     def update_global_models(self):
+        if self.num_part == 0:
+            return
         current_round_update = []
         for _ in range(len(self.jobs)):
             current_round_update.append([])
@@ -245,6 +249,8 @@ class Server:
         self.num_part = 0     
     
     def round_time_reward(self):
+        if self.num_part == 0:
+            return
         part_mask = (self.round_time > 0)
         part_time = self.round_time[part_mask]
         if self.global_round > 0 \
@@ -266,6 +272,10 @@ class Server:
 
         
     def update_Agent(self):
+        if self.num_part == 0:
+            self.round_clean()
+            self.is_done()
+            return
         # self.every_round_train_time = np.zeros(len(self.threads))
         if len(self.buffer.states) > self.config.min_replay_buffer_size:
             print("This round start update_Agent()")

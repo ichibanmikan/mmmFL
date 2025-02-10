@@ -178,6 +178,9 @@ class SACContinuous:
                 else:
                     filtered_next_states.append(ns)
 
+        if not filtered_actions:
+            return
+        
         states_tensor = torch.stack(filtered_states).float()
         actions_tensor = torch.stack(filtered_actions).float()
         rewards_tensor = torch.stack(filtered_rewards).float()
