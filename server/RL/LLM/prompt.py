@@ -1,5 +1,5 @@
 
-class Prompt:
+class Prompt_reward:
     def __init__(self):
         self.Context = """
 
@@ -43,9 +43,9 @@ Size of the model parameters (in MB) associated with the tasks client i is expec
 
 **Notes:**
 
-1. Variables are formatted as italicized terms.
-2. All vectors/matrices follow NumPy-style shape notation.
-3. Inputs are logically grouped into two distinct modules (task allocation and bandwidth allocation).
+1. All vectors/matrices follow NumPy-style shape notation.
+2. Inputs are logically grouped into two distinct modules (task allocation and bandwidth allocation).
+
 
         """
         self.Action = """ 
@@ -67,7 +67,7 @@ Facilitates assessment of the rationality of bandwidth allocation decisions.
    Computed as current accuracy - prior accuracy; indicates task allocation effectiveness on model improvement.
    Note: Reward scaling required (e.g., Δ0→1 merits higher reward than Δ90→91).
 
-4. Prior-round accuracy baselines (shape: N)
+4. Current-round accuracy (shape: N)
    Provides reference for evaluating accuracy growth significance.
 
 5. Predefined accuracy targets (shape: N)
@@ -77,9 +77,9 @@ Facilitates assessment of the rationality of bandwidth allocation decisions.
    Triggers penalty mechanisms if negative values occur.
 
 7. Active client participation table (shape: M)
-   Identifies clients engaged in current training.
+   Boolean type. True if participated, otherwise False.
 
-**Action Space:**
+**Action Decisions:**
 
 1. Task scheduling table (shape: M)
    High-level policy output determining client-task assignments.
@@ -88,24 +88,65 @@ Facilitates assessment of the rationality of bandwidth allocation decisions.
 2. Bandwidth allocation table (shape: M)
    Low-level policy output governing resource distribution across clients.
 
-This structured representation preserves causal relationships between observational variables and policy actions while maintaining formal academic terminology. The hierarchical formatting enhances readability and emphasizes the dual-layer policy architecture.
+I would like you to help me generate a function that calculates the rewards for two policies based on the input observations and action decisions.
 
-I would like you to help me generate a function that calculates the rewards for two policies based on the input observations and action decisions.        
+**Notes:**
+You must input all of them into the function you generate (even if you don’t need them), and your function can select all or part of these inputs to calculate the reward.
         
         """
         self.Purpose = """ 
 
 # Purpose
 Through the reward calculation function you provide for the two policies, I should be able to obtain a reasonable reward in each round, effectively achieving the goals of minimizing the number of rounds required for convergence while simultaneously reducing the computational and communication time per round.
+
         """
         
         self.Expectation = """
+
 # Expectation
 Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer).
 {
-  "Understand": "(Your understanding of this task)",  
-  "Analyze": "(Step-by-step analysis of which inputs can reflect potential positive and negative rewards)",  
-  "Functions": "(A Python function in the form of `def get_reward(selected_array_from_observations, action_decisions): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively])"
+  "Understand": (Your understanding of this task),  
+  "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively])
 }
-
     """
+    
+    def get_context(self):
+        return self.Context + self.Action + self.Purpose + self.Expectation
+
+class Prompt_sumption:
+    def __init__(self):
+        self.Action = """
+        
+
+        
+        """
+    def get_context(self):
+        return self.Context + self.Action + self.Purpose + self.Expectation
+            
+class Prompt_regenerate:
+    def __init__(self, func, error_mess):
+        self.content_1 = """
+The code you generated:
+
+        """
+        
+        self.content_2 = """
+
+produced an error with the following message:
+        
+        """
+        
+        self.content_3 = """
+Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer).
+{
+  "Understand": (Your understanding of this task),  
+  "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively])
+}
+        """
+        self.func = func
+        self.error_mess = error_mess
+    def get_context(self):
+        return self.content_1 + self.func + self.content_2 + self.error_mess + self.content_3

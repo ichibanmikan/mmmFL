@@ -155,7 +155,7 @@ class ServerHandler():
                     state[-3:] = low_state
                     
                     with self.server.lock:
-                        self.server.clients_band_width[self.client_id] = band_width
+                        self.server.clients_band_width_origin[self.client_id] = band_width
                     
                     self.server.band_width_barrier.wait() 
                     
@@ -197,25 +197,26 @@ class ServerHandler():
                     
                     self.server.update_params_barrier.wait()
                         
-                    if(self.server.config.max_round_time < train_time):
-                        reward[0] = -0.05
-                    else:
-                        reward[0] = self.server.acc_reward[self.client_id][now_job]
+                    # if(self.server.config.max_round_time < train_time):
+                    #     reward[0] = -0.05
+                    # else:
+                    #     reward[0] = self.server.acc_reward[self.client_id][now_job]
                         # (goal - now_acc_before_this_round) - (goal - now_acc_after_this_round)
-                    epochs_return_train += reward[0]
+                    # epochs_return_train += reward[0]
                     
                     with self.server.lock:
                         self.server.round_time[self.client_id] =  2 * trans_time + train_time
                         self.server.round_time_part[self.client_id][0] = trans_time
                         self.server.round_time_part[self.client_id][1] = train_time
+                        self.server.remain_time[self.client_id] = self.time_remain
                     self.server.round_time_barrier.wait()
-                    epochs_return_trans += self.server.trans_rewards[self.client_id]
-                    reward[1] = self.server.trans_rewards[self.client_id]
+                    # epochs_return_trans += self.server.trans_rewards[self.client_id]
+                    # reward[1] = self.server.trans_rewards[self.client_id]
                 else:
-                    if (self.time_remain <= 0 and job_action > 0) or self.job_finish(now_job):
-                        reward[0] = -0.1
-                    else:
-                        reward[0] = 0
+                    # if (self.time_remain <= 0 and job_action > 0) or self.job_finish(now_job):
+                    #     reward[0] = -0.1
+                    # else:
+                    #     reward[0] = 0
                     if job_action > 0 and not self.server.clients_part[self.client_id]:
                         job_action = 0
                     self.send("Wait a round")
@@ -225,6 +226,8 @@ class ServerHandler():
                     self.server.round_time_barrier.wait()
                     # self.server.recv_global_barrier.wait()
                     # self.server.local_train_barrier.wait()
+                reward[0] = self.server.self.round_rewards[self.client_id][0]
+                reward[1] = self.server.self.round_rewards[self.client_id][1]
                 print(f"Node {self.client_id} has reward: ", reward)
                 
                 time_remain = np.array([self.time_remain / self.server.config.max_participant_time])
