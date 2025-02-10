@@ -32,6 +32,7 @@ class Config:
         self.replay_buffer_batch_size = config.getint('RL', 'batch_size')
         self.episode_round = config.getint('RL', 'episode_round')
         self.save_data_freq = config.getint('RL', 'save_data_freq')
+        self.acc_reward_decay = config.getfloat('RL', 'acc_reward_decay')
         self.RL_high_agent = {
             'hidden_dim': config.getint('RL_high_agent', 'hidden_dim'),
             'actor_lr': config.getfloat('RL_high_agent', 'actor_lr'),
@@ -110,8 +111,9 @@ class Server:
                 self.jobs_finish[i] = False
             self.threads.clear()
             self.server_socket.close()
-            
-            self.clients_jobs = np.zeros(len(self.threads))
+            self.train_time = np.zeros((len(self.threads), len(self.jobs)))
+            self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
+            self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             
         print(f"All clients released. Sleeping for 5 seconds before next round...")
@@ -143,13 +145,16 @@ class Server:
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.train_time = np.zeros((len(self.threads), len(self.jobs)))
+            self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
             # self.every_round_train_time = np.zeros(len(self.threads))
             self.round_time = np.zeros(len(self.threads)) # whole time
-            self.round_time_part = np.zeros((len(self.threads), 2)) 
+            self.round_time_part = np.zeros((len(self.threads), 2))
+            # self.rewards = np.zeros(len(self.threads), 2) 
+            self.trans_rewards = np.zeros(len(self.threads))
             # part time:trans_time, train_time. 
             # self.round_time_part[i][0] + self.round_time_part[i][1] = self.round_time[i]
             
-            self.band_width_reward = 0
+            # self.band_width_reward = 0
             self.clients_band_width = np.zeros(len(self.threads))
             self.num_part = 0
             
@@ -160,7 +165,7 @@ class Server:
             self.band_width_barrier \
                 = threading.Barrier(len(self.threads), action = self.reattribute)
             self.round_time_barrier \
-                = threading.Barrier(len(self.threads), action = self.round_time_reward)
+                = threading.Barrier(len(self.threads), action = self.get_trans_rewards)
             # self.recv_global_barrier = threading.Barrier(len(self.threads))
             # self.local_train_barrier = threading.Barrier(len(self.threads))
             self.update_params_barrier \
@@ -230,6 +235,8 @@ class Server:
 
         accs = self.global_models_manager.test()
         
+        temp_goal_sub = self.jobs_goal_sub.copy()
+        
         for i in range(len(self.jobs)):
             self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"] - accs[i]
 
@@ -237,30 +244,51 @@ class Server:
             log.write(f"This round all jobs' acc are: {accs}\n")
         self.global_round += 1
         
+        acc_array = temp_goal_sub - self.jobs_goal_sub[i]
+        self.get_train_rewards(acc_array)
+        
     def round_clean(self):
         self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
         self.clients_part = np.zeros(len(self.threads), dtype = bool)
-        self.train_time = np.zeros((len(self.threads), len(self.jobs)))
         # self.every_round_train_time = np.zeros(len(self.threads))
         self.clients_band_width = np.zeros(len(self.threads))
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
-        self.band_width_reward = 0
+        # self.rewards = np.zeros(len(self.threads), 2) 
+        self.trans_rewards = np.zeros(len(self.threads))
+        # self.band_width_reward = 0
         self.num_part = 0     
+
+    def get_train_rewards(self, acc_array):
+        for i in range(len(self.acc_reward)):
+            if self.clients_part[i]: 
+                j = self.clients_jobs[i] - 1
+                self.acc_reward[i][j] = (
+                    acc_array[j] * (1 - self.config.acc_reward_decay) +
+                    self.config.acc_reward_decay * self.acc_reward[i][j]
+                )
     
-    def round_time_reward(self):
+    def get_trans_rewards(self):
         if self.num_part == 0:
             return
         part_mask = (self.round_time > 0)
+        part_indices = np.where(part_mask)[0]
         part_time = self.round_time[part_mask]
         if self.global_round > 0 \
             and self.global_round % self.config.round_time_plot_freq == 0:
                 plot(self.round_time_part, self.global_round)
+        
+        mean_time = np.mean(part_time)
+        individual_impacts = (part_time - mean_time) ** 2
+        individual_rewards = -individual_impacts
+        # self.rewards[part_indices, 1] = individual_rewards
+        self.trans_rewards[part_indices] = individual_rewards
+        
         std = np.std(part_time)
-        if std == 0:
-            self.band_width_reward = std
-        else:
-            self.band_width_reward = -1 * std
+        # if std == 0:
+        #     self.band_width_reward = std
+        # else:
+        #     self.band_width_reward = -1 * std
 
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
@@ -268,8 +296,6 @@ class Server:
                     np.savetxt(log, self.stds, fmt='%d', delimiter=' ')
 
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
-        
-
         
     def update_Agent(self):
         if self.num_part == 0:
