@@ -200,7 +200,7 @@ class ServerHandler():
                     if(self.server.config.max_round_time < train_time):
                         reward[0] = -0.05
                     else:
-                        reward[0] = (job_now_acc_sub - self.server.jobs_goal_sub[now_job])/100 
+                        reward[0] = self.server.job_selection_reward
                         # (goal - now_acc_before_this_round) - (goal - now_acc_after_this_round)
                     epochs_return_train += reward[0]
                     

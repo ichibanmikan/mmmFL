@@ -110,7 +110,7 @@ class Server:
                 self.jobs_finish[i] = False
             self.threads.clear()
             self.server_socket.close()
-            
+            self.train_time = np.zeros((len(self.threads), len(self.jobs)))
             self.clients_jobs = np.zeros(len(self.threads))
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             
@@ -150,6 +150,7 @@ class Server:
             # self.round_time_part[i][0] + self.round_time_part[i][1] = self.round_time[i]
             
             self.band_width_reward = 0
+            self.job_selection_reward = 0
             self.clients_band_width = np.zeros(len(self.threads))
             self.num_part = 0
             
@@ -230,9 +231,13 @@ class Server:
 
         accs = self.global_models_manager.test()
         
+        temp_goal_sub = self.jobs_goal_sub.copy()
+        
         for i in range(len(self.jobs)):
             self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"] - accs[i]
-
+        
+        self.job_selection_reward = np.sum(temp_goal_sub - self.jobs_goal_sub) / 100
+        
         with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
             log.write(f"This round all jobs' acc are: {accs}\n")
         self.global_round += 1
@@ -240,12 +245,12 @@ class Server:
     def round_clean(self):
         self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
         self.clients_part = np.zeros(len(self.threads), dtype = bool)
-        self.train_time = np.zeros((len(self.threads), len(self.jobs)))
         # self.every_round_train_time = np.zeros(len(self.threads))
         self.clients_band_width = np.zeros(len(self.threads))
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
         self.band_width_reward = 0
+        self.job_selection_reward = 0
         self.num_part = 0     
     
     def round_time_reward(self):
@@ -261,7 +266,7 @@ class Server:
             self.band_width_reward = std
         else:
             self.band_width_reward = -1 * std
-
+        
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
                 with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
