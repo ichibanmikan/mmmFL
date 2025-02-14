@@ -264,7 +264,7 @@ class Server:
             if self.clients_part[i]: 
                 j = self.clients_jobs[i] - 1
                 self.acc_reward[i][j] = (
-                    acc_array[j] * (1 - self.config.acc_reward_decay) +
+                    ( acc_array[j] / 100 ) * (1 - self.config.acc_reward_decay) +
                     self.config.acc_reward_decay * self.acc_reward[i][j]
                 )
     
