@@ -1,6 +1,7 @@
 import os
 import json
 import openai
+# from prompt import *
 from RL.LLM.prompt import *
 
 class chat_response:
@@ -17,9 +18,10 @@ class chat_response:
     def generate(self):
         try:
             response = self.chat_client.chat.completions.create(
-                model="deepseek-ai/DeepSeek-R1",
-                messages=[self.prompt_reward.get_context()],
+                model="deepseek-ai/DeepSeek-V3",
+                messages=[{"role": "user", "content": self.prompt_reward.get_context()}],
             )
+            print(response.choices[0].message.content)
             data = json.loads(response.choices[0].message.content)
             reward_function = data["Functions"]
 
@@ -35,8 +37,8 @@ class chat_response:
                 pr = Prompt_regenerate(reward_function, e)
                 
                 reresponse = self.chat_client.chat.completions.create(
-                    model="deepseek-ai/DeepSeek-R1",
-                    messages=[pr.get_context()],
+                    model="deepseek-ai/DeepSeek-V3",
+                    messages=[{"role": "user", "content": pr.get_context()}],
                 )
                 data = json.loads(reresponse.choices[0].message.content)
                 reward_function = data["Functions"]
@@ -46,3 +48,8 @@ class chat_response:
             print(f"JSON parsing error: {e}")
         except Exception as e:
             print(f"API error: {e}")
+            
+if __name__ == "__main__":
+    cr = chat_response()
+    reward_function = cr.generate()
+    print(reward_function)
