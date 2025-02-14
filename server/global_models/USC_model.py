@@ -242,6 +242,8 @@ class Tester:
         self.device = device
         
     def test(self):
+        if next(self.model.parameters()).device != self.device:
+            self.model = self.model.to(self.device)
         self.model.eval()
         accs = AverageMeter()
 
