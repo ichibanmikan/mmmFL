@@ -51,7 +51,7 @@ class globel_models_manager:
     def test(self):
         accs = []
         for i in range(len(self.models)):
-            self.models[i] = self.models[i].to(self.device)
+            # self.models[i] = self.models[i].to(self.device)
             accs.append(self.models[i].Tester.test())
         return accs
     
