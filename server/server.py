@@ -311,18 +311,14 @@ class Server:
     #     # self.rewards[part_indices, 1] = individual_rewards
     #     self.trans_rewards[part_indices] = individual_rewards
         
-    #     std = np.std(part_time)
-    #     # if std == 0:
-    #     #     self.band_width_reward = std
-    #     # else:
-    #     #     self.band_width_reward = -1 * std
+        std = np.std(part_time)
 
-    #     if (self.global_round - 1) > 0 \
-    #         and (self.global_round - 1) % self.config.save_std_freq == 0:
-    #             with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
-    #                 np.savetxt(log, self.stds, fmt='%d', delimiter=' ')
+        if (self.global_round - 1) > 0 \
+            and (self.global_round - 1) % self.config.save_std_freq == 0:
+                with open(os.path.join(os.path.dirname(__file__), 'LLM_HRL_std.log'), "a") as log:
+                    np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
 
-    #     self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
     
     def update_Agent(self):
         if self.num_part == 0:
