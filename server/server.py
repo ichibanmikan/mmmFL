@@ -295,8 +295,8 @@ class Server:
             and self.global_round % self.config.round_time_plot_freq == 0:
                 plot(self.round_time_part, self.global_round)
         self.round_rewards = reward_function(
-            part_time, 
-            part_train_trans_time, 
+            self.round_time, 
+            self.round_time_part, 
             self.acc_array,
             self.jobs_goal - self.jobs_goal_sub,
             self.jobs_goal,

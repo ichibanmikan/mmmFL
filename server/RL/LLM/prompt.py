@@ -12,7 +12,7 @@ The original objective of "minimizing the total completion time for all multimod
 
 Each round consists of three phases: (1) the server sends the global model to the clients, (2) clients perform local training, and (3) the server receives the updated models from the clients. For simplicity, we assume that the server's upload and download bandwidths are identical, allowing us to compute the transmission time based on a single bandwidth allocation ratio. The training time is determined by the local computation time of each client.
 
-After task allocation for a round, the bandwidth is reallocated among the participating clients to ensure that the sum of their allocated bandwidth ratios equals one. Let K' denote the number of clients participating in a given round. This value can vary, with a maximum cap C. If the number of clients selected by the reinforcement learning system exceeds C, C clients are randomly chosen, and K'=C. Otherwise, K' equals the number of clients selected by the system. To discourage rounds with too few participants, a penalty is imposed when K' is small. The total number of clients M and the number of tasks N remain constant throughout the process, and all models for the same task are of the same size.
+**After task allocation for a round, the bandwidth is reallocated among the participating clients to ensure that the sum of their allocated bandwidth ratios equals one. Let K' denote the number of clients participating in a given round. This value can vary, with a maximum cap C. If the number of clients selected by the reinforcement learning system exceeds C, C clients are randomly chosen, and K'=C. Otherwise, K' equals the number of clients selected by the system. K' can be 0. To discourage rounds with too few participants, a penalty is imposed when K' is small. The total number of clients M and the number of tasks N remain constant throughout the process, and all models for the same task are of the same size. If the size of the array is M, then the index of the array means the number of the client. Similarly, the array index of size N is the task sequence number.**
 
 Task scheduling and bandwidth allocation are implemented using a hierarchical reinforcement learning (HRL) approach, which is a single-agent process. The server hosts an agent with two policies: a high-level policy for task allocation and a low-level policy for bandwidth allocation. In each round, the agent receives local information from each client and decides whether the client should participate in a specific task (represented by an integer from 1 to N) or not (represented by 0). This decision-making process ensures efficient resource utilization and fair participation across all clients.
 
@@ -28,7 +28,7 @@ Loss values for each task of client i. A high loss indicates poor data quality, 
 Distance of each task's accuracy from the convergence target.
 
 4. Remaining Time (Shape: (1,)):
-   Client i's residual participation time in the current round. If selected, bandwidth allocation will be triggered.
+Client i's residual participation time in the current round. If selected, bandwidth allocation will be triggered.
 
 Bandwidth Allocation Policy Inputs (Conditional on Client i's Selection):
 
@@ -57,11 +57,11 @@ The following observational variables are provided for the current training roun
 
 **Observational Set:**
 
-1. Round training duration (shape: K')
-Facilitates assessment of the rationality of bandwidth allocation decisions.
+1. Round training duration (shape: M)
+   Facilitates assessment of the rationality of bandwidth allocation decisions. Greater than 0 if participated, otherwise 0.
 
-2. Per-client transmission & training times (shape: K' * 2)
-   Quantifies the impact of client-task selection and bandwidth allocation on temporal efficiency.
+2. Per-client transmission & training times (shape: M * 2)
+   Quantifies the impact of client-task selection and bandwidth allocation on temporal efficiency. (a, b) and (a > 0 & b > 0) if participated, otherwise (0, 0).
 
 3. Task accuracy increments (Δ) vs. previous round (shape: N)
    Computed as current accuracy - prior accuracy; indicates task allocation effectiveness on model improvement.
@@ -91,7 +91,7 @@ Facilitates assessment of the rationality of bandwidth allocation decisions.
 I would like you to help me generate a function that calculates the rewards for two policies based on the input observations and action decisions.
 
 **Notes:**
-You must input all of them into the function you generate (even if you don’t need them), and your function can select all or part of these inputs to calculate the reward.
+You must input all of them into the function you generate (even if you don't need them), and your function can select all or part of these inputs to calculate the reward.
         
         """
         self.Purpose = """ 
