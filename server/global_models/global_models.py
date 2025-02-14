@@ -34,12 +34,15 @@ class globel_models_manager:
         self.models.append(CREMAD(device))
         self.models.append(MHAD(device))
         self.models.append(USC(device))
+        self.device = device
         # self.models.append(FLASH(device))
         
     def get_model_params(self, job):
         return self.models[job].get_model_params()
         
     def reset_models(self, job, new_params_vec):
+        if(len(new_params_vec) == 0):
+            return
         new_params = np.mean(new_params_vec, axis=0)
         params_init = self.models[job].get_model_params()
         self.models[job].reset_model_parameter(params_init+new_params)
@@ -50,6 +53,7 @@ class globel_models_manager:
     def test(self):
         accs = []
         for i in range(len(self.models)):
+            self.models[i] = self.models[i].to(self.device)
             accs.append(self.models[i].Tester.test())
         return accs
     

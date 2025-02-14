@@ -43,7 +43,7 @@ class acc_encoder(nn.Module):
 
         # self.gru.flatten_parameters()
 
-        x = self.features(x)#bsz, 128, 8, 2]
+        x = self.features(x)# [bsz, 128, 8, 2]
         # print("original acc feature:", x.shape)
 
         x = x.view(x.size(0), 16, -1)#[bsz, 16, 64]
