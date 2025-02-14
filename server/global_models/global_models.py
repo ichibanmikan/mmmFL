@@ -35,6 +35,7 @@ class globel_models_manager:
         self.models.append(MHAD(device))
         self.models.append(USC(device))
         # self.models.append(FLASH(device))
+        self.device = device
         
     def get_model_params(self, job):
         return self.models[job].get_model_params()
@@ -50,6 +51,7 @@ class globel_models_manager:
     def test(self):
         accs = []
         for i in range(len(self.models)):
+            self.models[i] = self.models[i].to(self.device)
             accs.append(self.models[i].Tester.test())
         return accs
     

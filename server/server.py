@@ -270,7 +270,7 @@ class Server:
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
                 with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
-                    np.savetxt(log, self.stds, fmt='%d', delimiter=' ')
+                    np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
 
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         
