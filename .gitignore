@@ -54,7 +54,6 @@ client/USC-data
 server/jobs_backup
 server/Experiment/client_graph
 server/Experiment/**/*.png
-server/Experiment/backup/ex2/round_10.png
-server/Experiment/backup/ex2/round_20.png
+server/Experiment/backup
 server/context.pkl
 server/std.log
