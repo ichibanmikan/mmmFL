@@ -95,6 +95,19 @@ class Server:
     def clear_connections(self):
         """Release all current connections."""
         with self.lock:
+            absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
+            absorbing_action = np.zeros(2)
+            absorbing_reward = np.zeros(2)
+            absorbing_next_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
+            absorbing_done = True
+            self.buffer.add(
+                absorbing_state, 
+                absorbing_action, 
+                absorbing_next_state, 
+                absorbing_reward, 
+                absorbing_reward, 
+                absorbing_done
+            )
             self.done = False
             self.buffer.save_data()
             self.agent.save_model()
@@ -254,7 +267,6 @@ class Server:
         
         acc_array = temp_goal_sub - self.jobs_goal_sub[i]
         self.get_train_rewards(acc_array)
-        self.is_done()
         
     def round_clean(self):
         self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
@@ -302,9 +314,10 @@ class Server:
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
                 with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
-                    np.savetxt(log, self.stds, fmt='%f', delimiter=' ')
-
+                    np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline = ' ')
+                    np.savetxt(log, '\n')
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        self.is_done()
         
     def update_Agent(self):
         if self.num_part == 0:

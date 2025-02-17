@@ -90,10 +90,9 @@ class ServerHandler():
             (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean()) / self.server.jobs_goal_sub.std()
         
         epochs_length = 0
-        epochs_return_train = 0
-        epochs_return_trans = 0
+        epochs_return = np.array([0.0, 0.0])
         
-        done = False
+        # done = False
         while True:
             Ptcp = False
             with self.server.lock:
@@ -197,23 +196,26 @@ class ServerHandler():
                     
                     self.server.update_params_barrier.wait()
                         
-                    if(self.server.config.max_round_time < train_time):
-                        reward[0] = -0.05
+                    if(self.server.config.max_round_time < train_time + trans_time * 2):
+                        reward[0] = -0.5
                     else:
                         reward[0] = self.server.acc_reward[self.client_id][now_job]
                         # (goal - now_acc_before_this_round) - (goal - now_acc_after_this_round)
-                    epochs_return_train += reward[0]
+                    epochs_return[0] += reward[0]
                     
                     with self.server.lock:
                         self.server.round_time[self.client_id] =  2 * trans_time + train_time
                         self.server.round_time_part[self.client_id][0] = trans_time
                         self.server.round_time_part[self.client_id][1] = train_time
                     self.server.round_time_barrier.wait()
-                    epochs_return_trans += self.server.trans_rewards[self.client_id]
-                    reward[1] = self.server.trans_rewards[self.client_id]
+                    epochs_return[1] += self.server.trans_rewards[self.client_id]
+                    if(self.server.config.max_round_time < train_time + trans_time * 2):
+                        reward[1] = -0.5
+                    else:
+                        reward[1] = self.server.trans_rewards[self.client_id]
                 else:
                     if (self.time_remain <= 0 and job_action > 0) or self.job_finish(now_job):
-                        reward[0] = -0.1
+                        reward[0] = -1
                     else:
                         reward[0] = 0
                     if job_action > 0 and not self.server.clients_part[self.client_id]:
@@ -263,10 +265,8 @@ class ServerHandler():
                         next_state[-3:] = low_next_state
 
                 with self.server.lock:
-                    if self.server.done:
-                        done = True
                     self.server.buffer.add(
-                        state, action, next_state, reward, reward, done
+                        state, action, next_state, reward, reward, False
                     )
 
                 self.round += 1
