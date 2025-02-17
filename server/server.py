@@ -212,7 +212,15 @@ class Server:
         selected_bandwidths = [self.clients_band_width[i] for i in selected_indices]
 
         total_bandwidth = sum(selected_bandwidths)
-        normalized = [bw / total_bandwidth for bw in selected_bandwidths]
+        
+        if total_bandwidth == 0:
+            num_selected = len(selected_indices)
+            if num_selected > 0:
+                normalized = [1.0 / num_selected for _ in selected_bandwidths]
+            else:
+                normalized = []
+        else:
+            normalized = [bw / total_bandwidth for bw in selected_bandwidths]
 
         for idx, norm_value in zip(selected_indices, normalized):
             self.clients_band_width[idx] = norm_value
