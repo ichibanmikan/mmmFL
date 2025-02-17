@@ -104,6 +104,8 @@ class Trainer:
         return record_loss[self.config.epochs - 1]
     
     def sample_one_epoch(self):
+        self.model.to(self.device)
+        self.model.train()
         time1 = time.time()
         loss = self.every_epoch_train()
         time2 = time.time()
