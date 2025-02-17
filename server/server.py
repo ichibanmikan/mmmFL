@@ -101,6 +101,19 @@ class Server:
     def clear_connections(self):
         """Release all current connections."""
         with self.lock:
+            absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
+            absorbing_action = np.zeros(2)
+            absorbing_reward = np.zeros(2)
+            absorbing_next_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
+            absorbing_done = True
+            self.buffer.add(
+                absorbing_state, 
+                absorbing_action, 
+                absorbing_next_state, 
+                absorbing_reward, 
+                absorbing_reward, 
+                absorbing_done
+            )
             self.done = False
             self.buffer.save_data()
             self.agent.save_model()
