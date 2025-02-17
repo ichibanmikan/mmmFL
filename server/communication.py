@@ -266,6 +266,8 @@ class ServerHandler():
                         next_state[-3:] = low_next_state
 
                 with self.server.lock:
+                    if self.server.done:
+                        done = True
                     self.server.buffer.add(
                         state, action, next_state, reward, reward, done
                     )

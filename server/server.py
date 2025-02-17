@@ -327,11 +327,12 @@ class Server:
                     np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
 
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
-    
+        self.is_done()
+        
     def update_Agent(self):
         if self.num_part == 0:
             self.round_clean()
-            self.is_done()
+            # self.is_done()
             return
         # self.every_round_train_time = np.zeros(len(self.threads))
         if len(self.buffer.states) > self.config.min_replay_buffer_size:
@@ -354,7 +355,7 @@ class Server:
                 self.agent.save_model()
         
         self.round_clean()
-        self.is_done()
+        # self.is_done()
     
     def is_done(self):
         is_done = True
