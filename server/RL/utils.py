@@ -43,49 +43,49 @@ class ReplayBuffer:
             if isinstance(dense_reward, np.ndarray) and dense_reward.dtype == np.float64\
                 else dense_reward
 
-        assert done == False
+        # assert done == False
         
-        if self.isFirst:
-            self.traj_head_id.append(len(self.states))
-            self.isFirst = False
+        # if self.isFirst:
+        #     self.traj_head_id.append(len(self.states))
+        #     self.isFirst = False
               
         self.states.append(state)
         self.actions.append(action)
         self.next_states.append(next_state)
         self.rewards.append(reward)
         self.dense_rewards.append(dense_reward)
-        self.dones.append(False)
+        self.dones.append(done)
         # self.a_log_probs.append(a_log_prob)
         # self.sum_reward += reward
 
-    def add_done(self, state, action, next_state, reward,\
-        dense_reward, eposide_length, eposide_reward):
+    # def add_done(self, state, action, next_state, reward,\
+    #     dense_reward, eposide_length, eposide_reward):
 
-        state = state.astype(np.float32) if state.dtype == np.float64 else state
-        next_state = next_state.astype(np.float32) \
-            if next_state.dtype == np.float64 else next_state
+    #     state = state.astype(np.float32) if state.dtype == np.float64 else state
+    #     next_state = next_state.astype(np.float32) \
+    #         if next_state.dtype == np.float64 else next_state
 
-        self.states.append(state)
-        self.actions.append(action)
-        self.next_states.append(next_state)
-        self.rewards.append(reward)
-        self.dense_rewards.append(dense_reward)
-        self.dones.append(True)
-        # self.a_log_probs.append(a_log_prob)            
-        # self.sum_reward += reward
+    #     self.states.append(state)
+    #     self.actions.append(action)
+    #     self.next_states.append(next_state)
+    #     self.rewards.append(reward)
+    #     self.dense_rewards.append(dense_reward)
+    #     self.dones.append(True)
+    #     # self.a_log_probs.append(a_log_prob)            
+    #     # self.sum_reward += reward
         
-        self.traj_end_id.append(len(self.states) - 1)
-        self.episode_return.append(eposide_reward)
-        self.episode_length.append(eposide_length)
+    #     self.traj_end_id.append(len(self.states) - 1)
+    #     self.episode_return.append(eposide_reward)
+    #     self.episode_length.append(eposide_length)
         
-        assert eposide_length == \
-            self.traj_end_id[len(self.traj_end_id) - 1] - \
-                self.traj_head_id[len(self.traj_head_id) - 1] + 1
-        assert len(self.traj_end_id) == len(self.traj_head_id)
-        assert len(self.episode_return) == len(self.episode_length)
+    #     assert eposide_length == \
+    #         self.traj_end_id[len(self.traj_end_id) - 1] - \
+    #             self.traj_head_id[len(self.traj_head_id) - 1] + 1
+    #     assert len(self.traj_end_id) == len(self.traj_head_id)
+    #     assert len(self.episode_return) == len(self.episode_length)
         
-        # self.sum_reward = 0
-        self.isFirst = True
+    #     # self.sum_reward = 0
+    #     self.isFirst = True
 
     def sample(self, batch_size):
         if len(self.states) <= batch_size:
@@ -112,45 +112,45 @@ class ReplayBuffer:
         return (sampled_states, sampled_actions, sampled_next_states,
                 sampled_rewards, sampled_dense_rewards, sampled_dones)
     
-    def sample_traj(self, batch_size):
-        if len(self.traj_head_id) <= batch_size:
-            return None
+    # def sample_traj(self, batch_size):
+    #     if len(self.traj_head_id) <= batch_size:
+    #         return None
 
-        selected_idxs = np.random.randint(0, len(self.traj_head_id), size=batch_size)
+    #     selected_idxs = np.random.randint(0, len(self.traj_head_id), size=batch_size)
         
-        sampled_states = []
-        sampled_actions = []
-        sampled_next_states = []
-        sampled_rewards = []
-        sampled_dense_rewards = []
-        sampled_dones = []
-        sampled_episode_returns = []
-        sampled_episode_lengths = []
+    #     sampled_states = []
+    #     sampled_actions = []
+    #     sampled_next_states = []
+    #     sampled_rewards = []
+    #     sampled_dense_rewards = []
+    #     sampled_dones = []
+    #     sampled_episode_returns = []
+    #     sampled_episode_lengths = []
 
-        for idx in selected_idxs:
-            head = self.traj_head_id[idx]
-            end = self.traj_end_id[idx] + 1 
+    #     for idx in selected_idxs:
+    #         head = self.traj_head_id[idx]
+    #         end = self.traj_end_id[idx] + 1 
 
-            sampled_states.extend(self.states[head:end])
-            sampled_actions.extend(self.actions[head:end])
-            sampled_next_states.extend(self.next_states[head:end])
-            sampled_rewards.extend(self.rewards[head:end])
-            sampled_dense_rewards.extend(self.dense_rewards[head:end])
-            sampled_dones.extend([done for done in self.dones[head:end]])
+    #         sampled_states.extend(self.states[head:end])
+    #         sampled_actions.extend(self.actions[head:end])
+    #         sampled_next_states.extend(self.next_states[head:end])
+    #         sampled_rewards.extend(self.rewards[head:end])
+    #         sampled_dense_rewards.extend(self.dense_rewards[head:end])
+    #         sampled_dones.extend([done for done in self.dones[head:end]])
 
-            sampled_episode_returns.append(self.episode_return[idx])
-            sampled_episode_lengths.append(self.episode_length[idx])
+    #         sampled_episode_returns.append(self.episode_return[idx])
+    #         sampled_episode_lengths.append(self.episode_length[idx])
 
-        return (
-            torch.tensor(np.array(sampled_states)).to(self.device),
-            torch.tensor(np.array(sampled_actions).astype(np.int64)).to(self.device),
-            torch.tensor(np.array(sampled_next_states)).to(self.device),
-            torch.tensor(np.array(sampled_rewards).astype(np.float32)).to(self.device),
-            torch.tensor(np.array(sampled_dense_rewards).astype(np.float32)).to(self.device),
-            torch.tensor(np.array(sampled_dones)).to(self.device),  
-            torch.tensor(np.array(sampled_episode_returns)).to(self.device),
-            torch.tensor(np.array(sampled_episode_lengths)).to(self.device)
-        )
+    #     return (
+    #         torch.tensor(np.array(sampled_states)).to(self.device),
+    #         torch.tensor(np.array(sampled_actions).astype(np.int64)).to(self.device),
+    #         torch.tensor(np.array(sampled_next_states)).to(self.device),
+    #         torch.tensor(np.array(sampled_rewards).astype(np.float32)).to(self.device),
+    #         torch.tensor(np.array(sampled_dense_rewards).astype(np.float32)).to(self.device),
+    #         torch.tensor(np.array(sampled_dones)).to(self.device),  
+    #         torch.tensor(np.array(sampled_episode_returns)).to(self.device),
+    #         torch.tensor(np.array(sampled_episode_lengths)).to(self.device)
+    #     )
     
     def save_data(self):
         data_dir = os.path.join(os.path.dirname(__file__), 'data')
