@@ -61,6 +61,6 @@ class Client:
 if __name__ == "__main__":    
     config=Config()
     client=Client(config)
-    for i in range(200): # RL rounds
+    for i in range(6): # RL rounds
         client.start()
-        time.sleep(30)
+        time.sleep(10)
