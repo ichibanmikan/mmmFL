@@ -44,9 +44,9 @@ class Config:
 class Client:
     def __init__(self, config):
         self.config=config
-        self.trainers = []
         
     def start(self):
+        self.trainers = []
         for i in range(len(self.config.datasets)):
             trainer = eval(f"{self.config.datasets[i]['dataset_name']}_main")(self.config.modality(i), self.config.node_id)
             self.trainers.append(trainer)
