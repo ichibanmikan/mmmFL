@@ -254,6 +254,7 @@ class Server:
         
         acc_array = temp_goal_sub - self.jobs_goal_sub[i]
         self.get_train_rewards(acc_array)
+        self.is_done()
         
     def round_clean(self):
         self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
@@ -308,7 +309,7 @@ class Server:
     def update_Agent(self):
         if self.num_part == 0:
             self.round_clean()
-            self.is_done()
+            # self.is_done()
             return
         # self.every_round_train_time = np.zeros(len(self.threads))
         if len(self.buffer.states) > self.config.min_replay_buffer_size:
@@ -331,7 +332,7 @@ class Server:
                 self.agent.save_model()
         
         self.round_clean()
-        self.is_done()
+        # self.is_done()
     
     def is_done(self):
         is_done = True
