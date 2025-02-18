@@ -31,6 +31,7 @@ class Config:
         self.min_replay_buffer_size = config.getint('RL', 'min_size')
         self.replay_buffer_batch_size = config.getint('RL', 'batch_size')
         self.episode_round = config.getint('RL', 'episode_round')
+        self.max_episode_length = config.getint('RL', 'max_episode_length')
         self.save_data_freq = config.getint('RL', 'save_data_freq')
         self.RL_high_agent = {
             'hidden_dim': config.getint('RL_high_agent', 'hidden_dim'),
@@ -63,6 +64,7 @@ class Server:
         self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
         self.threads = []
         self.global_round = 0
+        self.episode_length = 0
         if os.path.exists(os.path.join(os.path.dirname(__file__), self.config.context_file)):
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'rb') as context:
                 self.global_round = pickle.load(context)
@@ -93,7 +95,11 @@ class Server:
         
     def clear_connections(self):
         """Release all current connections."""
+        with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
+            log.write(f"Episode is end, length is {self.episode_length}\n")
+            log.write("\n")
         with self.lock:
+            self.episode_length = 0
             absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
             absorbing_action = np.zeros(2)
             absorbing_reward = np.zeros(2)
@@ -262,6 +268,7 @@ class Server:
         with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
             log.write(f"This round all jobs' acc are: {accs}\n")
         self.global_round += 1
+        self.episode_length += 1
         
     def round_clean(self):
         self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
@@ -336,7 +343,7 @@ class Server:
                 
             is_done = is_done and self.jobs_finish[i]
         
-        if is_done:
+        if is_done or self.episode_length >= self.config.max_episode_length:
             self.done = True
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
                 binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
