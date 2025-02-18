@@ -30,6 +30,7 @@ class Config:
         self.train_time_decay = config.getfloat('Clients', 'train_time_decay')
         self.min_replay_buffer_size = config.getint('RL', 'min_size')
         self.replay_buffer_batch_size = config.getint('RL', 'batch_size')
+        self.max_episode_length = config.getint('RL', 'max_episode_length')
         self.episode_round = config.getint('RL', 'episode_round')
         self.save_data_freq = config.getint('RL', 'save_data_freq')
         self.acc_reward_decay = config.getfloat('RL', 'acc_reward_decay')
@@ -64,6 +65,7 @@ class Server:
         self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
         self.threads = []
         self.global_round = 0
+        self.episode_length = 0
         if os.path.exists(os.path.join(os.path.dirname(__file__), self.config.context_file)):
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'rb') as context:
                 self.global_round = pickle.load(context)
@@ -94,6 +96,9 @@ class Server:
         
     def clear_connections(self):
         """Release all current connections."""
+        with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
+            log.write(f"Episode is end, length is {self.episode_length}\n")
+            log.write("\n")
         with self.lock:
             absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
             absorbing_action = np.zeros(2)
@@ -128,6 +133,7 @@ class Server:
             self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
+            self.episode_length = 0
             
         print(f"All clients released. Sleeping for 5 seconds before next round...")
         time.sleep(5)
@@ -264,6 +270,7 @@ class Server:
         with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
             log.write(f"This round all jobs' acc are: {accs}\n")
         self.global_round += 1
+        self.episode_length += 1
         
         acc_array = temp_goal_sub - self.jobs_goal_sub[i]
         self.get_train_rewards(acc_array)
@@ -359,7 +366,7 @@ class Server:
                 
             is_done = is_done and self.jobs_finish[i]
         
-        if is_done:
+        if is_done or self.episode_length >= self.config.max_episode_length:
             self.done = True
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
                 binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
