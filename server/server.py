@@ -315,7 +315,8 @@ class Server:
             and (self.global_round - 1) % self.config.save_std_freq == 0:
                 with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
                     np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline = ' ')
-                    np.savetxt(log, '\n')
+                    log.write('\n')
+
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         self.is_done()
         

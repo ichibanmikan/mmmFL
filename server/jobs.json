@@ -2,17 +2,17 @@
     "Jobs": [
         {
             "name": "CREMAD",
-            "acc_goal": 31,
+            "acc_goal": 57,
             "model_size": 27875744
         },    
         {
             "name": "MHAD",
-            "acc_goal": 14,
+            "acc_goal": 95,
             "model_size": 1721880
         },    
         {
             "name": "USC",
-            "acc_goal": 25,
+            "acc_goal": 86,
             "model_size": 1201624
         }
     ]
