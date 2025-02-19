@@ -196,7 +196,7 @@ class ServerHandler():
                     
                     self.server.update_params_barrier.wait()
                         
-                    if(self.server.config.max_round_time < train_time + trans_time * 2):
+                    if self.server.config.max_round_time < train_time :
                         reward[0] = -0.5
                     else:
                         reward[0] = self.server.acc_reward[self.client_id][now_job]
@@ -209,10 +209,7 @@ class ServerHandler():
                         self.server.round_time_part[self.client_id][1] = train_time
                     self.server.round_time_barrier.wait()
                     epochs_return[1] += self.server.trans_rewards[self.client_id]
-                    if(self.server.config.max_round_time < train_time + trans_time * 2):
-                        reward[1] = -0.5
-                    else:
-                        reward[1] = self.server.trans_rewards[self.client_id]
+                    reward[1] = self.server.trans_rewards[self.client_id]
                 else:
                     if (self.time_remain <= 0 and job_action > 0) or self.job_finish(now_job):
                         reward[0] = -1
