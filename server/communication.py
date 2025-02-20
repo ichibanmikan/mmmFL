@@ -226,8 +226,8 @@ class ServerHandler():
                     self.server.round_time_barrier.wait()
                     # self.server.recv_global_barrier.wait()
                     # self.server.local_train_barrier.wait()
-                reward[0] = self.server.self.round_rewards[self.client_id][0]
-                reward[1] = self.server.self.round_rewards[self.client_id][1]
+                reward[0] = self.server.round_rewards[self.client_id][0]
+                reward[1] = self.server.round_rewards[self.client_id][1]
                 print(f"Node {self.client_id} has reward: ", reward)
                 
                 time_remain = np.array([self.time_remain / self.server.config.max_participant_time])

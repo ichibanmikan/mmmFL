@@ -114,16 +114,6 @@ Please think step by step and generate content in the following JSON format (rep
     
     def get_context(self):
         return self.Context + self.Action + self.Purpose + self.Expectation
-
-class Prompt_sumption:
-    def __init__(self):
-        self.Action = """
-        
-
-        
-        """
-    def get_context(self):
-        return self.Context + self.Action + self.Purpose + self.Expectation
             
 class Prompt_regenerate:
     def __init__(self, func, error_mess):
@@ -150,3 +140,42 @@ Please think step by step and generate content in the following JSON format (rep
         self.error_mess = error_mess
     def get_context(self):
         return self.content_1 + self.func + self.content_2 + self.error_mess + self.content_3
+     
+     
+
+class Prompt_Summary:
+   def __init__(self):
+      self.Action_1 = """ 
+    
+# Action
+Here is a series of reward calculation functions that you generated earlier:
+
+"""
+      self.Action_2 = """ 
+Please summarize these functions and create a comprehensive function. The input and output should not be changed. Your scope of thinking should be limited to the functions that you have previously generated.      
+"""
+      self.Purpose = """ 
+
+# Purpose
+The comprehensive reward calculation function generated in this round takes into account all the features of the above functions. It can achieve better results than any of the individual functions above.
+
+        """
+        
+      self.Expectation = """
+
+# Expectation
+Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer).
+{
+  "Understand": (Your understanding of this task),  
+  "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively])
+}
+    """
+    
+   def get_context(self, functions):
+      str = self.Action_1
+      for idx, func in enumerate(functions):
+            str += f'{idx}. '
+            str += func
+            str += '\n'
+      return str + self.Action_2 + self.Purpose + self.Expectation

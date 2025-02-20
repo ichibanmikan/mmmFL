@@ -89,7 +89,7 @@ class Server:
         )
         cr = chat_response()
         self.reward_function = cr.generate()
-        exec(self.reward_function)
+        exec(self.reward_function, globals())
         self.jobs_goal = np.zeros(len(self.jobs))
         self.jobs_goal_sub = np.zeros(len(self.jobs))
         self.jobs_model_size = np.zeros(len(self.jobs))
@@ -140,7 +140,7 @@ class Server:
             self.server_socket.close()
             self.train_time = np.zeros((len(self.threads), len(self.jobs)))
             # self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
-            self.round_rewards = np.zeros(len(self.threads), 2)
+            self.round_rewards = np.zeros((len(self.threads), 2))
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.remain_time = np.full(len(self.threads), self.config.max_participant_time)
@@ -176,11 +176,11 @@ class Server:
             self.train_time = np.zeros((len(self.threads), len(self.jobs)))
             # self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
             # self.every_round_train_time = np.zeros(len(self.threads))
-            self.round_rewards = np.zeros(len(self.threads), 2)
+            self.round_rewards = np.zeros((len(self.threads), 2))
             self.round_time = np.zeros(len(self.threads)) # whole time
             self.round_time_part = np.zeros((len(self.threads), 2))
             self.acc_array = np.zeros(len(self.jobs))
-            # self.rewards = np.zeros(len(self.threads), 2) 
+            # self.rewards = np.zeros((len(self.threads), 2)) 
             # self.trans_rewards = np.zeros(len(self.threads))
             # part time:trans_time, train_time. 
             # self.round_time_part[i][0] + self.round_time_part[i][1] = self.round_time[i]
@@ -297,8 +297,8 @@ class Server:
         self.clients_band_width_origin = np.zeros(len(self.threads))
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
-        self.round_rewards = np.zeros(len(self.threads), 2)
-        # self.rewards = np.zeros(len(self.threads), 2) 
+        self.round_rewards = np.zeros((len(self.threads), 2))
+        # self.rewards = np.zeros((len(self.threads), 2)) 
         # self.trans_rewards = np.zeros(len(self.threads))
         # self.band_width_reward = 0
         self.num_part = 0     
@@ -389,7 +389,7 @@ class Server:
                 
             is_done = is_done and self.jobs_finish[i]
         
-        if is_done or self.episode_length >= self.config.episode_round:
+        if is_done or self.episode_length >= self.config.max_episode_length:
             self.done = True
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
                 binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)

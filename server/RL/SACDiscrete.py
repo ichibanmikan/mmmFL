@@ -77,6 +77,7 @@ class SACDiscrete:
             return random.randint(0, 3)
         state = torch.tensor(state, dtype=torch.float).to(self.device)
         probs = self.actor(state)
+        probs = torch.clamp(probs, min=1e-8)
         action_dist = torch.distributions.Categorical(probs)
         
         action = action_dist.sample().item()
