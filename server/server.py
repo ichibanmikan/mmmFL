@@ -326,38 +326,37 @@ class Server:
                     np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
                     log.write('\n')
         if self.num_part == 0:
-            self.stds[(self.global_round - 1) % self.config.save_std_freq] = -1
-            self.is_done()
-            return
-        part_mask = (self.round_time > 0)
-        part_indices = np.where(part_mask)[0]
-        part_train_trans_time = self.round_time_part[part_mask]
-        part_time = self.round_time[part_mask]
-        if len(part_time) == 0:
             std = -1
-            self.round_rewards[:, 0] = -2
-            self.round_rewards[:, 1] = -2
         else:
-            if self.global_round > 0 \
-                and self.global_round % self.config.round_time_plot_freq == 0:
-                    plot(self.round_time_part, self.global_round)
-            self.round_rewards = reward_function(
-                self.round_time, 
-                self.round_time_part, 
-                self.acc_array,
-                self.jobs_goal - self.jobs_goal_sub,
-                self.jobs_goal,
-                self.remain_time,
-                self.clients_part,
-                self.clients_jobs,
-                self.clients_band_width_origin
-            )
-        #     mean_time = np.mean(part_time)
-        #     individual_impacts = (part_time - mean_time) ** 2
-        #     individual_rewards = -individual_impacts
-        #     # self.rewards[part_indices, 1] = individual_rewards
-        #     self.trans_rewards[part_indices] = individual_rewards
-            std = np.std(part_time)
+            part_mask = (self.round_time > 0)
+            part_indices = np.where(part_mask)[0]
+            part_train_trans_time = self.round_time_part[part_mask]
+            part_time = self.round_time[part_mask]
+            if len(part_time) == 0:
+                std = -1
+                self.round_rewards[:, 0] = -2
+                self.round_rewards[:, 1] = -2
+            else:
+                if self.global_round > 0 \
+                    and self.global_round % self.config.round_time_plot_freq == 0:
+                        plot(self.round_time_part, self.global_round)
+                self.round_rewards = reward_function(
+                    self.round_time, 
+                    self.round_time_part, 
+                    self.acc_array,
+                    self.jobs_goal - self.jobs_goal_sub,
+                    self.jobs_goal,
+                    self.remain_time,
+                    self.clients_part,
+                    self.clients_jobs,
+                    self.clients_band_width_origin
+                )
+            #     mean_time = np.mean(part_time)
+            #     individual_impacts = (part_time - mean_time) ** 2
+            #     individual_rewards = -individual_impacts
+            #     # self.rewards[part_indices, 1] = individual_rewards
+            #     self.trans_rewards[part_indices] = individual_rewards
+                std = np.std(part_time)
         
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         
