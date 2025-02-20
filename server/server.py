@@ -282,24 +282,30 @@ class Server:
         self.num_part = 0     
     
     def round_time_reward(self):
-        if self.num_part == 0:
-            return
-        part_mask = (self.round_time > 0)
-        part_time = self.round_time[part_mask]
-        if self.global_round > 0 \
-            and self.global_round % self.config.round_time_plot_freq == 0:
-                plot(self.round_time_part, self.global_round)
-        std = np.std(part_time)
-        if std == 0:
-            self.band_width_reward = std
-        else:
-            self.band_width_reward = -1 * std
-        
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
                 with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
                     np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
                     log.write('\n')
+        if self.num_part == 0:
+            std = -1
+        else:
+            part_mask = (self.round_time > 0)
+            part_time = self.round_time[part_mask]
+            if self.global_round > 0 \
+                and self.global_round % self.config.round_time_plot_freq == 0:
+                    plot(self.round_time_part, self.global_round)
+            if len(part_time) == 0:
+                std = -1
+                self.band_width_reward = -1
+            else:
+                std = np.std(part_time)
+                if std == 0:
+                    self.band_width_reward = std
+                else:
+                    self.band_width_reward = -1 * std
+        
+
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         self.is_done()
 
