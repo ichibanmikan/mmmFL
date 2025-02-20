@@ -141,6 +141,8 @@ class Server:
             self.train_time = np.zeros((len(self.threads), len(self.jobs)))
             # self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
             self.round_rewards = np.zeros((len(self.threads), 2))
+            self.round_rewards[:, 0] = -1
+            self.round_rewards[:, 1] = -1
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.remain_time = np.full(len(self.threads), self.config.max_participant_time)
@@ -177,6 +179,8 @@ class Server:
             # self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
             # self.every_round_train_time = np.zeros(len(self.threads))
             self.round_rewards = np.zeros((len(self.threads), 2))
+            self.round_rewards[:, 0] = -1
+            self.round_rewards[:, 1] = -1
             self.round_time = np.zeros(len(self.threads)) # whole time
             self.round_time_part = np.zeros((len(self.threads), 2))
             self.acc_array = np.zeros(len(self.jobs))
@@ -298,6 +302,8 @@ class Server:
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
         self.round_rewards = np.zeros((len(self.threads), 2))
+        self.round_rewards[:, 0] = -1
+        self.round_rewards[:, 1] = -1
         # self.rewards = np.zeros((len(self.threads), 2)) 
         # self.trans_rewards = np.zeros(len(self.threads))
         # self.band_width_reward = 0
@@ -314,40 +320,47 @@ class Server:
     #             )
     
     def get_round_time_rewards(self):
-        if self.num_part == 0:
-            return
-        part_mask = (self.round_time > 0)
-        part_indices = np.where(part_mask)[0]
-        part_train_trans_time = self.round_time_part[part_mask]
-        part_time = self.round_time[part_mask]
-        if self.global_round > 0 \
-            and self.global_round % self.config.round_time_plot_freq == 0:
-                plot(self.round_time_part, self.global_round)
-        self.round_rewards = reward_function(
-            self.round_time, 
-            self.round_time_part, 
-            self.acc_array,
-            self.jobs_goal - self.jobs_goal_sub,
-            self.jobs_goal,
-            self.remain_time,
-            self.clients_part,
-            self.clients_jobs,
-            self.clients_band_width_origin
-        )
-    #     mean_time = np.mean(part_time)
-    #     individual_impacts = (part_time - mean_time) ** 2
-    #     individual_rewards = -individual_impacts
-    #     # self.rewards[part_indices, 1] = individual_rewards
-    #     self.trans_rewards[part_indices] = individual_rewards
-        
-        std = np.std(part_time)
-
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
                 with open(os.path.join(os.path.dirname(__file__), 'LLM_HRL_std.log'), "a") as log:
                     np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
                     log.write('\n')
+        if self.num_part == 0:
+            self.stds[(self.global_round - 1) % self.config.save_std_freq] = -1
+            self.is_done()
+            return
+        part_mask = (self.round_time > 0)
+        part_indices = np.where(part_mask)[0]
+        part_train_trans_time = self.round_time_part[part_mask]
+        part_time = self.round_time[part_mask]
+        if len(part_time) == 0:
+            std = -1
+            self.round_rewards[:, 0] = -2
+            self.round_rewards[:, 1] = -2
+        else:
+            if self.global_round > 0 \
+                and self.global_round % self.config.round_time_plot_freq == 0:
+                    plot(self.round_time_part, self.global_round)
+            self.round_rewards = reward_function(
+                self.round_time, 
+                self.round_time_part, 
+                self.acc_array,
+                self.jobs_goal - self.jobs_goal_sub,
+                self.jobs_goal,
+                self.remain_time,
+                self.clients_part,
+                self.clients_jobs,
+                self.clients_band_width_origin
+            )
+        #     mean_time = np.mean(part_time)
+        #     individual_impacts = (part_time - mean_time) ** 2
+        #     individual_rewards = -individual_impacts
+        #     # self.rewards[part_indices, 1] = individual_rewards
+        #     self.trans_rewards[part_indices] = individual_rewards
+            std = np.std(part_time)
+        
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        
         self.is_done()
         
     def update_Agent(self):
