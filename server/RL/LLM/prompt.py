@@ -97,7 +97,7 @@ You must input all of them into the function you generate (even if you don't nee
         self.Purpose = """ 
 
 # Purpose
-Through the reward calculation function you provide for the two policies, I should be able to obtain a reasonable reward in each round, effectively achieving the goals of minimizing the number of rounds required for convergence while simultaneously reducing the computational and communication time per round.
+Through the reward calculation function you provide for the two policies, I should be able to obtain a reasonable reward in each round, effectively achieving the goals of minimizing the number of rounds required for convergence while simultaneously reducing the computational and communication time per round. And I can get the highest accuracy within a limited number of communication rounds.
 
         """
         
