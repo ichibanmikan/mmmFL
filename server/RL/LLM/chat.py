@@ -6,11 +6,11 @@ from RL.LLM.prompt import *
 
 class chat_response:
     def __init__(self):
-        self.OPENAI_API_KEY = "sk-rlykgjdshriviljrmkzotgrylwzbfqqnfotctzryvaieivon"
+        self.OPENAI_API_KEY = "sk-wKJ92pVdTpsV4w3U4YjBGGG1vsxdq0OdkpoGnwlrw03T2pTE"
 
         self.chat_client = openai.OpenAI(
             api_key=self.OPENAI_API_KEY,
-            base_url="https://api.siliconflow.com",
+            base_url="https://api.lkeap.cloud.tencent.com/v1",
         )
         
         self.prompt_reward = Prompt_reward()
@@ -29,14 +29,47 @@ class chat_response:
             return match.group(1).strip()
         return text
     
+    def decode_stream(self, stream):
+        reasoning_content = ""
+        answer_content = ""
+        is_answering = False    
+        
+        for chunk in stream:
+            if not getattr(chunk, 'choices', None):
+                continue
+            
+            delta = chunk.choices[0].delta
+            
+            if not getattr(delta, 'reasoning_content', None) and\
+                not getattr(delta, 'content', None):
+                    continue
+                
+            if not getattr(delta, 'reasoning_content', None) and\
+                not is_answering:
+                    is_answering = True
+
+            if getattr(delta, 'reasoning_content', None):
+                reasoning_content += delta.reasoning_content
+
+            elif getattr(delta, 'content', None):
+                print(delta.content, end='', flush=True)
+                answer_content += delta.content
+        return reasoning_content, answer_content
+
     def generate_func(self):
         try:
             response = self.chat_client.chat.completions.create(
-                model="Pro/deepseek-ai/DeepSeek-V3",
+                model="deepseek-r1",
                 messages=[{"role": "user", "content": self.prompt_reward.get_context()}],
+                stream=True
             )
-            
-            response_content = self.extract_json_content(response.choices[0].message.content)
+            reasoning, answer = self.decode_stream(response)
+            with open('function.log', 'a') as file:
+                file.write(f"Reasoning: \n{reasoning}\n")
+                file.write(f"Answer: \n{answer}\n")
+                file.write("\n")
+                
+            response_content = self.extract_json_content(answer)
             print(response_content)
             data = json.loads(response_content)
             str_reward_function = self.extract_python_code(data["Functions"])
@@ -49,10 +82,16 @@ class chat_response:
                     print(f"Syntax Error in generated function: {e}")
                     pr = Prompt_regenerate(str_reward_function, str(e))
                     reresponse = self.chat_client.chat.completions.create(
-                        model="Pro/deepseek-ai/DeepSeek-V3",
+                        model="deepseek-r1",
                         messages=[{"role": "user", "content": pr.get_context()}],
+                        stream=True
                     )
-                    reresponse_content = self.extract_json_content(reresponse.choices[0].message.content)
+                    reasoning, answer = self.decode_stream(reresponse)
+                    with open('function.log', 'a') as file:
+                        file.write(f"Reasoning: \n{reasoning}\n")
+                        file.write(f"Answer: \n{answer}\n")
+                        file.write("\n")
+                    reresponse_content = self.extract_json_content(answer)
                     print(reresponse_content)
                     data = json.loads(response_content)
                     str_reward_function = self.extract_python_code(data["Functions"])
@@ -70,10 +109,16 @@ class chat_response:
             reward_function = self.generate_func()
             self.functions.append(reward_function)
         summary = self.chat_client.chat.completions.create(
-            model="Pro/deepseek-ai/DeepSeek-V3",
+            model="deepseek-r1",
             messages=[{"role": "user", "content": self.prompt_reward.get_context()}],
+            stream=True
         )
-        summary_content = self.extract_json_content(summary.choices[0].message.content)
+        reasoning, answer = self.decode_stream(summary)
+        with open('function.log', 'a') as file:
+            file.write(f"Reasoning: \n{reasoning}\n")
+            file.write(f"Answer: \n{answer}\n")
+            file.write("\n")
+        summary_content = self.extract_json_content(answer)
         print(summary_content)
         data = json.loads(summary_content)
         str_reward_function = self.extract_python_code(data["Functions"])

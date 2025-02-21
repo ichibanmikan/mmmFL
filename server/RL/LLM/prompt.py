@@ -133,11 +133,11 @@ produced an error with the following message:
         """
         
         self.content_3 = """
-Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer).
+Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer). Please do not use Python's triple quotes in the JSON string in your answers. Use double quotes "" instead.
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively])
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
         """
         self.func = func
