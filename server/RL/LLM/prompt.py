@@ -96,7 +96,7 @@ I would like you to help me generate a function that calculates the rewards for 
 3. A small subset of clients may exhibit limited computational capabilities, leading to prolonged training durations for every task. These clients should be avoided as much as possible.
 4. A small subset of clients may experience missing modality data or labels. Decisions regarding their inclusion in a given task should be based on metrics such as loss performance or their reputation on that task (e.g., whether their participation consistently leads to a decline in test accuracy).
 5. The data distribution among clients may be imbalanced, with each client potentially containing data corresponding to only one or a few label classes. Efforts should be made to equalize the frequency of participation of these clients.
-
+6. Please clamp the reward to the range between -2 and 2.
         """
         self.Purpose = """ 
 
@@ -108,11 +108,11 @@ Through the reward calculation function you provide for the two policies, I shou
         self.Expectation = """
 
 # Expectation
-Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer).
+Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer). Please do not use Python's triple quotes in the JSON string in your answers. Use double quotes "" instead.
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively])
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) -2 < reward_array[i][0] < 2 and -2 < reward_array[i][1] < 2 represent the task allocation reward and bandwidth allocation reward for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
     """
     
@@ -137,7 +137,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) -2 < reward_array[i][0] < 2 and -2 < reward_array[i][1] < 2 represent the task allocation reward and bandwidth allocation reward for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
         """
         self.func = func
@@ -168,11 +168,11 @@ The comprehensive reward calculation function generated in this round takes into
       self.Expectation = """
 
 # Expectation
-Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer).
+Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer). Please do not use Python's triple quotes in the JSON string in your answers. Use double quotes "" instead.
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) reward_array[i][0] and reward_array[i][1] represent the task allocation reward and bandwidth allocation reward for client i, respectively])
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 2) -2 < reward_array[i][0] < 2 and -2 < reward_array[i][1] < 2 represent the task allocation reward and bandwidth allocation reward for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
     """
     

@@ -52,7 +52,6 @@ class chat_response:
                 reasoning_content += delta.reasoning_content
 
             elif getattr(delta, 'content', None):
-                print(delta.content, end='', flush=True)
                 answer_content += delta.content
         return reasoning_content, answer_content
 
