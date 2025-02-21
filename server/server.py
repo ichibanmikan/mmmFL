@@ -245,20 +245,19 @@ class Server:
             self.clients_band_width[idx] = norm_value
        
     def update_global_models(self):
-        if self.num_part == 0:
-            return
-        current_round_update = []
-        for _ in range(len(self.jobs)):
-            current_round_update.append([])
-        for i in range(len(self.current_round_all_params)):
-            current_round_update[self.current_round_all_params[i][0]]\
-                .append(self.current_round_all_params[i][1])
-        
-        with self.lock: 
-            self.current_round_all_params.clear()
-            for i in range(len(current_round_update)):
-                if(len(current_round_update[i])!=0):
-                    self.global_models_manager.reset_models(i, np.array(current_round_update[i]))
+        if self.num_part != 0:
+            current_round_update = []
+            for _ in range(len(self.jobs)):
+                current_round_update.append([])
+            for i in range(len(self.current_round_all_params)):
+                current_round_update[self.current_round_all_params[i][0]]\
+                    .append(self.current_round_all_params[i][1])
+            
+            with self.lock: 
+                self.current_round_all_params.clear()
+                for i in range(len(current_round_update)):
+                    if(len(current_round_update[i])!=0):
+                        self.global_models_manager.reset_models(i, np.array(current_round_update[i]))
 
         accs = self.global_models_manager.test()
         
@@ -327,10 +326,6 @@ class Server:
         self.is_done()
         
     def update_Agent(self):
-        if self.num_part == 0:
-            self.round_clean()
-            # self.is_done()
-            return
         # self.every_round_train_time = np.zeros(len(self.threads))
         if len(self.buffer.states) > self.config.min_replay_buffer_size:
             print("This round start update_Agent()")
