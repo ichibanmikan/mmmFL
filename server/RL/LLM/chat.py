@@ -21,7 +21,7 @@ class chat_response:
         match = re.search(r'```json\n(.*?)\n```', text, re.DOTALL)
         if match:
             return match.group(1).strip()
-        return None
+        return match
     
     def extract_python_code(self, text):
         match = re.search(r'```python(.*?)```', text, re.DOTALL)
