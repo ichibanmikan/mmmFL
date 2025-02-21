@@ -91,8 +91,12 @@ The following observational variables are provided for the current training roun
 I would like you to help me generate a function that calculates the rewards for two policies based on the input observations and action decisions.
 
 **Notes:**
-You must input all of them into the function you generate (even if you don't need them), and your function can select all or part of these inputs to calculate the reward.
-        
+1. You must input all of them into the function you generate (even if you don't need them), and your function can select all or part of these inputs to calculate the reward.
+2. A small subset of clients may be unsuitable for training certain tasks, resulting in excessively long training times for those tasks. Such clients and tasks should be identified and their participation in the task minimized.
+3. A small subset of clients may exhibit limited computational capabilities, leading to prolonged training durations for every task. These clients should be avoided as much as possible.
+4. A small subset of clients may experience missing modality data or labels. Decisions regarding their inclusion in a given task should be based on metrics such as loss performance or their reputation on that task (e.g., whether their participation consistently leads to a decline in test accuracy).
+5. The data distribution among clients may be imbalanced, with each client potentially containing data corresponding to only one or a few label classes. Efforts should be made to equalize the frequency of participation of these clients.
+
         """
         self.Purpose = """ 
 
@@ -179,3 +183,7 @@ Please think step by step and generate content in the following JSON format (rep
             str += func
             str += '\n'
       return str + self.Action_2 + self.Purpose + self.Expectation
+   
+
+
+
