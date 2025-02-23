@@ -30,6 +30,7 @@ class ReplayBuffer:
         
         self.isFirst = True #record a traj
         # self.sum_reward = 0
+        self.average_sub_rewards = []
         self.load_data()
     
     def add(self, state, action, next_state, reward, dense_reward, done):
@@ -42,12 +43,6 @@ class ReplayBuffer:
         dense_reward = dense_reward.astype(np.float32) \
             if isinstance(dense_reward, np.ndarray) and dense_reward.dtype == np.float64\
                 else dense_reward
-
-        # assert done == False
-        
-        # if self.isFirst:
-        #     self.traj_head_id.append(len(self.states))
-        #     self.isFirst = False
               
         self.states.append(state)
         self.actions.append(action)
@@ -55,6 +50,8 @@ class ReplayBuffer:
         self.rewards.append(reward)
         self.dense_rewards.append(dense_reward)
         self.dones.append(done)
+        if done:
+            self.episode_length.append(len(self.average_sub_rewards))
         # self.a_log_probs.append(a_log_prob)
         # self.sum_reward += reward
 
@@ -86,7 +83,9 @@ class ReplayBuffer:
         
     #     # self.sum_reward = 0
     #     self.isFirst = True
-
+    def add_average_sub_rewards(self, sub_rewards):
+        self.average_sub_rewards.append(sub_rewards)
+        
     def sample(self, batch_size):
         if len(self.states) <= batch_size:
             return None
@@ -169,6 +168,7 @@ class ReplayBuffer:
             'traj_end_id': self.traj_end_id,
             'episode_return': self.episode_return,
             'episode_length': self.episode_length,
+            'average_sub_rewards': self.average_sub_rewards
         }
 
         with open(file_path, 'wb') as f:
@@ -198,5 +198,6 @@ class ReplayBuffer:
         self.traj_end_id = data['traj_end_id']
         self.episode_return = data['episode_return']
         self.episode_length = data['episode_length']
+        self.average_sub_rewards = data['average_sub_rewards']
 
         print(f"ReplayBuffer data loaded from {file_path}")

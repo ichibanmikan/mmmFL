@@ -9,8 +9,10 @@ from communication import *
 from Experiment.plt import plot
 from RL.utils import ReplayBuffer
 from RL.LLM.chat import chat_response
+from RL.LLM.round_fit import round_fit
 from RL.Agent import Agent, AgentConfig
 from global_models.global_models import *
+from RL.LLM.reward_decoder import RewardDecoder
 
 class Config:
     def __init__(self):
@@ -74,6 +76,10 @@ class Server:
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager()
         self.stds = np.zeros(self.config.save_std_freq)
+        self.round_fit = round_fit(3)
+        self.reward_decoder = RewardDecoder(8)
+        self.episode_accs = []
+        
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
@@ -99,7 +105,7 @@ class Server:
             self.jobs_model_size[i] = self.jobs[i]["model_size"]
             self.jobs_finish[i] = False
         self.buffer = ReplayBuffer(device=device)
-        
+    
     def clear_connections(self):
         """Release all current connections."""
         with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
@@ -107,6 +113,12 @@ class Server:
             log.write("\n")
             
         with self.lock:
+            if self.episode_length < self.config.max_episode_length:
+                practice_length = self.episode_length
+            else:
+                episode_accs_np = np.array(self.episode_accs, astype=np.float32)
+                self.round_fit.train(episode_accs_np)
+                practice_length = self.round_fit.get_prob_length(self.jobs_goal)
             self.episode_length = 0
             absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
             absorbing_action = np.zeros(2)
@@ -121,14 +133,21 @@ class Server:
                 absorbing_reward, 
                 absorbing_done
             )
+            self.reward_decoder.train(
+                practice_length, 
+                self.config.max_episode_length, 
+                250, self.buffer.average_sub_rewards, self.buffer.episode_length)
             self.done = False
             self.buffer.save_data()
             self.agent.save_model()
+            self.reward_decoder.save_model()
+            self.episode_accs = []
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
                 binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
                 context.write(binary_round)
             self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
             self.current_round_all_params = []
+            self.round_fit = round_fit(3)
             # self.clients.clear()
             self.global_models_manager = globel_models_manager()
             for i in range(len(self.jobs)):
@@ -278,7 +297,7 @@ class Server:
                         self.global_models_manager.reset_models(i, np.array(current_round_update[i]))
 
         accs = self.global_models_manager.test()
-        
+        self.episode_accs.append(np.array(accs, dtype=np.float32))
         temp_goal_sub = self.jobs_goal_sub.copy()
         
         for i in range(len(self.jobs)):
@@ -333,29 +352,34 @@ class Server:
             part_time = self.round_time[part_mask]
             if len(part_time) == 0:
                 std = -1
-                self.round_rewards[:, 0] = -2
-                self.round_rewards[:, 1] = -2
             else:
                 if self.global_round > 0 \
                     and self.global_round % self.config.round_time_plot_freq == 0:
                         plot(self.round_time_part, self.global_round)
-                self.round_rewards = reward_function(
-                    self.round_time, 
-                    self.round_time_part, 
-                    self.acc_array,
-                    self.jobs_goal - self.jobs_goal_sub,
-                    self.jobs_goal,
-                    self.remain_time,
-                    self.clients_part,
-                    self.clients_jobs,
-                    self.clients_band_width_origin
-                )
             #     mean_time = np.mean(part_time)
             #     individual_impacts = (part_time - mean_time) ** 2
             #     individual_rewards = -individual_impacts
             #     # self.rewards[part_indices, 1] = individual_rewards
             #     self.trans_rewards[part_indices] = individual_rewards
                 std = np.std(part_time)
+
+        sub_rewards = reward_function(
+            self.round_time, 
+            self.round_time_part, 
+            self.acc_array,
+            self.jobs_goal - self.jobs_goal_sub,
+            self.jobs_goal,
+            self.remain_time,
+            self.clients_part,
+            self.clients_jobs,
+            self.clients_band_width_origin
+        )
+        train_rewards = sub_rewards[:, 0:8]
+        self.round_rewards[:, 1] = sub_rewards[:, 8]
+        self.buffer.add_average_sub_rewards(np.mean(train_rewards, axis=0))
+        self.round_rewards[:, 0] = self.reward_decoder.get_dense_rewards(
+            torch.tensor(train_rewards, dtype=torch.float32)
+        ).numpy()
         
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         
