@@ -33,6 +33,13 @@ class Actor(nn.Module):
         self.l_mean = nn.Linear(hidden_dim, 1)
         self.l_std = nn.Linear(hidden_dim, 1) 
 
+        nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))  # 正交初始化 + ReLU兼容
+        nn.init.constant_(self.l1.bias, 0.0)
+        nn.init.uniform_(self.l_mean.weight, -1e-3, 1e-3)
+        nn.init.constant_(self.l_mean.bias, 0.0)
+        nn.init.constant_(self.l_std.weight, 0.0)
+        nn.init.constant_(self.l_std.bias, -1.0)
+
     def forward(self, x):
         # Input x: (bsz, 3), 
         # Ιnclude ti, model_size, T_remain.
@@ -48,9 +55,8 @@ class Actor(nn.Module):
         normal_sample = dist.rsample()
         log_prob = dist.log_prob(normal_sample)
         action = (torch.tanh(normal_sample) + 1) / 2
-        action = action.clamp(min=1e-4, max=1.0 - 1e-4)
+        action = action.clamp(min=5e-3, max=1.0 - 5e-3)
         log_prob -= torch.log(1 - action.pow(2) + 1e-7)
-        
         return action, log_prob
 
 class QValueNet(nn.Module):
@@ -63,7 +69,13 @@ class QValueNet(nn.Module):
         self.l1 = nn.Linear(3 + 1, (hidden_dim) * 2) 
         self.l2 = nn.Linear((hidden_dim) * 2, hidden_dim)
         self.l3 = nn.Linear(hidden_dim, 1)
-        
+        for layer in [self.l1, self.l2]:
+            nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
+            nn.init.constant_(layer.bias, 0.0)
+
+        nn.init.uniform_(self.l3.weight, -1e-3, 1e-3)
+        nn.init.constant_(self.l3.bias, 0.0)   
+     
     def forward(self, state, action):
         # action.unsqueeze(-1)
         # print("1111111111111")
