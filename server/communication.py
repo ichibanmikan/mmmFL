@@ -228,7 +228,7 @@ class ServerHandler():
                     # self.server.local_train_barrier.wait()
                 reward[0] = self.server.round_rewards[self.client_id][0]
                 reward[1] = self.server.round_rewards[self.client_id][1]
-                print(f"Node {self.client_id} has reward: ", reward)
+                print(f"Node {self.client_id} has rewards: ", reward)
                 
                 time_remain = np.array([self.time_remain / self.server.config.max_participant_time])
                 one_epoch_time = (self.one_epoch_time - self.one_epoch_time.mean())\

@@ -51,7 +51,7 @@ Size of the model parameters (in MB) associated with the tasks client i is expec
         self.Action = """ 
     
 # Action
-I hope you can, based on the above background, create a function that calculates the sub-rewards for the task assignment policy and the reward for bandwidth allocation for the hierarchical reinforcement learning described.
+I hope you can, based on the above background, create a function that calculates the sub-rewards for the task assignment policy and the comprehensive reward for bandwidth allocation for the hierarchical reinforcement learning described.
 
 The following observational variables are provided for the current training round:
 
@@ -88,7 +88,7 @@ The following observational variables are provided for the current training roun
 2. Bandwidth allocation table (shape: M)
    Low-level policy output governing resource distribution across clients.
 
-I would like you to help me generate a function that calculates a set of 8 sub-rewards for the task assignment policy and a reward for bandwidth allocation. This set of sub-rewards includes factors such as the improvement in a client's accuracy, its impact on system stability, its effect on the training duration per round, some potential benefits, and other factors you select based on the input observations and action decisions.
+I would like you to help me generate a function that calculates a set of 8 sub-rewards for the task assignment policy and a comprehensive reward for bandwidth allocation. This set of sub-rewards includes factors such as the improvement in a client's accuracy, its impact on system stability, its effect on the training duration per round, some potential benefits, and other factors you select based on the input observations and action decisions. Additionally, you should comprehensively consider 2-4 factors as sub-rewards for the bandwidth allocation policy. For instance, 1. the impact of client i on the standard deviation of the current round's duration (penalize if a task is significantly longer or shorter than others), 2. the impact of the current round's bandwidth allocation ratio on the remaining duration of client i, and merge these sub-rewards into a final comprehensive reward.These sub-rewards should then be combined into a single, unified comprehensive reward.
 
 **Notes:**
 1. You must input all of them into the function you generate (even if you don't need them), and your function can select all or part of these inputs to calculate the sub-rewards.
@@ -113,7 +113,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
     """
     
@@ -138,7 +138,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
         """
         self.func = func
@@ -173,7 +173,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
     """
     

@@ -20,11 +20,11 @@ class round_fit:
         
     def train(self, accs):
         self.optimizer.zero_grad()
-        pred = self.model(accs)
-        labels = torch.arange(1, len(accs)).float().to(self.model.device)
+        pred = self.model(accs).squeeze(-1)
+        labels = torch.arange(1, len(accs) + 1).float().to(self.model.device)
         loss = self.loss(pred, labels)
         loss.backward()
         self.optimizer.step()
     
     def get_prob_length(self, x):
-        return torch.round(self.model(x)).cpu().numpy()
+        return torch.round(self.model(x)).detach().cpu().numpy()

@@ -116,7 +116,7 @@ class Server:
             if self.episode_length < self.config.max_episode_length:
                 practice_length = self.episode_length
             else:
-                episode_accs_np = np.array(self.episode_accs, astype=np.float32)
+                episode_accs_np = np.array(self.episode_accs, dtype=np.float32)
                 self.round_fit.train(episode_accs_np)
                 practice_length = self.round_fit.get_prob_length(self.jobs_goal)
             self.episode_length = 0
@@ -133,10 +133,11 @@ class Server:
                 absorbing_reward, 
                 absorbing_done
             )
+            average_sub_rewards = np.array(self.buffer.average_sub_rewards, dtype=np.float32)
             self.reward_decoder.train(
                 practice_length, 
                 self.config.max_episode_length, 
-                250, self.buffer.average_sub_rewards, self.buffer.episode_length)
+                250, average_sub_rewards, self.buffer.episode_length)
             self.done = False
             self.buffer.save_data()
             self.agent.save_model()
@@ -374,13 +375,18 @@ class Server:
             self.clients_jobs,
             self.clients_band_width_origin
         )
+        sub_rewards = np.array(sub_rewards, dtype = np.float32)
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), './sub_rewards.log'), 'a') as s:
+            s.write(np.array2string(sub_rewards))
+            s.write("A new round")
+            s.write('\n')
         train_rewards = sub_rewards[:, 0:8]
         self.round_rewards[:, 1] = sub_rewards[:, 8]
-        self.buffer.add_average_sub_rewards(np.mean(train_rewards, axis=0))
+        asr = np.mean(train_rewards, axis=0)
+        self.buffer.add_average_sub_rewards(asr)
         self.round_rewards[:, 0] = self.reward_decoder.get_dense_rewards(
             torch.tensor(train_rewards, dtype=torch.float32)
-        ).numpy()
-        
+        ).squeeze(-1).detach().cpu().numpy()
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         
         self.is_done()
