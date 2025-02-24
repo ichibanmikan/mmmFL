@@ -113,7 +113,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
     """
     
@@ -138,7 +138,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
         """
         self.func = func
@@ -168,12 +168,11 @@ The comprehensive reward calculation function generated in this round takes into
         
       self.Expectation = """
 
-# Expectation
 Please think step by step and generate content in the following JSON format (replace the content inside the () with your answer). Please do not use Python's triple quotes in the JSON string in your answers. Use double quotes "" instead.
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
     """
     
