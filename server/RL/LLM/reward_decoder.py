@@ -15,14 +15,14 @@ class reward_decoder_model(nn.Module):
         self.model = nn.Linear(input_dim, output_dim)
         self.device = device
         self.to(device)
-        nn.init.constant_(self.model.weight, 1.0)
+        nn.init.constant_(self.model.weight, 0.25)
         nn.init.constant_(self.model.bias, 1e-4)
 
     def forward(self, x):
         if not torch.is_tensor(x):
             x = torch.tensor(x, dtype=torch.float32)
         x = x.to(self.device)
-        return torch.round(self.model(x))
+        return self.model(x)
     
     # def save_model(self):
     #     torch.save({'RewardDecoder': self.state_dict()}, self.path,)
