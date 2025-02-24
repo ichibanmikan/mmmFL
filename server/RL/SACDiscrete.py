@@ -12,6 +12,12 @@ class Actor(nn.Module):
         # (bsz, 3N + 1) @ (3N + 1, hidden_width)
         self.l2 = nn.Linear(hidden_width, action_width) 
         # (bsz, hidden_width) @ (hidden_width, 4)
+        
+        nn.init.kaiming_normal_(self.l1.weight, mode='fan_in', nonlinearity='relu')
+        nn.init.constant_(self.l1.bias, 0.0)
+        nn.init.uniform_(self.l2.weight, -1e-3, 1e-3)
+        nn.init.constant_(self.l2.bias, 0.0)
+        
     def forward(self, x):
         x = F.relu(self.l1(x))
         return F.softmax(self.l2(x), dim = -1)
@@ -25,6 +31,11 @@ class QValueNet(nn.Module):
         # (bsz, 3 * N + 1) @ (3 * N + 1, h_d)
         self.l2 = nn.Linear(hidden_width, action_width)
         # (bsz, h_d) @ (h_d, 4)
+        
+        nn.init.kaiming_normal_(self.l1.weight, mode='fan_in', nonlinearity='relu')
+        nn.init.constant_(self.l1.bias, 0.0)
+        nn.init.uniform_(self.l2.weight, -1e-3, 1e-3)
+        nn.init.constant_(self.l2.bias, 0.0)
 
     def forward(self, state):  
         # state: (bsz, 3 * N + 1) 
