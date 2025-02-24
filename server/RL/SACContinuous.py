@@ -33,7 +33,7 @@ class Actor(nn.Module):
         self.l_mean = nn.Linear(hidden_dim, 1)
         self.l_std = nn.Linear(hidden_dim, 1) 
 
-        nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))  # 正交初始化 + ReLU兼容
+        nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))
         nn.init.constant_(self.l1.bias, 0.0)
         nn.init.uniform_(self.l_mean.weight, -1e-3, 1e-3)
         nn.init.constant_(self.l_mean.bias, 0.0)
