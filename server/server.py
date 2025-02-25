@@ -62,6 +62,7 @@ class Server:
     def __init__(self, config):
         self.config = config
         self.done = False
+        self.history_data = {}
         # self.clients = {}
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
             self.jobs = json.load(job_json)["Jobs"]
@@ -120,6 +121,7 @@ class Server:
                 self.round_fit.train(episode_accs_np)
                 practice_length = self.round_fit.get_prob_length(self.jobs_goal)
             self.episode_length = 0
+            self.history_data = {}
             absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
             absorbing_action = np.zeros(2)
             absorbing_reward = np.zeros(2)
@@ -365,6 +367,7 @@ class Server:
                 std = np.std(part_time)
 
         sub_rewards = reward_function(
+            self,
             self.round_time, 
             self.round_time_part, 
             self.acc_array,

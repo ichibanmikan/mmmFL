@@ -53,7 +53,10 @@ Size of the model parameters (in MB) associated with the tasks client i is expec
 # Action
 I hope you can, based on the above background, create a function that calculates the sub-rewards for the task assignment policy and the comprehensive reward for bandwidth allocation for the hierarchical reinforcement learning described.
 
-The following observational variables are provided for the current training round:
+The following variables are provided for the current training round:
+
+**server: **
+1. server is an instance of a class that contains a variable history_data, which is initially initialized as an empty dictionary (history_data = {}). You can store any useful information in this dictionary, such as each client's historical data, participation rounds, and the current communication round of federated learning.
 
 **Observational Set:**
 
@@ -97,7 +100,8 @@ I would like you to help me generate a function that calculates a set of 8 sub-r
 4. A small subset of clients may experience missing modality data or labels. Decisions regarding their inclusion in a given task should be based on metrics such as loss performance or their reputation on that task (e.g., whether their participation consistently leads to a decline in test accuracy).
 5. The data distribution among clients may be imbalanced, with each client potentially containing data corresponding to only one or a few label classes. Efforts should be made to equalize the frequency of participation of these clients.
 6. The Active client participation table (Observational Set[7]) may be entirely False. Even if it is not entirely False, the sum of Per-client transmission & training times (Observational Set[2]) may still be 0, as some clients may be unable to participate in this training round due to insufficient remaining time or other reasons. Pay attention to boundary condition checks for the function inputs.
-7. Considering 6., make sure to avoid NaN values in the function calculations. Also, ensure that each generated sub-reward does not contain NaN!
+7. During training, there may be slight fluctuations in accuracy. A minor decrease in accuracy does not necessarily indicate that the data from the participating clients is unreliable. You can use server.history_data{} to store each client's historical data, participation rounds, and the current communication round of federated learning. This server.history_data is an empty dictionary.
+8. Considering 6., make sure to avoid NaN values in the function calculations. Also, ensure that each generated sub-reward does not contain NaN!
         """
         self.Purpose = """ 
 
@@ -113,7 +117,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(server, from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return reward_array (reward_array: A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively)`. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
     """
     
@@ -138,7 +142,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(server, from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return reward_array (reward_array: A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively)`. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
         """
         self.func = func
@@ -172,7 +176,7 @@ Please think step by step and generate content in the following JSON format (rep
 {
   "Understand": (Your understanding of this task),  
   "Analyze": (Step-by-step analysis of which inputs can reflect potential positive and negative rewards),  
-  "Functions": (A Python function in the form of `def reward_function(from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return [A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively]. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
+  "Functions": (A Python function in the form of `def reward_function(server, from Observational Set[1] to Observational Set[7], Action Decisions[1], Action Decisions[2]): ... return reward_array (reward_array: A numpy array reward_array, with shape (M, 9) -1 < for each r in reward_array[0-7] < 1 represent the sub-rewards for task assignment policy and reward_array[8] represents the comprehensive reward for bandwidth allocation policy for client i, respectively)`. Please do not use Python's triple quotes, as it will cause JSON errors. Use a single line of double quotes "" to wrap the function you generate.)
 }
     """
     
