@@ -46,7 +46,7 @@ def plot(time_table,
         ax.barh(client['name'], client['end']-client['s2'], left=client['s2'], color=colors[2])
 
     ax.set_xlabel('Time', fontsize=14)
-    ax.set_title(f'Client Time Distribution in Episode {round}', fontsize=16)
+    ax.set_title(f'Client Time Distribution in Round {round}', fontsize=16)
 
     max_time = max(client['end'] for client in valid_clients)
     
