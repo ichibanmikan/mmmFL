@@ -278,8 +278,6 @@ class ac_set(Dataset):
 class AC:
     def __init__(self, device):
         self.model = My3Model(11)
-        for param in self.model.parameters():
-            nn.init.zeros_(param)
         self.model = self.model.to(device)
         self.test_loader = DataLoader(ac_set(), batch_size=16, num_workers=16)
         self.Tester = Tester(self.model, self.test_loader, device=device)

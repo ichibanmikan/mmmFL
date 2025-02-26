@@ -332,8 +332,6 @@ class Mhad_set(Dataset):
 class MHAD:
     def __init__(self, device):
         self.model = MyMMModel(11)  
-        for param in self.model.parameters():
-            nn.init.zeros_(param)    
         self.model = self.model.to(device)
         self.test_loader = DataLoader(Mhad_set(), batch_size=16, num_workers=16)
         self.Tester = Tester(self.model, self.test_loader, device)
