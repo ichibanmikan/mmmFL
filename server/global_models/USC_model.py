@@ -128,8 +128,6 @@ class USC:
     def __init__(self, device):
         self.now_loss = 999
         self.model = MMModel(1, 12)      
-        for param in self.model.parameters():
-            nn.init.zeros_(param)
         self.device = device
         self.model = self.model.to(device)
         

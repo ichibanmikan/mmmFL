@@ -239,8 +239,6 @@ class FLASH_set(Dataset):
 class FLASH:
     def __init__(self, device):
         self.model = My3Model(64)
-        for param in self.model.parameters():
-            nn.init.zeros_(param)
         self.model = self.model.to(device)
         self.test_loader = DataLoader(FLASH_set(), batch_size=16, num_workers=16)
         self.Tester = Tester(self.model, test_loader=self.test_loader, device=device)

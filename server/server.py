@@ -54,9 +54,25 @@ class Config:
             'target_entropy': config.getint('RL_low_agent', 'target_entropy'),
             'gamma': config.getfloat('RL_low_agent', 'gamma')
         }   
+        
+def set_all_seeds(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    if torch.backends.mps.is_available():
+        torch.mps.manual_seed(seed)
+    torch.set_default_dtype(torch.float32)
+    g = torch.Generator()
+    g.manual_seed(seed)
+    torch.set_rng_state(g.get_state())
+    
 class Server:
     def __init__(self, config):
         self.config = config
+        set_all_seeds(54321)
         self.done = False
         # self.clients = {}
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
@@ -98,6 +114,7 @@ class Server:
         with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
             log.write(f"Episode is end, length is {self.episode_length}\n")
             log.write("\n")
+        set_all_seeds(54321)
         with self.lock:
             self.episode_length = 0
             absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
