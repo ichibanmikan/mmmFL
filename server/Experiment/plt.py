@@ -3,13 +3,22 @@ import numpy as np
 import os
 import matplotlib.patches as patches
 
+count = 0
+times = []
+
 def plot(time_table, 
          round, 
          output_dir = os.path.join(os.path.dirname(__file__), 'client_graph')
          ):
-
     os.makedirs(output_dir, exist_ok=True)
-
+    global count, times
+    count += 1
+    times.append(time_table)
+    if count % 100 == 0:
+        times = np.array(times).reshape(100, 60)
+        with open(os.path.join(output_dir, 'times.csv'), 'a') as f:
+            np.savetxt(f, times, delimiter=",", fmt="%.6f")
+        times = []
     valid_clients = []
     for i in range(time_table.shape[0]):
         t0 = time_table[i, 0]
