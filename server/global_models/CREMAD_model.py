@@ -276,6 +276,8 @@ class CREMADSet(Dataset):
 class CREMAD:
     def __init__(self, device):
         self.model = MMActionClassifier(num_classes=6)
+        for param in self.model.parameters():
+            nn.init.zeros_(param)
         self.model = self.model.to(device)
         self.test_loader = \
             DataLoader(CREMADSet('/home/chenxu/codes/ichibanFATE/server/test_datasets/CREMAD'), \
