@@ -61,10 +61,12 @@ def plot(time_table,
     
     if max_time > 100 and max_time <= 500:
         ax.set_xticks(np.arange(0, max_time + 50, 50))
-    elif max_time > 500:
+    elif max_time > 500 and max_time <= 1000:
         ax.set_xticks(np.arange(0, max_time + 50, 100))
-    elif max_time > 1000:
+    elif max_time > 1000 and max_time <= 5000:
         ax.set_xticks(np.arange(0, max_time + 50, 250))
+    elif max_time > 5000:
+        ax.set_xticks(np.arange(0, max_time + 100, 1000))
     else:
         ax.set_xticks(np.arange(0, max_time + 5, 5))
 
