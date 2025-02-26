@@ -57,10 +57,26 @@ class Config:
             'tau': config.getfloat('RL_low_agent', 'tau'),
             'target_entropy': config.getint('RL_low_agent', 'target_entropy'),
             'gamma': config.getfloat('RL_low_agent', 'gamma')
-        }   
+        }  
+
+def set_all_seeds(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    if torch.backends.mps.is_available():
+        torch.mps.manual_seed(seed)
+    torch.set_default_dtype(torch.float32)
+    g = torch.Generator()
+    g.manual_seed(seed)
+    torch.set_rng_state(g.get_state())    
+ 
 class Server:
     def __init__(self, config):
         self.config = config
+        set_all_seeds(54321)
         self.done = False
         self.history_data = {}
         # self.clients = {}
@@ -112,7 +128,7 @@ class Server:
         with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
             log.write(f"Episode is end, length is {self.episode_length}\n")
             log.write("\n")
-            
+        set_all_seeds(54321)
         with self.lock:
             if self.episode_length < self.config.max_episode_length:
                 practice_length = self.episode_length

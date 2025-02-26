@@ -72,7 +72,6 @@ class SACDiscrete:
         self.tau = tau
         self.device = device
         self.model_path = model_path
-        self.epochs = 0
         if os.path.exists(model_path):
             print(f"Loading model from {self.model_path}...")
             self.load_model()
@@ -81,11 +80,6 @@ class SACDiscrete:
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
             
     def take_action(self, state, take_next = False):
-        if take_next == False:
-            self.epochs += 1
-        # print("state shape is: ", state.shape)
-        if self.epochs <= 50:
-            return random.randint(0, 3)
         state = torch.tensor(state, dtype=torch.float).to(self.device)
         probs = self.actor(state)
         probs = torch.clamp(probs, min=1e-8)
@@ -183,7 +177,6 @@ class SACDiscrete:
             'critic_2_optimizer_state_dict': self.critic_2_optimizer.state_dict(),
             'log_alpha': self.log_alpha,
             'log_alpha_optimizer_state_dict': self.log_alpha_optimizer.state_dict(),
-            'epochs': self.epochs
         }, self.model_path)
         print(f"Model saved to {self.model_path}")
 
@@ -205,5 +198,4 @@ class SACDiscrete:
         self.log_alpha_optimizer.load_state_dict(
             checkpoint['log_alpha_optimizer_state_dict']
         )
-        self.epochs = checkpoint['epochs']
         print(f"Model loaded from {self.model_path}")

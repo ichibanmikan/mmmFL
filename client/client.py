@@ -34,7 +34,7 @@ def set_all_seeds(seed=42):
     torch.backends.cudnn.benchmark = False
     if torch.backends.mps.is_available():
         torch.mps.manual_seed(seed)
-    torch.set_default_tensor_type(torch.FloatTensor)
+    torch.set_default_dtype(torch.float32)
     g = torch.Generator()
     g.manual_seed(seed)
     torch.set_rng_state(g.get_state())
