@@ -76,7 +76,7 @@ def set_all_seeds(seed=42):
 class Server:
     def __init__(self, config):
         self.config = config
-        set_all_seeds(54321)
+        set_all_seeds(42)
         self.done = False
         self.history_data = {}
         # self.clients = {}
@@ -93,7 +93,6 @@ class Server:
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager()
         self.stds = np.zeros(self.config.save_std_freq)
-        self.round_fit = round_fit(3)
         self.reward_decoder = RewardDecoder(8)
         self.episode_accs = []
         
@@ -130,12 +129,15 @@ class Server:
             log.write("\n")
         set_all_seeds(54321)
         with self.lock:
-            if self.episode_length < self.config.max_episode_length:
+            if self.episode_length <= self.config.max_episode_length:
                 practice_length = self.episode_length
             else:
                 episode_accs_np = np.array(self.episode_accs, dtype=np.float32)
-                self.round_fit.train(episode_accs_np)
-                practice_length = self.round_fit.get_prob_length(self.jobs_goal)
+                # round_fit.train(episode_accs_np)
+                rf = round_fit(episode_accs_np, np.arange(1, len(episode_accs_np) + 1))
+                practice_length = rf.get_prob_length(self.jobs_goal)
+                if(practice_length <= self.config.max_episode_length):
+                    practice_length = 655 # e * (M - T) + T
             self.episode_length = 0
             self.history_data = {}
             absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
@@ -155,7 +157,7 @@ class Server:
             self.reward_decoder.train(
                 practice_length, 
                 self.config.max_episode_length, 
-                250, average_sub_rewards, self.buffer.episode_length)
+                350, average_sub_rewards, self.buffer.episode_length)
             self.done = False
             self.buffer.save_data()
             self.agent.save_model()
@@ -166,7 +168,6 @@ class Server:
                 context.write(binary_round)
             self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
             self.current_round_all_params = []
-            self.round_fit = round_fit(3)
             # self.clients.clear()
             self.global_models_manager = globel_models_manager()
             for i in range(len(self.jobs)):

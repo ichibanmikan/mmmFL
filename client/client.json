@@ -6,7 +6,7 @@
     "self": {
         "client_name": "client0"
     },
-    "random_seed": 54321,
+    "random_seed": 42,
     "datasets": [
         {
             "dataset_name": "CREMAD",
