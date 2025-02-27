@@ -396,10 +396,6 @@ class Server:
             self.clients_band_width_origin
         )
         sub_rewards = np.array(sub_rewards, dtype = np.float32)
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), './sub_rewards.log'), 'a') as s:
-            s.write(np.array2string(sub_rewards))
-            s.write("A new round")
-            s.write('\n')
         train_rewards = sub_rewards[:, 0:8]
         self.round_rewards[:, 1] = sub_rewards[:, 8]
         asr = np.mean(train_rewards, axis=0)
