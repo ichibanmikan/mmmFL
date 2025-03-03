@@ -55,7 +55,7 @@ class Actor(nn.Module):
         normal_sample = dist.rsample()
         log_prob = dist.log_prob(normal_sample)
         action = (torch.tanh(normal_sample) + 1) / 2
-        action = action.clamp(min=5e-3, max=1.0 - 5e-3)
+        action = action.clamp(min=0.05, max=0.95)
         log_prob -= torch.log(1 - action.pow(2) + 1e-7)
         return action, log_prob
 

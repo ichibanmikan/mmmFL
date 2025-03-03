@@ -90,9 +90,9 @@ class MMActionClassifier(nn.Module):
         num_classes: int=4,       # Number of classes 
         audio_input_dim: int=80,   # Audio feature input dim
         video_input_dim: int=1280,   # Frame-wise video feature input dim
-        d_hid: int=128,         # Hidden Layer size
-        n_filters: int=32,      # number of filters
-        d_head: int=6           # Head dim
+        d_hid: int=512,         # Hidden Layer size
+        n_filters: int=128,      # number of filters
+        d_head: int=16           # Head dim
     ):
         super(MMActionClassifier, self).__init__()
         self.dropout_p = 0
