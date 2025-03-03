@@ -118,16 +118,9 @@ class DataFactory:
         self.dataset = DataSet(data_dir)
         self.config = config
     def get_dataloader(self):
-        train_size = int(0.8 * len(self.dataset))  # 80% 
-        val_size = len(self.dataset) - train_size  # 20% 
-        train_dataset, val_dataset = \
-            random_split(self.dataset, [train_size, val_size])
-
         train_loader = DataLoader(
-            train_dataset, batch_size=self.config.batch_size, shuffle=True
+            self.dataset, batch_size=self.config.batch_size, shuffle=True
         )
-        val_loader = DataLoader(
-            val_dataset, batch_size=self.config.batch_size, shuffle=False
-        )
+
         
-        return train_loader, val_loader
+        return train_loader

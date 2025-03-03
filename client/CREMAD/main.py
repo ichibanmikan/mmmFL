@@ -57,10 +57,9 @@ class CREMAD_main:
             os.path.dirname(os.path.abspath(__file__)), \
                 'datasets/nodesets/node_'+f"{node_id}/"), self.config
             )
-        train_loader, valid_loader = df.get_dataloader()
+        train_loader = df.get_dataloader()
         self.node_id = node_id
-        self.tr = Trainer(self.config, self.model, train_loader, \
-            valid_loader, device)
+        self.tr = Trainer(self.config, self.model, train_loader, device)
         
     def main(self):
         self.now_loss, acc = self.tr.train()

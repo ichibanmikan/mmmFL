@@ -2,7 +2,7 @@
     "Jobs": [
         {
             "name": "CREMAD",
-            "acc_goal": 57,
+            "acc_goal": 63,
             "model_size": 27875744
         },    
         {
