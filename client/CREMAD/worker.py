@@ -19,7 +19,7 @@ from CREMAD.train_tools import *
 from CREMAD.data import *
 
 class Trainer:
-    def __init__(self, config, model, train_loader, valid_loader, device):
+    def __init__(self, config, model, train_loader, device):
         self.config = config
         self.device = device
         self.model = model
@@ -65,7 +65,7 @@ class Trainer:
             batch_time.update(time.time() - end)
             end = time.time()
         print("loss: %f", loss.item())
-        return losses.avg
+        return losses.avg, acc[0]
     
     def train(self):
         record_loss = np.zeros(self.config.epochs)
@@ -74,18 +74,16 @@ class Trainer:
         self.model.train()
         for epoch in range(0, self.config.epochs):
             self.now_epoch += 1
-            # self.train_tools.adjust_learning_rate(self.now_epoch)
+            self.train_tools.adjust_learning_rate(self.now_epoch)
             time1 = time.time()
-            loss = self.every_epoch_train()
+            loss, acc = self.every_epoch_train()
             time2 = time.time()
             print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
             record_loss[epoch] = loss
             # evaluation
-            self.model.eval()
-            loss, val_acc, _ = self.validater.validate()
-            record_acc[epoch] = val_acc
-            if val_acc > self.best_acc:
-                self.best_acc = val_acc
+            record_acc[epoch] = acc
+            if acc > self.best_acc:
+                self.best_acc = acc
             self.model.train()
         # print(record_acc)
         return record_loss[self.config.epochs - 1], record_acc[self.config.epochs - 1]
@@ -94,7 +92,7 @@ class Trainer:
         self.model.to(self.device)
         self.model.train()
         time1 = time.time()
-        loss = self.every_epoch_train()
+        loss, _ = self.every_epoch_train()
         time2 = time.time()
         return time2 - time1, loss
     

@@ -67,8 +67,8 @@ class train_tools:
 
     
     def adjust_learning_rate(self, epoch):
-        if epoch >= 75 :
-            epc = epoch - 74
+        if epoch >= 45 :
+            epc = epoch - 44
             lr = self.config.learning_rate
             eta_min = lr * (self.config.lr_decay_rate ** 3)
             lr = eta_min + (lr - eta_min) * (

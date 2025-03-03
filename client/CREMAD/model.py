@@ -9,23 +9,34 @@ class Conv1dEncoder(nn.Module):
     def __init__(self, input_dim: int, n_filters: int, dropout: float=0.1):
         super().__init__()
         self.convs = nn.Sequential(
-            nn.Conv1d(input_dim, n_filters, kernel_size=3, padding=1),
+            nn.Conv1d(input_dim, n_filters, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.Conv1d(n_filters, n_filters*2, kernel_size=3, padding=1),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(dropout),
+            nn.Conv1d(n_filters, n_filters*2, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.Conv1d(n_filters*2, n_filters*4, kernel_size=3, padding=1),
-            nn.ReLU()
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(dropout),
+            nn.Conv1d(n_filters*2, n_filters*4, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.Dropout(dropout)
         )
-        self.residual = nn.Conv1d(input_dim, n_filters*4, kernel_size=1)
-        self.pooling = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.dropout = nn.Dropout(dropout)
+        self.residual = nn.Sequential(
+            nn.Conv1d(input_dim, n_filters*4, kernel_size=1),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.MaxPool1d(kernel_size=2, stride=2),
+            nn.MaxPool1d(kernel_size=2, stride=2)
+        )
+        # self.pooling = nn.MaxPool1d(kernel_size=2, stride=2)
+        # self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         x = x.float().permute(0, 2, 1)
         residual = self.residual(x)
         x = self.convs(x) + residual
-        x = self.pooling(x)
-        x = self.dropout(x)
+        # x = self.pooling(x)
+        # x = self.dropout(x)
         x = x.permute(0, 2, 1)
         return x
 
@@ -37,9 +48,9 @@ class FuseBaseSelfAttention(nn.Module):
         d_head: int=4
     ):
         super().__init__()
-        self.att_fc1 = nn.Linear(d_hid*2, d_hid*4)
+        self.att_fc1 = nn.Linear(d_hid*2, 512)
         self.att_pool = nn.Tanh()
-        self.att_fc2 = nn.Linear(d_hid*4, d_head)
+        self.att_fc2 = nn.Linear(512, d_head)
 
         self.d_hid = d_hid
         self.d_head = d_head
@@ -72,9 +83,9 @@ class MMActionClassifier(nn.Module):
         num_classes: int=4,       # Number of classes 
         audio_input_dim: int=80,   # Audio feature input dim
         video_input_dim: int=1280,   # Frame-wise video feature input dim
-        d_hid: int=256,         # Hidden Layer size
-        n_filters: int=32,      # number of filters
-        d_head: int=8           # Head dim
+        d_hid: int=512,         # Hidden Layer size
+        n_filters: int=128,      # number of filters
+        d_head: int=16           # Head dim
     ):
         super(MMActionClassifier, self).__init__()
         self.dropout_p = 0
