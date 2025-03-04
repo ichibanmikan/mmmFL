@@ -6,11 +6,11 @@ from RL.LLM.prompt import *
 
 class chat_response:
     def __init__(self):
-        self.OPENAI_API_KEY = "sk-wKJ92pVdTpsV4w3U4YjBGGG1vsxdq0OdkpoGnwlrw03T2pTE"
+        self.OPENAI_API_KEY = "sk-p97l94e8as504e0ch92an1g73738e626i58t7"
 
         self.chat_client = openai.OpenAI(
             api_key=self.OPENAI_API_KEY,
-            base_url="https://api.lkeap.cloud.tencent.com/v1",
+            base_url="https://api.deepseek.com",
         )
         
         self.prompt_reward = Prompt_reward()
@@ -58,7 +58,7 @@ class chat_response:
     def generate_func(self):
         try:
             response = self.chat_client.chat.completions.create(
-                model="deepseek-r1",
+                model="deepseek-reasoner",
                 messages=[{"role": "user", "content": self.prompt_reward.get_context()}],
                 stream=True
             )
@@ -81,7 +81,7 @@ class chat_response:
                     print(f"Syntax Error in generated function: {e}")
                     pr = Prompt_regenerate(str_reward_function, str(e))
                     reresponse = self.chat_client.chat.completions.create(
-                        model="deepseek-r1",
+                        model="deepseek-reasoner",
                         messages=[{"role": "user", "content": pr.get_context()}],
                         stream=True
                     )
@@ -108,7 +108,7 @@ class chat_response:
             reward_function = self.generate_func()
             self.functions.append(reward_function)
         summary = self.chat_client.chat.completions.create(
-            model="deepseek-r1",
+            model="deepseek-reasoner",
             messages=[{"role": "user", "content": self.prompt_reward.get_context()}],
             stream=True
         )
