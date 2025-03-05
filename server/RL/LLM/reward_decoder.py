@@ -15,7 +15,7 @@ class reward_decoder_model(nn.Module):
         self.model = nn.Linear(input_dim, output_dim)
         self.device = device
         self.to(device)
-        nn.init.constant_(self.model.weight, 0.25)
+        nn.init.constant_(self.model.weight, 0.125)
         nn.init.constant_(self.model.bias, 1e-4)
 
     def forward(self, x):
