@@ -154,10 +154,10 @@ class Server:
                 absorbing_done
             )
             average_sub_rewards = np.array(self.buffer.average_sub_rewards, dtype=np.float32)
-            self.reward_decoder.train(
-                practice_length, 
-                self.config.max_episode_length, 
-                350, average_sub_rewards, self.buffer.episode_length)
+            # self.reward_decoder.train(
+            #     practice_length, 
+            #     self.config.max_episode_length, 
+            #     500, average_sub_rewards, self.buffer.episode_length)
             self.done = False
             self.buffer.save_data()
             self.agent.save_model()

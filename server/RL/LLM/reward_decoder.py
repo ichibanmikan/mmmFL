@@ -51,6 +51,7 @@ class RewardDecoder:
             self.load_model()
     
     def episode_reward(self, p, m, t):
+        p = min(p, 100000)
         return -math.log((p - t) / (m - t))
     
     def train(self, practice_length, max_length, min_length, latent_rewards, episode_length):
