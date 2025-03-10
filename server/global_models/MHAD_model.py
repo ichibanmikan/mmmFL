@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -331,7 +332,12 @@ class Mhad_set(Dataset):
 
 class MHAD:
     def __init__(self, device):
-        self.model = MyMMModel(11)  
+        self.model = MyMMModel(11)
+        self.device = device
+        self.load_model(
+            os.path.join(
+                os.path.dirname(
+                    os.path.abspath(__file__)), f'models/{self.get_model_name()}.pth'))
         self.model = self.model.to(device)
         self.test_loader = DataLoader(Mhad_set(), batch_size=16, num_workers=16)
         self.Tester = Tester(self.model, self.test_loader, device)
@@ -392,7 +398,14 @@ class MHAD:
         print('==> Saving...')
 
         torch.save(self.model.cpu().state_dict(), save_file)
-        
+
+    def load_model(self, load_file):
+        if os.path.exists(load_file):
+            print(f'==> Loading model from {load_file}...')
+            self.model.load_state_dict(torch.load(load_file, map_location=self.device), weights_only=True)
+            self.model.to(self.device)
+        else:
+            print(f'==> Model file {load_file} not found. Using initialized model.')        
     def get_model_name(self):
         return "MHAD"
     
