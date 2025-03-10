@@ -169,6 +169,8 @@ class Server:
             self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
             self.current_round_all_params = []
             # self.clients.clear()
+            for i in range(len(self.jobs)):
+                self.global_models_manager.save_model(i)
             self.global_models_manager = globel_models_manager()
             for i in range(len(self.jobs)):
                 self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
@@ -438,7 +440,6 @@ class Server:
             if self.jobs_finish[i] == False and self.jobs_goal_sub[i] <= 0:    
                 self.jobs_goal_sub[i] = 0
                 self.jobs_finish[i] = True
-                self.global_models_manager.save_model(i)
                 
             is_done = is_done and self.jobs_finish[i]
         
