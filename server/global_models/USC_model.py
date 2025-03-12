@@ -205,7 +205,7 @@ class USC:
     def load_model(self, load_file):
         if os.path.exists(load_file):
             print(f'==> Loading model from {load_file}...')
-            self.model.load_state_dict(torch.load(load_file, map_location=self.device), weights_only=True)
+            self.model.load_state_dict(torch.load(load_file, map_location=self.device, weights_only=True))
             self.model.to(self.device)
         else:
             print(f'==> Model file {load_file} not found. Using initialized model.')    
