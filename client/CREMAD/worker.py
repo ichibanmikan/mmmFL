@@ -26,7 +26,6 @@ class Trainer:
         self.criterion = torch.nn.CrossEntropyLoss().to(device)
         self.train_tools = train_tools(self.model, config)
         self.train_loader = train_loader
-        self.validater = Validater(self.model, valid_loader, config, self.criterion, device)
         self.best_acc = -100
         self.now_epoch = 0
         
