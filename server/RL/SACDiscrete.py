@@ -6,12 +6,12 @@ import os
 import random
 
 class Actor(nn.Module):
-    def __init__(self, N, hidden_width = 128, action_width = 4):
+    def __init__(self, N, hidden_width = 128, action_width = 5):
         super(Actor, self).__init__()
         self.l1 = nn.Linear(3 * N + 1, hidden_width) 
         # (bsz, 3N + 1) @ (3N + 1, hidden_width)
         self.l2 = nn.Linear(hidden_width, action_width) 
-        # (bsz, hidden_width) @ (hidden_width, 4)
+        # (bsz, hidden_width) @ (hidden_width, 5)
         
         nn.init.kaiming_normal_(self.l1.weight, mode='fan_in', nonlinearity='relu')
         nn.init.constant_(self.l1.bias, 0.0)

@@ -9,11 +9,19 @@
     "random_seed": 42,
     "datasets": [
         {
-            "dataset_name": "CREMAD",
+            "dataset_name": "HatefulMemes",
             "modalities_num": 2,
             "modalities_name" : [
-                "audio",
-                "video"
+                "text", 
+                "img"
+            ]
+        },
+        {
+            "dataset_name": "CrisisMMD",
+            "modalities_num": 2,
+            "modalities_name" : [
+                "text", 
+                "img"
             ]
         },
         {

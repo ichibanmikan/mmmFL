@@ -110,7 +110,8 @@ class Server:
             device=device
         )
         cr = chat_response()
-        self.reward_function = cr.generate()
+        # self.reward_function = cr.generate()
+        self.reward_function = cr.get_functions()
         exec(self.reward_function, globals())
         self.jobs_goal = np.zeros(len(self.jobs))
         self.jobs_goal_sub = np.zeros(len(self.jobs))

@@ -17,8 +17,10 @@ import numpy as np
 from global_models.MHAD_model import MHAD
 from global_models.AC_model import AC
 from global_models.CREMAD_model import CREMAD
+from global_models.CrisisMMD_model import CrisisMMD
 from global_models.USC_model import USC
 from global_models.FLASH_model import FLASH
+from global_models.HatefulMemes_model import HatefulMemes
 
 class globel_models_manager:
     def __init__(self):
@@ -31,7 +33,8 @@ class globel_models_manager:
         else:
             device = torch.device("cpu")
         
-        self.models.append(CREMAD(device))
+        self.models.append(HatefulMemes(device))
+        self.models.append(CrisisMMD(device))
         self.models.append(MHAD(device))
         self.models.append(USC(device))
         # self.models.append(FLASH(device))

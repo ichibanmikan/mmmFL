@@ -84,7 +84,7 @@ class ClientHandler():
 
     def handle(self):
         while True:
-            new_round_start_mess = self.recv() #第一次同步，轮次开始
+            new_round_start_mess = self.recv()
             print(new_round_start_mess)
             
             if new_round_start_mess == "This eposide is over":
