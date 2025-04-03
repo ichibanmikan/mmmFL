@@ -21,16 +21,16 @@ class Actor(nn.Module):
     def forward(self, x):
         x = F.relu(self.l1(x))
         return F.softmax(self.l2(x), dim = -1)
-        # (batch_size, 4), means \pai(.|x)
+        # (batch_size, 5), means \pai(.|x)
     #Action a means select job (a - 1) unless a == 0
 
 class QValueNet(nn.Module):
-    def __init__(self, N, hidden_width, action_width = 4):
+    def __init__(self, N, hidden_width, action_width = 5):
         super(QValueNet, self).__init__()
         self.l1 = nn.Linear(3 * N + 1, hidden_width)
         # (bsz, 3 * N + 1) @ (3 * N + 1, h_d)
         self.l2 = nn.Linear(hidden_width, action_width)
-        # (bsz, h_d) @ (h_d, 4)
+        # (bsz, h_d) @ (h_d, 5)
         
         nn.init.kaiming_normal_(self.l1.weight, mode='fan_in', nonlinearity='relu')
         nn.init.constant_(self.l1.bias, 0.0)
@@ -41,7 +41,7 @@ class QValueNet(nn.Module):
         # state: (bsz, 3 * N + 1) 
         state = F.relu(self.l1(state))
         return self.l2(state)
-        # (bsz, 4)
+        # (bsz, 5)
  
 class SACDiscrete:
     def __init__(self, N, hidden_dim,
@@ -90,18 +90,18 @@ class SACDiscrete:
     
     # now state_value
     def calc_target(self, rewards, next_states, dones):
-        next_prob = self.actor(next_states) # (batch_size, 4)
-        next_prob = torch.clamp(next_prob, min=1e-8) # (batch_size, 4)
+        next_prob = self.actor(next_states) # (batch_size, 5)
+        next_prob = torch.clamp(next_prob, min=1e-8) # (batch_size, 5)
         
-        next_log_probs = torch.log(next_prob) # (batch_size, 4)
+        next_log_probs = torch.log(next_prob) # (batch_size, 5)
         
         entropy = -torch.sum(next_prob * next_log_probs, dim = -1, keepdims=True) 
         # (batch_size, 1)
 
         q1 = self.target_critic_1(next_states) 
-        # (batch_size, 4)
+        # (batch_size, 5)
         q2= self.target_critic_2(next_states)
-        # (batch_size, 4)
+        # (batch_size, 5)
         
         min_qvalue = torch.sum(next_prob * torch.min(q1, q2), dim = -1, keepdims=True)
         # (batch_size, 1)
