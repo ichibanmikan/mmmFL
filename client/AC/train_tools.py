@@ -42,13 +42,6 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
-'''作用: 计算模型预测的准确率。支持计算多个 top-k 的准确率，比如 top-1 或 top-5。
-
-output 是模型的输出，通常是未经处理的 logits。
-target 是真实标签。
-topk 指定需要计算的 k 个准确率，例如 topk=(1, 5) 会计算 top-1 和 top-5 准确率。
-函数返回一个列表，包含每个 k 对应的准确率（以百分比表示）。'''
-
 
 class train_tools:
     def __init__(self, model, config):

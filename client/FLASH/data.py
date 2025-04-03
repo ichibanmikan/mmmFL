@@ -4,17 +4,17 @@ import numpy as np
 import torch
 import psutil
 
-# 获取当前进程的内存使用情况
+# 
 def get_memory_usage():
     process = psutil.Process(os.getpid())
     mem = process.memory_info()
-    return mem.rss  # 返回常驻内存集的大小（以字节为单位）
+    return mem.rss  # （）
 # def get_total_size(obj):
 #     if isinstance(obj, (list, tuple)):
 #         return sys.getsizeof(obj) + sum(get_total_size(i) for i in obj)
 #     return sys.getsizeof(obj)
 
-'''modality是一个列表，记录了需要读取的所有的模态数据'''
+'''modality，'''
 
 # class rdata:
 #     def __init__(self, data_dir, modality):
@@ -56,17 +56,17 @@ def get_memory_usage():
 #         if len(data_list_1) > 0:
 #             self.data_1 = np.array(data_list_1, dtype='float')
 #         else:
-#             self.data_1 = np.empty((0,))  # 或者选择其他合适的默认值
+#             self.data_1 = np.empty((0,))  # 
             
 #         if len(data_list_2) > 0:
 #             self.data_2 = np.array(data_list_2, dtype='float')
 #         else:
-#             self.data_2 = np.empty((0,))  # 或者选择其他合适的默认值
+#             self.data_2 = np.empty((0,))  # 
 
 #         if len(data_list_3) > 0:
 #             self.data_3 = np.array(data_list_3, dtype='float')
 #         else:
-#             self.data_3 = np.empty((0,))  # 或者选择其他合适的默认值
+#             self.data_3 = np.empty((0,))  # 
 
 #     # def count_files_in_directory(self, dir_path):
 #     #     return sum(1 for item in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, item)))

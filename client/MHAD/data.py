@@ -4,17 +4,17 @@ import numpy as np
 import torch
 import psutil
 
-# 获取当前进程的内存使用情况
+# 
 def get_memory_usage():
     process = psutil.Process(os.getpid())
     mem = process.memory_info()
-    return mem.rss  # 返回常驻内存集的大小（以字节为单位）
+    return mem.rss  # （）
 # def get_total_size(obj):
 #     if isinstance(obj, (list, tuple)):
 #         return sys.getsizeof(obj) + sum(get_total_size(i) for i in obj)
 #     return sys.getsizeof(obj)
 
-'''modality是一个列表，记录了需要读取的所有的模态数据'''
+'''modality，'''
 class rdata:
     def __init__(self, data_dir):
         self.data_1 = torch.tensor(np.load(os.path.join(data_dir, 'x1.npy')).astype(np.float32))

@@ -75,12 +75,6 @@ class TDNN(nn.Module):
 
         return x
 
-'''
-TDNN（Time Delay Neural Network）:
-    这是一个用于时间序列数据的神经网络模型，用于在输入序列中捕获局部时间上下文信息。
-    在这里，它被用作音频编码器的一部分。
-'''
-
 ## audio input: [bsz, 20, 87]
 class audio_encoder(nn.Module):
     """
@@ -119,10 +113,6 @@ class audio_encoder(nn.Module):
             out = x.reshape(x.size(0), -1)#[bsz, 240]
 
         return out
-'''
-Audio Encoder:
-这个模型使用了一系列的TDNN层来从音频数据中提取特征。每个TDNN层的输出维度逐渐减小，最终通过一个双向GRU层得到最终的音频特征。
-'''
 
 ## depth input: [bsz, 1, 16, 112, 112]
 class depth_encoder(nn.Module):
@@ -273,20 +263,3 @@ class My3Model(nn.Module):
             feature = torch.cat((feature_1, feature_2, feature_3), dim=1)
             output = self.classifier(feature)
         return output
-    
-"""
-Depth Encoder:
-这个模型是用于深度视频数据的编码器。它包含了几个卷积层和最大池化层来提取深度图像的特征，并通过一个双向GRU层得到最终的深度特征。
-Radar Encoder:
-这个模型用于处理雷达数据。它包含了几个卷积层和最大池化层，接着通过一个LSTM层得到最终的雷达数据特征。
-MySingleModel:
-这个模型是单模态的分类器，根据不同的输入模态（音频、深度、雷达）选择相应的编码器。然后通过一个线性层和Softmax函数进行分类。
-Encoder3:
-这个模型是一个多模态编码器，它同时处理音频、深度和雷达数据。通过调用各自的编码器来提取特征，然后将这些特征连接起来。
-My3Model:
-这是一个使用Encoder3作为特征提取器的多模态分类器，它接受三种类型的输入（音频、深度、雷达），提取各自的特征，并将这些特征连接后通过一个线性层和Softmax函数进行分类。
-Encoder2_AD, Encoder2_DR, Encoder2_AR:
-这些模型是用于两种模态输入的编码器，分别对应音频+深度、深度+雷达和音频+雷达。它们分别提取两种输入模态的特征。
-My2Model:
-这是一个使用Encoder2_AD, Encoder2_DR 或 Encoder2_AR作为特征提取器的两种模态分类器，它接受两种类型的输入（根据所选模态组合），提取各自的特征，并将这些特征连接后通过一个线性层和Softmax函数进行分类。
-"""
