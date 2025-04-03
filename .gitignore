@@ -38,6 +38,9 @@ client/USC/datasets
 client/USC/models
 client/USC/.DS_Store
 
+client/CrisisMMD/datasets
+client/HatefulMemes/datasets
+
 client/CREMAD/datasets
 client/CREMAD/test.py
 client/CREMAD_lazyloading/datasets

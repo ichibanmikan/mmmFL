@@ -1,9 +1,14 @@
 {
     "Jobs": [
         {
-            "name": "CREMAD",
-            "acc_goal": 63,
-            "model_size": 27875744
+            "name": "HatefulMemes",
+             "acc_goal": 75,
+             "model_size": 3008784
+        },    
+        {
+             "name": "CrisisMMD",
+             "acc_goal": 75,
+             "model_size": 5009960
         },    
         {
             "name": "MHAD",

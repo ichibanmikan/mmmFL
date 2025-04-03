@@ -17,7 +17,7 @@ class ClientHandler():
         self.send(self.config.node_id) 
 
         response = self.recv()
-        print(f"Server response: {response}") # 发送名字，接受返回
+        print(f"Server response: {response}")
         
         self.send(self.config.datasets)
         modal_mess = self.recv()
@@ -84,7 +84,7 @@ class ClientHandler():
 
     def handle(self):
         while True:
-            new_round_start_mess = self.recv() #第一次同步，轮次开始
+            new_round_start_mess = self.recv()
             print(new_round_start_mess)
             
             if new_round_start_mess == "This eposide is over":
@@ -101,7 +101,7 @@ class ClientHandler():
                 
                 # self.send(end_time - start_time)     
                 
-                train_start_mess = self.recv() #第一次同步，开始训练
+                train_start_mess = self.recv()
                 print(train_start_mess)
                 
                 start_time = time.time()
@@ -121,12 +121,12 @@ class ClientHandler():
                 self.send(one_epoch_loss) # send loss
                 
                 send_start_mess = self.recv()
-                print(send_start_mess) #第二次同步，开始发送模型
+                print(send_start_mess)
                 
                 # start_time = time.time()
                 self.send(param_update)
                 # end_time = time.time()
                 
-                # self.send(end_time - start_time) # 发送发送模型用时
+                # self.send(end_time - start_time)
             
                 self.round += 1

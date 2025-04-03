@@ -21,6 +21,8 @@ from FLASH.main import FLASH_main
 from MHAD.main import MHAD_main
 from CREMAD.main import CREMAD_main
 from USC.main import USC_main
+from CrisisMMD.main import CrisisMMD_main
+from HatefulMemes.main import HatefulMemes_main
 import random
 import numpy as np
 import torch
