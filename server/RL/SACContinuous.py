@@ -135,10 +135,10 @@ class SACContinuous:
         self.epochs += 1
         if self.epochs <= 50:
             b = np.random.rand()
-            if b < 1e-4:
-                b = 1e-4
-            elif b >= 1 - 1e-4:
-                b = 1 - 1e-4
+            if b < 0.01:
+                b = 0.01
+            elif b >= 0.99:
+                b = 0.99
             return b
         action = self.actor(state)[0] # (1)
         return action.cpu().detach().item()
