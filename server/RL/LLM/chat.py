@@ -6,7 +6,7 @@ from RL.LLM.prompt import *
 
 class chat_response:
     def __init__(self):
-        self.OPENAI_API_KEY = "sk-p97l94e8as504e0ch92an1g73738e626i58t7"
+        self.OPENAI_API_KEY = "sk-c97a94a8bc504e0ea92df1f73738b626"
 
         self.chat_client = openai.OpenAI(
             api_key=self.OPENAI_API_KEY,

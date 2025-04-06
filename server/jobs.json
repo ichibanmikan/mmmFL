@@ -12,12 +12,12 @@
         },    
         {
             "name": "MHAD",
-            "acc_goal": 86,
+            "acc_goal": 100,
             "model_size": 1721880
         },    
         {
             "name": "USC",
-            "acc_goal": 86,
+            "acc_goal": 100,
             "model_size": 1201624
         }
     ]

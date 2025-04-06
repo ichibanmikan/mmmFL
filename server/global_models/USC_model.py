@@ -112,9 +112,18 @@ class MMModel(nn.Module):
 class USC_set(Dataset):
     def __init__(self) -> None:
         super().__init__()
-        self.acc_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/USC/acc.npy'), dtype=torch.float32)
-        self.gyr = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/USC/gyr.npy'), dtype=torch.float32)
-        self.action = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/USC/action.npy'), dtype=torch.long)
+        self.acc_data = torch.tensor(
+            np.load(
+                os.path.join(os.path.dirname(__file__), '../test_datasets/USC/acc.npy')), \
+                    dtype=torch.float32)
+        self.gyr = torch.tensor(
+            np.load(
+                os.path.join(os.path.dirname(__file__), '../test_datasets/USC/gyr.npy')), \
+                    dtype=torch.float32)
+        self.action = torch.tensor(
+            np.load(
+                os.path.join(os.path.dirname(__file__), '../test_datasets/USC/action.npy')), \
+                    dtype=torch.long)
 
     def __len__(self):
         return len(self.acc_data)

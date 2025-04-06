@@ -320,9 +320,21 @@ class MyMMModel(nn.Module):
 class Mhad_set(Dataset):
     def __init__(self) -> None:
         super().__init__()
-        self.x1_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/MHAD/x1.npy'), dtype=torch.float32)
-        self.x2_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/MHAD/x2.npy'), dtype=torch.float32)
-        self.label_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/MHAD/y.npy'), dtype=torch.long)
+        self.x1_data = torch.tensor(
+            np.load(
+                os.path.join(
+                    os.path.dirname(__file__), '../test_datasets/MHAD/x1.npy')), \
+                        dtype=torch.float32)
+        self.x2_data = torch.tensor(
+            np.load(
+                os.path.join(
+                    os.path.dirname(__file__), '../test_datasets/MHAD/x2.npy')), \
+                        dtype=torch.float32)
+        self.label_data = torch.tensor(
+            np.load(
+                os.path.join(
+                    os.path.dirname(__file__), '../test_datasets/MHAD/y.npy')), \
+                        dtype=torch.long)
 
     def __len__(self):
         return len(self.label_data)
