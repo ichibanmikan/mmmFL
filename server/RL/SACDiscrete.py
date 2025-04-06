@@ -25,7 +25,7 @@ class Actor(nn.Module):
     #Action a means select job (a - 1) unless a == 0
 
 class QValueNet(nn.Module):
-    def __init__(self, N, hidden_width, action_width = 4):
+    def __init__(self, N, hidden_width, action_width = 5):
         super(QValueNet, self).__init__()
         self.l1 = nn.Linear(3 * N + 1, hidden_width)
         # (bsz, 3 * N + 1) @ (3 * N + 1, h_d)

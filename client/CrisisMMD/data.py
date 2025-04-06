@@ -57,12 +57,8 @@ def collate_fn_padd(batch):
     return padded_texts, padded_imgs, text_len, img_len, labels
 
 class DataSet(Dataset):
-    def __init__(self, data_dir, device="cuda"):
-        self.data = []
-        for i in range(30):
-            pkl_path = os.path.join(data_dir, 'node_' + f"{i}.pkl")
-            if os.path.exists(pkl_path):
-                self.data.extend(pickle.load(open(pkl_path, "rb")))
+    def __init__(self, data_pkl, device="cuda"):
+        self.data = pickle.load(open(data_pkl, "rb"))
         self.device = device
 
     def __len__(self):
