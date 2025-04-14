@@ -127,7 +127,7 @@ class Server:
         with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
             log.write(f"Episode is end, length is {self.episode_length}\n")
             log.write("\n")
-        set_all_seeds(54321)
+        set_all_seeds(42)
         with self.lock:
             if self.episode_length <= self.config.max_episode_length:
                 practice_length = self.episode_length
@@ -140,10 +140,10 @@ class Server:
                     practice_length = 655 # e * (M - T) + T
             self.episode_length = 0
             self.history_data = {}
-            absorbing_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
+            absorbing_state = np.zeros(len(self.jobs) * 4 + 1 + 3)
             absorbing_action = np.zeros(2)
             absorbing_reward = np.zeros(2)
-            absorbing_next_state = np.zeros(len(self.jobs) * 3 + 1 + 3)
+            absorbing_next_state = np.zeros(len(self.jobs) * 4 + 1 + 3)
             absorbing_done = True
             self.buffer.add(
                 absorbing_state, 

@@ -92,7 +92,7 @@ class chat_response:
                         file.write("\n")
                     reresponse_content = self.extract_json_content(answer)
                     print(reresponse_content)
-                    data = json.loads(response_content)
+                    data = json.loads(reresponse_content)
                     str_reward_function = self.extract_python_code(data["Functions"])
                 except Exception as e:
                     print(f"Runtime Error in generated function: {e}")

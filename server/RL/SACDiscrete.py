@@ -8,7 +8,7 @@ import random
 class Actor(nn.Module):
     def __init__(self, N, hidden_width = 128, action_width = 5):
         super(Actor, self).__init__()
-        self.l1 = nn.Linear(3 * N + 1, hidden_width) 
+        self.l1 = nn.Linear(4 * N + 1, hidden_width) 
         # (bsz, 3N + 1) @ (3N + 1, hidden_width)
         self.l2 = nn.Linear(hidden_width, action_width) 
         # (bsz, hidden_width) @ (hidden_width, 5)
@@ -27,8 +27,8 @@ class Actor(nn.Module):
 class QValueNet(nn.Module):
     def __init__(self, N, hidden_width, action_width = 5):
         super(QValueNet, self).__init__()
-        self.l1 = nn.Linear(3 * N + 1, hidden_width)
-        # (bsz, 3 * N + 1) @ (3 * N + 1, h_d)
+        self.l1 = nn.Linear(4 * N + 1, hidden_width)
+        # (bsz, 4 * N + 1) @ (4 * N + 1, h_d)
         self.l2 = nn.Linear(hidden_width, action_width)
         # (bsz, h_d) @ (h_d, 5)
         
@@ -38,7 +38,7 @@ class QValueNet(nn.Module):
         nn.init.constant_(self.l2.bias, 0.0)
 
     def forward(self, state):  
-        # state: (bsz, 3 * N + 1) 
+        # state: (bsz, 4 * N + 1) 
         state = F.relu(self.l1(state))
         return self.l2(state)
         # (bsz, 5)
@@ -62,7 +62,7 @@ class SACDiscrete:
         self.critic_1_optimizer = torch.optim.Adam(self.critic_1.parameters(), lr=critic_lr)
         self.critic_2_optimizer = torch.optim.Adam(self.critic_2.parameters(), lr=critic_lr)
  
-        self.log_alpha = torch.tensor(np.log(0.01), dtype=torch.float)
+        self.log_alpha = torch.tensor(np.log(0.5), dtype=torch.float)
         self.log_alpha.requires_grad = True
         
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=alpha_lr)
@@ -145,7 +145,7 @@ class SACDiscrete:
         probs = self.actor(states)
         action_dist = torch.distributions.Categorical(probs)
         log_probs = action_dist.log_prob(actions.squeeze())
-        entropy = -torch.mean(log_probs)
+        entropy = action_dist.entropy().mean()
 
         q1_value = self.critic_1(states)  # [b,n_actions]
         q2_value = self.critic_2(states)
