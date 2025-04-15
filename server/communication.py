@@ -15,6 +15,7 @@ class ServerHandler():
         self.server = server
         self.round = 0
         self.time_remain = self.server.config.max_participant_time
+        self.jobs_participant = np.zeros(len(self.server.jobs))
     def send(self, content, band_width = None):
         try:
             send_data = pickle.dumps(content, pickle.HIGHEST_PROTOCOL)
@@ -88,6 +89,8 @@ class ServerHandler():
             (self.one_epoch_loss - self.one_epoch_loss.mean()) / self.one_epoch_loss.std()
         jobs_goal_sub = \
             (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean()) / self.server.jobs_goal_sub.std()
+        jobs_part = \
+             (self.jobs_participant - self.jobs_participant.mean()) / (self.jobs_participant.std() + 1e-8)        
         
         epochs_length = 0
         epochs_return = np.array([0.0, 0.0])
@@ -109,7 +112,7 @@ class ServerHandler():
 
                 epochs_length += 1
                 state_job_selection = np.concatenate([
-                    time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub
+                    time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub, jobs_part
                 ])
                 job_action = self.server.agent.job_selection(
                     state_job_selection
@@ -193,7 +196,8 @@ class ServerHandler():
                         self.server.current_round_all_params.append((
                             now_job, now_params
                         ))
-                    
+
+                    self.jobs_participant[job_action - 1] += 1
                     self.server.update_params_barrier.wait()
                         
                     if self.server.config.max_round_time < train_time :
@@ -234,9 +238,11 @@ class ServerHandler():
                 jobs_goal_sub = \
                     (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean())\
                         / self.server.jobs_goal_sub.std()
-                            
+                job_part = \
+                     (self.jobs_participant - self.jobs_participant.mean())\
+                         / (self.jobs_participant.std() + 1e-8)                            
                 next_state_job_selection = np.concatenate([
-                    time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub
+                    time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub, job_part
                 ])
                 
                 next_state = np.concatenate([next_state_job_selection, np.array([-1.0, -1.0, -1.0])])
