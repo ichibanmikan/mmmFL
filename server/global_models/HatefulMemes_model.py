@@ -212,7 +212,7 @@ class HatefulMemes:
                     os.path.abspath(__file__)), f'models/{self.get_model_name()}.pth'))
         self.model = self.model.to(device)
         self.test_loader = \
-            DataLoader(HatefulMemesSet('/home/chenxu/codes/ichibanFATE/server/test_datasets/HatefulMemes'), \
+            DataLoader(HatefulMemesSet(os.path.join(os.path.dirname(__file__), '../test_datasets/HatefulMemes')), \
                 batch_size=16, num_workers=16, collate_fn=collate_fn_padd)
         self.Tester = Tester(self.model, test_loader=self.test_loader, device=device)
     def get_model_params(self):

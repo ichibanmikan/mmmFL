@@ -62,7 +62,7 @@ class SACDiscrete:
         self.critic_1_optimizer = torch.optim.Adam(self.critic_1.parameters(), lr=critic_lr)
         self.critic_2_optimizer = torch.optim.Adam(self.critic_2.parameters(), lr=critic_lr)
  
-        self.log_alpha = torch.tensor(np.log(0.01), dtype=torch.float)
+        self.log_alpha = torch.tensor(np.log(0.5), dtype=torch.float)
         self.log_alpha.requires_grad = True
         
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=alpha_lr)
@@ -144,7 +144,7 @@ class SACDiscrete:
         probs = self.actor(states)
         action_dist = torch.distributions.Categorical(probs)
         log_probs = action_dist.log_prob(actions.squeeze())
-        entropy = -torch.mean(log_probs)
+        entropy = action_dist.entropy().mean()
 
         q1_value = self.critic_1(states)  # [b,n_actions]
         q2_value = self.critic_2(states)

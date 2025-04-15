@@ -75,7 +75,7 @@ class Server:
         self.config = config
         self.done = False
         # self.clients = {}
-        set_all_seeds(54321)
+        set_all_seeds(42)
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
             self.jobs = json.load(job_json)["Jobs"]
         self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
