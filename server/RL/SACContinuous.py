@@ -111,7 +111,7 @@ class SACContinuous:
             self.critic_2.parameters(), lr=critic_lr
         )
 
-        self.log_alpha = torch.tensor(np.log(0.0001), dtype=torch.float)
+        self.log_alpha = torch.tensor(np.log(0.001), dtype=torch.float)
         self.log_alpha.requires_grad = True 
         self.log_alpha_optimizer = torch.optim.Adam(
             [self.log_alpha], lr=alpha_lr
