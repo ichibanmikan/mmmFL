@@ -39,6 +39,16 @@
                 "acc",
                 "gyr"
             ]
+        },
+        {
+            "dataset_name": "STRESS",
+            "modalities_num": 4,
+            "modalities_name" : [
+                "COORD",
+                "EDA",
+                "HR",
+                "TEMP"
+            ]
         }
     ]
 }

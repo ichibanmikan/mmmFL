@@ -20,7 +20,7 @@ class ServerHandler():
         try:
             send_data = pickle.dumps(content, pickle.HIGHEST_PROTOCOL)
             send_header = struct.pack('i', len(send_data))
-            # print(f"Content memory size (bytes): {asizeof.asizeof(content)}")
+            print(f"Content memory size (bytes): {asizeof.asizeof(content)}")
             self.server_socket.sendall(send_header)
             self.server_socket.sendall(send_data)
             if not band_width == None:

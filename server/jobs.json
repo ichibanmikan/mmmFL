@@ -19,6 +19,11 @@
             "name": "USC",
             "acc_goal": 100,
             "model_size": 1201624
+        },
+        {
+            "name": "STRESS",
+            "acc_goal": 100,
+            "model_size": 348280
         }
     ]
 }

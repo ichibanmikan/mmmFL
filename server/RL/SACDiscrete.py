@@ -6,7 +6,7 @@ import os
 import random
 
 class Actor(nn.Module):
-    def __init__(self, N, hidden_width = 128, action_width = 5):
+    def __init__(self, N, hidden_width = 128, action_width = 6):
         super(Actor, self).__init__()
         self.l1 = nn.Linear(4 * N + 1, hidden_width) 
         # (bsz, 3N + 1) @ (3N + 1, hidden_width)
@@ -25,7 +25,7 @@ class Actor(nn.Module):
     #Action a means select job (a - 1) unless a == 0
 
 class QValueNet(nn.Module):
-    def __init__(self, N, hidden_width, action_width = 5):
+    def __init__(self, N, hidden_width, action_width = 6):
         super(QValueNet, self).__init__()
         self.l1 = nn.Linear(4 * N + 1, hidden_width)
         # (bsz, 4 * N + 1) @ (4 * N + 1, h_d)
