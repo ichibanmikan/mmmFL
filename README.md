@@ -5,3 +5,5 @@ https://github.com/ichibanmikan/mmmFL/tree/RL
 https://github.com/ichibanmikan/mmmFL/tree/HRL
 ## LLM_HRL version
 https://github.com/ichibanmikan/mmmFL/tree/LLM_HRL
+## Acceptance version
+https://github.com/ichibanmikan/mmmFL/tree/Platform
