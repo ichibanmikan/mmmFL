@@ -4,6 +4,7 @@
 !client
 !server
 !requirements.txt
+!prepare.sh
 
 data
 server/__pycache__/
