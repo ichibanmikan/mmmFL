@@ -28,6 +28,7 @@ client/FLASH/.DS_Store
 client/FLASH/models/.DS_Store
 
 client/MHAD/datasets
+client/STRESS
 
 server/test_datasets
 server/global_models/models
