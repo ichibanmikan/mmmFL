@@ -3,6 +3,7 @@
 !.gitignore
 !client
 !server
+!requirements.txt
 
 data
 server/__pycache__/
