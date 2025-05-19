@@ -110,7 +110,8 @@ class Server:
             device=device
         )
         cr = chat_response()
-        self.reward_function = cr.generate()
+        # self.reward_function = cr.generate()
+        self.reward_function = cr.get_function()
         exec(self.reward_function, globals())
         self.jobs_goal = np.zeros(len(self.jobs))
         self.jobs_goal_sub = np.zeros(len(self.jobs))
@@ -140,10 +141,10 @@ class Server:
                     practice_length = 655 # e * (M - T) + T
             self.episode_length = 0
             self.history_data = {}
-            absorbing_state = np.zeros(len(self.jobs) * 4 + 1 + 3)
+            absorbing_state = np.zeros(len(self.jobs) * 3 + 1)
             absorbing_action = np.zeros(2)
             absorbing_reward = np.zeros(2)
-            absorbing_next_state = np.zeros(len(self.jobs) * 4 + 1 + 3)
+            absorbing_next_state = np.zeros(len(self.jobs) * 3 + 1)
             absorbing_done = True
             self.buffer.add(
                 absorbing_state, 

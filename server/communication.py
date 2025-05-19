@@ -87,14 +87,12 @@ class ServerHandler():
             (self.one_epoch_time - self.one_epoch_time.mean()) / self.one_epoch_time.std()
         one_epoch_loss = \
             (self.one_epoch_loss - self.one_epoch_loss.mean()) / self.one_epoch_loss.std()
-        jobs_goal_sub = \
-            (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean()) / self.server.jobs_goal_sub.std()
+        # jobs_goal_sub = \
+        #     (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean()) / self.server.jobs_goal_sub.std()
         jobs_part = \
             (self.jobs_participant - self.jobs_participant.mean()) / (self.jobs_participant.std() + 1e-8)
         
         epochs_length = 0
-        epochs_return_train = 0
-        epochs_return_trans = 0
         
         done = False
         while True:
@@ -112,8 +110,11 @@ class ServerHandler():
                 # self.server.jobs_goal_sub: np.array(N)
 
                 epochs_length += 1
+                # state_job_selection = np.concatenate([
+                #     time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub, jobs_part
+                # ])
                 state_job_selection = np.concatenate([
-                    time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub, jobs_part
+                    time_remain, one_epoch_time, one_epoch_loss, jobs_part
                 ])
                 job_action = self.server.agent.job_selection(
                     state_job_selection
@@ -162,7 +163,7 @@ class ServerHandler():
                     
                     self.server.band_width_barrier.wait() 
                     
-                    job_now_acc_sub = self.server.jobs_goal_sub[now_job]
+                    # job_now_acc_sub = self.server.jobs_goal_sub[now_job]
                     trans_time = self.send([
                         now_job, self.server.global_models_manager.get_model_params(now_job)
                     ], self.server.clients_band_width[self.client_id])
@@ -239,14 +240,14 @@ class ServerHandler():
                     / self.one_epoch_time.std()
                 one_epoch_loss = (self.one_epoch_loss - self.one_epoch_loss.mean())\
                     / self.one_epoch_loss.std()
-                jobs_goal_sub = \
-                    (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean())\
-                        / self.server.jobs_goal_sub.std()
+                # jobs_goal_sub = \
+                #     (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean())\
+                #         / self.server.jobs_goal_sub.std()
                 job_part = \
                     (self.jobs_participant - self.jobs_participant.mean())\
                         / (self.jobs_participant.std() + 1e-8)
                 next_state_job_selection = np.concatenate([
-                    time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub, job_part
+                    time_remain, one_epoch_time, one_epoch_loss, job_part
                 ])
                 
                 next_state = np.concatenate([next_state_job_selection, np.array([-1.0, -1.0, -1.0])])

@@ -24,13 +24,10 @@ Estimated training time per task for client i in the current epoch, calculated u
 2. Training Loss Vector (Shape: (N,)):
 Loss values for each task of client i. A high loss indicates poor data quality, while an excessively low loss suggests overfitting risks.
 
-3. Accuracy Gap Vector (Shape: (N,)):
-Distance of each task's accuracy from the convergence target.
-
-4. Remaining Time (Shape: (1,)):
+3. Remaining Time (Shape: (1,)):
 Client i's residual participation time in the current round. If selected, bandwidth allocation will be triggered.
 
-5. Task Participation Count Vector (Shape: (N,)):
+4. Task Participation Count Vector (Shape: (N,)):
 Record the number of times client i has participated in each task. For the client that is capable of participating in multiple tasks, try to ensure i participates in each task in a balanced manner.
 
 Bandwidth Allocation Policy Inputs (Conditional on Client i's Selection):
