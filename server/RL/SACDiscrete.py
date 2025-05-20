@@ -8,7 +8,7 @@ import random
 class Actor(nn.Module):
     def __init__(self, N, hidden_width = 128, action_width = 5):
         super(Actor, self).__init__()
-        self.l1 = nn.Linear(3 * N + 1, hidden_width) 
+        self.l1 = nn.Linear(4 * N + 1, hidden_width) 
         # (bsz, 3N + 1) @ (3N + 1, hidden_width)
         self.l2 = nn.Linear(hidden_width, action_width) 
         # (bsz, hidden_width) @ (hidden_width, 5)
@@ -27,8 +27,8 @@ class Actor(nn.Module):
 class QValueNet(nn.Module):
     def __init__(self, N, hidden_width, action_width = 5):
         super(QValueNet, self).__init__()
-        self.l1 = nn.Linear(3 * N + 1, hidden_width)
-        # (bsz, 3 * N + 1) @ (3 * N + 1, h_d)
+        self.l1 = nn.Linear(4 * N + 1, hidden_width)
+        # (bsz, 4 * N + 1) @ (4 * N + 1, h_d)
         self.l2 = nn.Linear(hidden_width, action_width)
         # (bsz, h_d) @ (h_d, 5)
         
@@ -38,7 +38,7 @@ class QValueNet(nn.Module):
         nn.init.constant_(self.l2.bias, 0.0)
 
     def forward(self, state):  
-        # state: (bsz, 3 * N + 1) 
+        # state: (bsz, 4 * N + 1) 
         state = F.relu(self.l1(state))
         return self.l2(state)
         # (bsz, 5)

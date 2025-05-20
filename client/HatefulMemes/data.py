@@ -84,6 +84,7 @@ class DataFactory:
             self.dataset, 
             batch_size=self.config.batch_size, 
             shuffle=True,
-            collate_fn=collate_fn_padd
+            collate_fn=collate_fn_padd,
+            drop_last=True
         )
         return train_loader
