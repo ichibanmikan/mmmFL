@@ -47,8 +47,7 @@ class MHAD_main:
         self.MACs = data_f.sample_length * self.config.MACs
         
     def main(self):
-        self.now_loss, acc = self.tr.train()
-        print(f'Accuracy of node {self.node_id} is {acc}')
+        self.now_loss = self.tr.train()
         # print(self.tr.best_acc)
         
         return self.get_model_param()
