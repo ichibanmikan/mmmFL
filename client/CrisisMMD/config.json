@@ -9,5 +9,6 @@
     "momentum": 0.9,
     "num_classes": 8,
     "warmup_from": 0.001,
-    "warmup_to": 0.003
+    "warmup_to": 0.003,
+    "MACs": 84263936
 }

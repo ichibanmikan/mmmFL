@@ -14,19 +14,12 @@ def get_memory_usage():
 #         return sys.getsizeof(obj) + sum(get_total_size(i) for i in obj)
 #     return sys.getsizeof(obj)
 
-'''modality，'''
-class rdata:
-    def __init__(self, data_dir):
+class data_set(Dataset):
+    def __init__(self, data_dir, noise_std = 0.01):
+        super().__init__()
         self.data_1 = torch.tensor(np.load(os.path.join(data_dir, 'x1.npy')).astype(np.float32))
         self.data_2 = torch.tensor(np.load(os.path.join(data_dir, 'x2.npy')).astype(np.float32))
         self.labels = torch.tensor(np.load(os.path.join(data_dir, 'y.npy')).astype(np.int64))
-
-class data_set(Dataset):
-    def __init__(self, data_1, data_2, labels, noise_std = 0.01):
-        super().__init__()
-        self.data_1 = data_1
-        self.data_2 = data_2
-        self.labels = labels
         
         self.noise_std = noise_std
 
@@ -43,15 +36,11 @@ class data_set(Dataset):
     
 class data_factory:
     def __init__(self, data_dir, config):
-        self.rd = rdata(data_dir)
+        self.ds = data_set(data_dir)
         self.config = config
+        self.sample_length = len(self.ds)
 
     def get_dataset(self):
-        board_0 = round(len(self.rd.data_1) * 0.9)
-        indices = np.random.choice(len(self.rd.data_1), size=board_0, replace=False)
-        train_ds = data_set(self.rd.data_1[indices], self.rd.data_2[indices], self.rd.labels[indices])
-        valid_ds = data_set(self.rd.data_1[~indices], self.rd.data_2[~indices], self.rd.labels[~indices])
-
-        dataloaders = [ DataLoader(train_ds, shuffle=True, batch_size=self.config.batch_size, num_workers=self.config.num_workers), 
-                       DataLoader(valid_ds, batch_size=self.config.batch_size, num_workers=self.config.num_workers)]
+        dataloaders = DataLoader(self.ds, shuffle=True, batch_size=self.config.batch_size, \
+            num_workers=self.config.num_workers)
         return dataloaders
