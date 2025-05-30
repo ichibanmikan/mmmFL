@@ -60,38 +60,38 @@ The following variables are provided for the current training round:
 
 **Observational Set:**
 
-1. Round training duration (shape: M)
+Observational Set[0]: Round training duration (shape: M)
    Facilitates assessment of the rationality of bandwidth allocation decisions. Greater than 0 if participated, otherwise 0.
 
-2. Per-client transmission & training times (shape: M * 2)
+Observational Set[1]: Per-client transmission & training times (shape: M * 2)
    Quantifies the impact of client-task selection and bandwidth allocation on temporal efficiency. (a, b) and (a > 0 & b > 0) if participated, otherwise (0, 0). The time for a round equals 2 * transmission time + training time (because there are two transmissions before and after local training.).
 
-3. Task accuracy increments (Δ) vs. previous round (shape: N)
+Observational Set[2]: Task accuracy increments (Δ) vs. previous round (shape: N)
    Computed as current accuracy - prior accuracy; indicates task assignment effectiveness on model improvement.
    Note: Reward scaling required (e.g., Δ0→1 merits higher reward than Δ90→91).
 
-4. Current-round accuracy (shape: N)
+Observational Set[3]: Current-round accuracy (shape: N)
    Provides reference for evaluating accuracy growth significance.
 
-5. Predefined accuracy targets (shape: N)
+Observational Set[4]: Predefined accuracy targets (shape: N)
    Enables convergence efficiency analysis by measuring progress toward system-level objectives.
 
-6. Remaining training time budget (shape: M)
+Observational Set[5]: Remaining training time budget (shape: M)
    Triggers penalty mechanisms if negative values occur.
 
-7. Active client participation table (shape: M)
+Observational Set[6]: Active client participation table (shape: M)
    Boolean type. True if participated, otherwise False.
 
 **Action Decisions:**
 
-1. Task assignment table (shape: M)
+Action Decisions[0]: Task assignment table (shape: M)
    High-level policy output determining client-task assignments.
    Implementation Note: Zero-assignment entries incur penalties when participation falls below minimum thresholds.
 
-2. Bandwidth allocation table (shape: M)
+Action Decisions[1]: Bandwidth allocation table (shape: M)
    Low-level policy output governing resource distribution across clients.
 
-I would like you to help me generate a function that calculates a set of 8 sub-rewards for the task assignment policy and a comprehensive reward for bandwidth allocation with more than 100 lines. This set of sub-rewards includes factors such as the improvement in a client's accuracy, its impact on system stability, its effect on the training duration per round, some potential benefits, and other factors you select based on the input observations and action decisions. The bandwidth allocation reward can be generated as follows: First, calculate the lower bound of the reward range based on the standard deviation of the round training duration in Observational Set[1]. The larger the standard deviation, the smaller the lower bound of the reward range. For example, if the standard deviation of the round training durations across clients is 20 in one case and 0.2 in another, it is clear that the bandwidth allocation agent performed extremely poorly in the case with a standard deviation of 20, requiring a lower reward range bound, while the case with 0.2 can have a higher lower bound. Then, allocate rewards based on the bandwidth allocation ratios in Action Decisions[1] (Note: The original text mentions "Action Decisions[1]", but according to the problem statement, bandwidth allocation corresponds to Action Decisions[2]; this may be a typo and should be corrected to Action Decisions[2] in practice): Clients with the largest and smallest bandwidth allocation ratios receive the lower bound of the reward, while those with ratios closer to the average bandwidth allocation receive rewards closer to the upper bound of the reward range. These sub-rewards should then be combined into a single, unified comprehensive reward. The function you generate must be sufficiently long(such as 100+ lines) to ensure that all 8 sub-rewards are meaningful.
+I would like you to help me generate a function that calculates a set of 8 sub-rewards for the task assignment policy and a comprehensive reward for bandwidth allocation with more than 100 lines. This set of sub-rewards includes factors such as the improvement in a client's accuracy, its impact on system stability, its effect on the training duration per round, some potential benefits, and other factors you select based on the input observations and action decisions. The bandwidth allocation reward can be generated as follows: First, calculate the lower bound of the reward range based on the standard deviation of the round training duration in Observational Set[0]. The larger the standard deviation, the smaller the lower bound of the reward range. For example, if the standard deviation of the round training durations across clients is 20 in one case and 0.2 in another, it is clear that the bandwidth allocation agent performed extremely poorly in the case with a standard deviation of 20, requiring a lower reward range bound, while the case with 0.2 can have a higher lower bound. Next, calculate the bandwidth allocation reward based on the round duration in Observational Set[0]: Clients with the longest and shortest round durations receive the lower bound of the reward, while those closer to the average round duration receive rewards closer to the upper bound. Our goal is to keep the standard deviation below 0.5. Additionally, if a client is close to exhausting its remaining time (e.g., Observational Set[5] ratio < 800), it may be granted a higher bandwidth allocation without being constrained by the above method. The reward for such clients is determined based on Action Decisions[1]. However, if a client’s Action Decisions[1] allocation ratio is below the top 10% (unless the Observational Set[5] ratio < 0.01 exceeds 10%, in which case all clients with Observational Set[5] < 0.01 receive the highest bandwidth allocation ratio), a penalty is applied. These sub-rewards should then be combined into a single, unified comprehensive reward. The function you generate must be sufficiently long(such as 100+ lines) to ensure that all 8 sub-rewards are meaningful.
 
 **Please make sure to carefully check the shape of each element in the observation set to avoid any broadcasting errors.**
 
@@ -101,7 +101,7 @@ I would like you to help me generate a function that calculates a set of 8 sub-r
 3. A small subset of clients may exhibit limited computational capabilities, leading to prolonged training durations for every task. These clients should be avoided as much as possible.
 4. A small subset of clients may experience missing modality data or labels. Decisions regarding their inclusion in a given task should be based on metrics such as loss performance or their reputation on that task (e.g., whether their participation consistently leads to a decline in test accuracy).
 5. The data distribution among clients may be imbalanced, with each client potentially containing data corresponding to only one or a few label classes. Efforts should be made to equalize the frequency of participation of these clients.
-6. The Active client participation table (Observational Set[7]) may be entirely False. Even if it is not entirely False, the sum of Per-client transmission & training times (Observational Set[2]) may still be 0, as some clients may be unable to participate in this training round due to insufficient remaining time or other reasons. Pay attention to boundary condition checks for the function inputs.
+6. The Active client participation table (Observational Set[6]) may be entirely False. Even if it is not entirely False, the sum of Per-client transmission & training times (Observational Set[1]) may still be 0, as some clients may be unable to participate in this training round due to insufficient remaining time or other reasons. Pay attention to boundary condition checks for the function inputs.
 7. During training, there may be slight fluctuations in accuracy. A minor decrease in accuracy does not necessarily indicate that the data from the participating clients is unreliable. You can use server.history_data{} to store each client's historical data, participation rounds, and the current communication round of federated learning. This server.history_data is an empty dictionary.
 8. Considering 6., make sure to avoid NaN values in the function calculations. Also, ensure that each generated sub-reward does not contain NaN! You can add "np.nan_to_num" to the function return.
 9. Ensure that the rewards generated by your function in each round fall within a reasonable range(e.g., -5 to 5), meaning that the absolute value of the rewards should not be too large.
@@ -112,7 +112,7 @@ I would like you to help me generate a function that calculates a set of 8 sub-r
 14. **Be sure to generate rewards for the bandwidth allocation policy decisions. When generating rewards for the bandwidth allocation strategy, you must comprehensively consider both task participation and participation time.**
 15. For the reward decision regarding bandwidth allocation strategies, you must utilize the Action Decisions[1] (Bandwidth allocation table) to ensure that a unique reward is generated for each bandwidth allocation result. In the Bandwidth allocation table, values that cause excessive time consumption in the current round (i.e., bandwidth allocations that are too large or too small) should correspond to lower rewards, while allocations closer to the middle should yield higher rewards. The reward baseline can be calculated based on the standard deviation of the time taken by each client in the current round. Note that in Observation Set 2, the transmission and training time for each client is the actual measured time, determined by the model size and the bandwidth allocation value. The round's transmission time is calculated as **2 * transmission time, and the process of computing the transmission time does not require multiplying by the bandwidth allocation ratio**.
 16. **The above 15 rules are only intended for handling extreme edge cases in the system. They should not constitute the entire reward function. Meanwhile please do not use training accuracy as the sole evaluation criterion; the rewards for each client in every training round should comprehensively consider multiple factors, and the rewards should vary between clients accordingly.**
-17. Observational Set[1][i] = Observational Set[2][i][0]*2 + Observational Set[2][i][1]
+17. Observational Set[0][i] = Observational Set[1][i][0]*2 + Observational Set[1][i][1]
         """
         self.Purpose = """ 
 
