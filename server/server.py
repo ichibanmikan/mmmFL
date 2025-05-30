@@ -120,10 +120,10 @@ class Server:
             log.write("\n")
         set_all_seeds(42)
         with self.lock:
-            absorbing_state = np.zeros(len(self.jobs) * 4 + 1 + 3)
+            absorbing_state = np.zeros(len(self.jobs) * 4 + 1 + 4)
             absorbing_action = np.zeros(2)
             absorbing_reward = np.zeros(2)
-            absorbing_next_state = np.zeros(len(self.jobs) * 4 + 1 + 3)
+            absorbing_next_state = np.zeros(len(self.jobs) * 4 + 1 + 4)
             absorbing_done = True
             self.buffer.add(
                 absorbing_state, 
@@ -330,8 +330,8 @@ class Server:
     def get_train_rewards(self, acc_array):
         for i in range(len(self.acc_reward)):
             if self.clients_part[i]: 
-                self.acc_queue[i].append(acc_array[self.clients_jobs[i] - 1])
-                self.acc_reward[i] = np.mean(self.acc_queue[i])
+                self.acc_queue[i][self.clients_jobs[i] - 1].append(acc_array[self.clients_jobs[i] - 1] / 100)
+                self.acc_reward[i] = np.mean(self.acc_queue[i][self.clients_jobs[i] - 1])
                 # self.clients_jobs[i] -1  now job
     def get_trans_rewards(self):
         if (self.global_round - 1) > 0 \

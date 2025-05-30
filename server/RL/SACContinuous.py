@@ -177,7 +177,7 @@ class SACContinuous:
         filtered_next_states = []
         
         for idx, s in enumerate(states):
-            if all(x == -1.0 for x in s) or rewards[idx]==-np.inf:
+            if all(x == -1.0 for x in s):
                 continue
             else:
                 filtered_states.append(s)

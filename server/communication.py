@@ -238,7 +238,7 @@ class ServerHandler():
                     self.server.times_state[self.client_id]
                 loss_state_col = \
                     self.server.losses_state[self.client_id]
-                job_part = \
+                jobs_part = \
                      (self.jobs_participant - self.jobs_participant.mean())\
                          / (self.jobs_participant.std() + 1e-8)                            
                 next_state_job_selection = np.concatenate([
