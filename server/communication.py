@@ -203,7 +203,7 @@ class ServerHandler():
                     if self.server.config.max_round_time < train_time :
                         reward[0] = -0.5
                     else:
-                        reward[0] = self.server.acc_reward[self.client_id][now_job]
+                        reward[0] = self.server.acc_reward[self.client_id]
                         # (goal - now_acc_before_this_round) - (goal - now_acc_after_this_round)
                     epochs_return[0] += reward[0]
                     

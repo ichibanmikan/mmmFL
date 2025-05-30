@@ -6,6 +6,7 @@ import threading
 import numpy as np
 import configparser
 from communication import *
+from collections import deque
 from Experiment.plt import plot
 from RL.utils import ReplayBuffer
 from RL.Agent import Agent, AgentConfig
@@ -33,7 +34,6 @@ class Config:
         self.max_episode_length = config.getint('RL', 'max_episode_length')
         self.episode_round = config.getint('RL', 'episode_round')
         self.save_data_freq = config.getint('RL', 'save_data_freq')
-        self.acc_reward_decay = config.getfloat('RL', 'acc_reward_decay')
         self.RL_high_agent = {
             'hidden_dim': config.getint('RL_high_agent', 'hidden_dim'),
             'actor_lr': config.getfloat('RL_high_agent', 'actor_lr'),
@@ -152,16 +152,20 @@ class Server:
             self.threads.clear()
             self.server_socket.close()
             self.train_time = np.zeros((len(self.threads), len(self.jobs)))
-            self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
+            self.acc_reward = np.zeros(len(self.threads))
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.episode_length = 0
             self.losses = np.zeros((len(self.threads), len(self.jobs)))
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
             self.times_state = np.zeros((len(self.threads), len(self.jobs)))
-            
+            self.acc_queue = [
+                [deque(maxlen=5) for _ in range(len(self.jobs))]
+                for _ in range(len(self.threads))
+            ]          
         print(f"All clients released. Sleeping for 5 seconds before next round...")
         time.sleep(5)
+        self.acc_queue = deque(maxlen=5)
 
     def start(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
@@ -189,18 +193,21 @@ class Server:
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.train_time = np.zeros((len(self.threads), len(self.jobs)))
-            self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
+            self.acc_reward = np.zeros(len(self.threads))
             # self.every_round_train_time = np.zeros(len(self.threads))
             self.round_time = np.zeros(len(self.threads)) # whole time
             self.round_time_part = np.zeros((len(self.threads), 2))
             # self.rewards = np.zeros(len(self.threads), 2) 
-            self.trans_rewards = np.zeros(len(self.threads))
+            self.trans_rewards = np.full(len(self.threads), -np.inf, dtype=np.float64)
             # part time:trans_time, train_time. 
             # self.round_time_part[i][0] + self.round_time_part[i][1] = self.round_time[i]
             self.losses = np.zeros((len(self.threads), len(self.jobs)))
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
             self.times_state = np.zeros((len(self.threads), len(self.jobs)))
-                        
+            self.acc_queue = [
+                [deque(maxlen=5) for _ in range(len(self.jobs))]
+                for _ in range(len(self.threads))
+            ]                        
             # self.band_width_reward = 0
             self.clients_band_width = np.zeros(len(self.threads))
             self.num_part = 0
@@ -315,19 +322,17 @@ class Server:
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
         # self.rewards = np.zeros(len(self.threads), 2) 
-        self.trans_rewards = np.zeros(len(self.threads))
+        self.trans_rewards = np.full(len(self.threads), -np.inf, dtype=np.float64)
         # self.band_width_reward = 0
-        self.num_part = 0     
-
+        self.num_part = 0  
+        self.acc_reward = np.zeros(len(self.threads))  
+        
     def get_train_rewards(self, acc_array):
         for i in range(len(self.acc_reward)):
             if self.clients_part[i]: 
-                j = self.clients_jobs[i] - 1
-                self.acc_reward[i][j] = (
-                    ( acc_array[j] / 100 ) * (1 - self.config.acc_reward_decay) +
-                    self.config.acc_reward_decay * self.acc_reward[i][j]
-                )
-    
+                self.acc_queue[i].append(acc_array[self.clients_jobs[i] - 1])
+                self.acc_reward[i] = np.mean(self.acc_queue[i])
+                # self.clients_jobs[i] -1  now job
     def get_trans_rewards(self):
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
@@ -338,24 +343,31 @@ class Server:
             std = -1
         else:
             part_mask = (self.round_time > 0)
-            part_indices = np.where(part_mask)[0]
+            # part_indices = np.where(part_mask)[0]
             part_time = self.round_time[part_mask]
             if self.global_round > 0 \
                 and self.global_round % self.config.round_time_plot_freq == 0:
                     plot(self.round_time_part, self.global_round)
             if len(part_time) == 0:
                 std = -1
-                self.trans_rewards[:] = -1
             else:
-                mean_time = np.mean(part_time)
-                individual_impacts = (part_time - mean_time) ** 2
-                individual_rewards = -individual_impacts
-                # self.rewards[part_indices, 1] = individual_rewards
-                self.trans_rewards[part_indices] = individual_rewards
-            
+                mu = np.mean(part_time)
+                # mean_time = np.mean(part_time)
+                # individual_impacts = (part_time - mean_time) ** 2
+                # individual_rewards = -individual_impacts
+                # # self.rewards[part_indices, 1] = individual_rewards
+                # self.trans_rewards[part_indices] = individual_rewards
                 std = np.std(part_time)
+        max_abs_rdtm = np.max(np.abs(part_time - mu))
+        if std == 0:
+            for i in range(len(self.threads)):
+                self.trans_rewards[i] = 5             
+        elif std > 0:
+            for i in range(len(self.threads)):
+                if(self.clients_part[i]):
+                    self.trans_rewards[i] = (1 - abs(self.round_time[i] - mu)/max_abs_rdtm) * (1/std + std) - std
 
-        self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         self.state_batchnorm()        
         self.is_done()
         
