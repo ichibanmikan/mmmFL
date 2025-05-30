@@ -77,18 +77,21 @@ class ServerHandler():
         
         self.one_epoch_time = self.recv()
         self.one_epoch_loss = self.recv()
+        with self.server.lock:
+            self.server.losses[self.client_id] = self.one_epoch_loss
+            self.server.train_time[self.client_id] = self.one_epoch_time
         self.server.train_wake_barrier.wait()
         self.handle_train()
         
     def handle_train(self):
         time_remain = \
             np.array([self.time_remain / self.server.config.max_participant_time])
-        one_epoch_time = \
+        time_state_row = \
             (self.one_epoch_time - self.one_epoch_time.mean()) / self.one_epoch_time.std()
-        one_epoch_loss = \
-            (self.one_epoch_loss - self.one_epoch_loss.mean()) / self.one_epoch_loss.std()
-        jobs_goal_sub = \
-            (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean()) / self.server.jobs_goal_sub.std()
+        time_state_col = \
+            self.server.times_state[self.client_id]
+        loss_state_col = \
+            self.server.losses_state[self.client_id]
         jobs_part = \
              (self.jobs_participant - self.jobs_participant.mean()) / (self.jobs_participant.std() + 1e-8)        
         
@@ -98,8 +101,6 @@ class ServerHandler():
         # done = False
         while True:
             Ptcp = False
-            with self.server.lock:
-                self.server.set_train_time(self.client_id, self.one_epoch_time)
             if self.server.done:
                 self.send("This eposide is over")
                 break
@@ -112,13 +113,13 @@ class ServerHandler():
 
                 epochs_length += 1
                 state_job_selection = np.concatenate([
-                    time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub, jobs_part
+                    time_remain, time_state_row, time_state_col, loss_state_col, jobs_part
                 ])
                 job_action = self.server.agent.job_selection(
                     state_job_selection
                 )
                 
-                state = np.concatenate([state_job_selection, np.array([-1.0, -1.0, -1.0])])
+                state = np.concatenate([state_job_selection, np.array([-1.0, -1.0, -1.0, -1.0])])
                 action = np.concatenate([np.array([job_action]), np.array([-1.0])], axis=0)
                 reward = np.concatenate([np.array([-1.0]), np.array([-1.0])], axis=0)
                 
@@ -138,30 +139,28 @@ class ServerHandler():
                     
                     # self.server.set_train_time_barrier.wait()
                     
-                    self_train_time = \
-                        self.server.train_time[self.client_id][now_job]
+                    self_train_time_row = time_state_row[now_job]
+                    self_train_time_col = time_state_col[now_job]
                     # others_train_time = [
                     #     t for i, t in enumerate(self.server.every_round_train_time) 
                     #     if t != 0 and i != self.client_id
                     # ]
                             
                     low_state = np.concatenate([
-                        np.array([self_train_time]),
-                        # others_train_time,
-                        np.array([self.server.jobs_model_size[now_job]]),
+                        np.array([self_train_time_row]),
+                        np.array([self_train_time_col]),
+                        np.array([self.server.jobs_model_size_std[now_job]]),
                         time_remain
                     ], axis=0)
                     
                     band_width = self.server.agent.bandwidth_attribute(low_state)
                     action[1] = band_width
-                    state[-3:] = low_state
+                    state[-4:] = low_state
                     
                     with self.server.lock:
                         self.server.clients_band_width[self.client_id] = band_width
                     
                     self.server.band_width_barrier.wait() 
-                    
-                    job_now_acc_sub = self.server.jobs_goal_sub[now_job]
                     trans_time = self.send([
                         now_job, self.server.global_models_manager.get_model_params(now_job)
                     ], self.server.clients_band_width[self.client_id])
@@ -196,7 +195,8 @@ class ServerHandler():
                         self.server.current_round_all_params.append((
                             now_job, now_params
                         ))
-
+                        self.server.set_train_time(self.client_id, self.one_epoch_time, now_job)
+                        self.server.losses[self.client_id] = self.one_epoch_loss
                     self.jobs_participant[job_action - 1] += 1
                     self.server.update_params_barrier.wait()
                         
@@ -230,22 +230,22 @@ class ServerHandler():
                     # self.server.local_train_barrier.wait()
                 print(f"Node {self.client_id} has reward: ", reward)
                 
-                time_remain = np.array([self.time_remain / self.server.config.max_participant_time])
-                one_epoch_time = (self.one_epoch_time - self.one_epoch_time.mean())\
-                    / self.one_epoch_time.std()
-                one_epoch_loss = (self.one_epoch_loss - self.one_epoch_loss.mean())\
-                    / self.one_epoch_loss.std()
-                jobs_goal_sub = \
-                    (self.server.jobs_goal_sub - self.server.jobs_goal_sub.mean())\
-                        / self.server.jobs_goal_sub.std()
+                time_remain = \
+                    np.array([self.time_remain / self.server.config.max_participant_time])
+                time_state_row = \
+                    (self.one_epoch_time - self.one_epoch_time.mean()) / self.one_epoch_time.std()
+                time_state_col = \
+                    self.server.times_state[self.client_id]
+                loss_state_col = \
+                    self.server.losses_state[self.client_id]
                 job_part = \
                      (self.jobs_participant - self.jobs_participant.mean())\
                          / (self.jobs_participant.std() + 1e-8)                            
                 next_state_job_selection = np.concatenate([
-                    time_remain, one_epoch_time, one_epoch_loss, jobs_goal_sub, job_part
+                    time_remain, time_state_row, time_state_col, loss_state_col, jobs_part
                 ])
                 
-                next_state = np.concatenate([next_state_job_selection, np.array([-1.0, -1.0, -1.0])])
+                next_state = np.concatenate([next_state_job_selection, np.array([-1.0, -1.0, -1.0, -1.0])])
                 
                 if Ptcp:
                     next_action = self.server.agent.job_selection(
@@ -253,19 +253,19 @@ class ServerHandler():
                     )
                     
                     if(next_action > 0):
-                        self_train_time = \
-                            self.server.train_time[self.client_id][next_action - 1]
                         # others_train_time = \
                         #     self.server.every_round_train_time[:self.client_id] + \
                         #         self.server.every_round_train_time[self.client_id + 1:]
+                        self_train_time_row = time_state_row[now_job]
+                        self_train_time_col = time_state_col[now_job]
                         low_next_state = np.concatenate([
-                            np.array([self_train_time]),
-                            # others_train_time,
-                            np.array([self.server.jobs_model_size[now_job]]),
+                            np.array([self_train_time_row]),
+                            np.array([self_train_time_col]),
+                            np.array([self.server.jobs_model_size_std[now_job]]),
                             time_remain
                         ])
                     
-                        next_state[-3:] = low_next_state
+                        next_state[-4:] = low_next_state
 
                 with self.server.lock:
                     if self.server.done:

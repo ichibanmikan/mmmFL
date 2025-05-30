@@ -33,7 +33,8 @@ class Config:
         self.momentum = config_data.get('momentum', 0.9)
         self.num_classes = config_data.get('num_classes', 11)
         self.total_epochs = config_data.get('total_epochs', 200)
-
+        self.MACs = config_data.get('MACs', 1)
+        
     def __repr__(self) -> str:
         return f"Config({self.__dict__})"
 
@@ -58,8 +59,9 @@ class USC_main:
         # for fold, (train_loader, valid_loader) in enumerate(data_f.get_dataset()):
         self.tr = Trainer(self.config, self.model, train_loader, node_id, device)
         self.node_id = node_id
+        self.MACs = data_f.sample_length * self.config.MACs
+        
     def main(self):
-
         self.now_loss = self.tr.train()
         # print(self.tr.best_acc)
         return self.get_model_param()

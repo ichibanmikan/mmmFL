@@ -60,3 +60,4 @@ server/Experiment/**/*.png
 server/Experiment/backup
 server/context.pkl
 server/std.log
+client/STRESS

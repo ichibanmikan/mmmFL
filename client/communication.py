@@ -29,10 +29,11 @@ class ClientHandler():
         
         for i in range(len(self.config.datasets)):
             samp = self.trainers[i].sample_time()
-            self.one_epoch_time[i] = samp[0]
+            self.one_epoch_time[i] = (self.trainers[i].MACs / self.config.ability) *\
+                np.clip(np.random.normal(1.0, 0.05), 0.5, 1.5)
             one_epoch_loss[i] = samp[1]
             self.trainers[i].now_loss = samp[1]
-       
+        print("epoch_time: ", self.one_epoch_time)
         self.send(self.one_epoch_time)
         self.send(one_epoch_loss)
         
@@ -113,8 +114,8 @@ class ClientHandler():
                 self.send(end_time - start_time)
                 one_epoch_loss = np.zeros(len(self.trainers))
                 self.one_epoch_time[task__now_global_model[0]] = \
-                    (end_time - start_time) / \
-                        self.trainers[task__now_global_model[0]].config.epochs                
+                    self.trainers[task__now_global_model[0]].MACs / self.config.ability *\
+                        np.clip(np.random.normal(1.0, 0.05), 0.5, 1.5)                      
                 for i in range(len(self.trainers)):
                     one_epoch_loss[i] = self.trainers[i].now_loss          
                 self.send(self.one_epoch_time) # send train_time / epoches as one epoch time

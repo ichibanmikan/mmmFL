@@ -8,6 +8,7 @@
     "weight_decay": 0.001,
     "momentum": 0.9,
     "fold_epochs": 20,
-    "num_classes": 12
+    "num_classes": 12,
+    "MACs": 6040356
 }
 

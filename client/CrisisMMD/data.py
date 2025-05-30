@@ -78,6 +78,7 @@ class DataFactory:
     def __init__(self, data_pkl, config):
         self.dataset = DataSet(data_pkl)
         self.config = config
+        self.sample_length = len(self.dataset)
     def get_dataloader(self):
         train_loader = DataLoader(
             self.dataset, 

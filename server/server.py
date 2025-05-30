@@ -108,6 +108,9 @@ class Server:
             self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
             self.jobs_model_size[i] = self.jobs[i]["model_size"]
             self.jobs_finish[i] = False
+        self.jobs_model_size_std = \
+            (self.jobs_model_size - np.mean(self.jobs_model_size)) \
+                / np.std(self.jobs_model_size)
         self.buffer = ReplayBuffer(device=device)
         
     def clear_connections(self):
@@ -153,6 +156,9 @@ class Server:
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.episode_length = 0
+            self.losses = np.zeros((len(self.threads), len(self.jobs)))
+            self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
+            self.times_state = np.zeros((len(self.threads), len(self.jobs)))
             
         print(f"All clients released. Sleeping for 5 seconds before next round...")
         time.sleep(5)
@@ -191,13 +197,16 @@ class Server:
             self.trans_rewards = np.zeros(len(self.threads))
             # part time:trans_time, train_time. 
             # self.round_time_part[i][0] + self.round_time_part[i][1] = self.round_time[i]
-            
+            self.losses = np.zeros((len(self.threads), len(self.jobs)))
+            self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
+            self.times_state = np.zeros((len(self.threads), len(self.jobs)))
+                        
             # self.band_width_reward = 0
             self.clients_band_width = np.zeros(len(self.threads))
             self.num_part = 0
             
             self.train_wake_barrier \
-                = threading.Barrier(len(self.threads))
+                = threading.Barrier(len(self.threads), action = self.state_batchnorm)
             self.job_selection_barrier \
                 = threading.Barrier(len(self.threads), action = self.add_select)
             self.band_width_barrier \
@@ -236,13 +245,18 @@ class Server:
             self.clients_part[:] = eligible_mask
             self.num_part = len(eligible_indices)
         
-    def set_train_time(self, idx, update_time):
+    def set_train_time(self, idx, update_time, time_pos = -1):
         
         mask = self.train_time[idx] == 0
         self.train_time[idx][mask] = update_time[mask] 
         self.train_time[idx][~mask] = self.config.train_time_decay * self.train_time[idx][~mask] + \
                                     (1 - self.config.train_time_decay) * update_time[~mask]
-                              
+        if time_pos != -1:
+            self.train_time[idx][time_pos] = self.config.train_time_decay * self.train_time[idx][time_pos] + \
+                                        (1 - self.config.train_time_decay) * update_time[time_pos]        
+        else:
+            self.train_time[idx][~mask] = self.config.train_time_decay * self.train_time[idx][~mask] + \
+                                        (1 - self.config.train_time_decay) * update_time[~mask]                              
     def reattribute(self):
         if self.num_part == 0:
             return
@@ -342,6 +356,7 @@ class Server:
                 std = np.std(part_time)
 
         self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        self.state_batchnorm()        
         self.is_done()
         
     def update_Agent(self):
@@ -385,6 +400,14 @@ class Server:
                 context.write(binary_round)
             self.buffer.save_data()
             self.agent.save_model()
+    def state_batchnorm(self):
+        self.losses_state = \
+            (self.losses - self.losses.mean(axis=0, keepdims=True)) \
+                / (self.losses.std(axis=0, keepdims=True) + 1e-8)
+        
+        self.times_state = \
+            (self.train_time - self.train_time.mean(axis=0, keepdims=True)) \
+                / (self.train_time.std(axis=0, keepdims=True) + 1e-8)
 
 if __name__ == "__main__":
     config = Config()  # Initialize the config

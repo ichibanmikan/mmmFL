@@ -38,7 +38,8 @@ class data_factory:
     def __init__(self, data_dir, config):
         self.data_set = data_set(data_dir)
         self.config = config
-        
+        self.sample_length = len(self.data_set)
+               
     def get_dataset(self):
         # return datasets, dataloaders
         return  DataLoader(self.data_set, shuffle=True, drop_last=True, \
