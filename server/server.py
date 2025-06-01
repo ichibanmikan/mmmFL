@@ -287,14 +287,8 @@ class Server:
             self.num_part = len(eligible_indices)
         
     def set_train_time(self, idx, update_time, time_pos = -1):
-        mask = self.train_time[idx] == 0
-        self.train_time[idx][mask] = update_time[mask] 
-        if time_pos != -1:
-            self.train_time[idx][time_pos] = self.config.train_time_decay * self.train_time[idx][time_pos] + \
-                                        (1 - self.config.train_time_decay) * update_time[time_pos]        
-        else:
-            self.train_time[idx][~mask] = self.config.train_time_decay * self.train_time[idx][~mask] + \
-                                        (1 - self.config.train_time_decay) * update_time[~mask]
+        self.train_time[idx][time_pos] = self.config.train_time_decay * self.train_time[idx][time_pos] + \
+                                    (1 - self.config.train_time_decay) * update_time      
                               
     def reattribute(self):
         if self.num_part == 0:

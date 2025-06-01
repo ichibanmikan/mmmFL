@@ -105,21 +105,15 @@ class ClientHandler():
                 train_start_mess = self.recv() #，
                 print(train_start_mess)
                 
-                start_time = time.time()
                 new_params = self.trainers[task__now_global_model[0]].main()
-                end_time = time.time()
                 
                 param_update = new_params - task__now_global_model[1]
-                
-                self.send(end_time - start_time)
-                one_epoch_loss = np.zeros(len(self.trainers))
-                self.one_epoch_time[task__now_global_model[0]] = \
+                train_time = \
                     self.trainers[task__now_global_model[0]].MACs / self.config.ability *\
                         np.clip(np.random.normal(1.0, 0.05), 0.5, 1.5)            
-                for i in range(len(self.trainers)):
-                    one_epoch_loss[i] = self.trainers[i].now_loss          
-                self.send(self.one_epoch_time) # send train_time / epoches as one epoch time
-                self.send(one_epoch_loss) # send loss
+                train_loss =  self.trainers[task__now_global_model[0]].now_loss          
+                self.send(train_time) # send train_time / epoches as one epoch time
+                self.send(train_loss) # send loss
                 
                 send_start_mess = self.recv()
                 print(send_start_mess) #，
