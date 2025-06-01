@@ -53,6 +53,7 @@ server/RL/RLModel
 *.log
 
 client/USC-data
+client/STRESS
 
 server/jobs_backup
 server/Experiment/client_graph

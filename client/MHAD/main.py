@@ -20,7 +20,7 @@ class Config:
         self.momentum = config_data.get('momentum', 0.9)
         self.num_classes = config_data.get('num_classes', 11)
         self.total_epochs = config_data.get('total_epochs', 200)
-
+        self.MACs = config_data.get('MACs', 1)
     def __repr__(self) -> str:
         return f"Config({self.__dict__})"
 
@@ -40,10 +40,10 @@ class MHAD_main:
             device = torch.device("cpu")
         self.model = self.model.to(device)
         data_f = data_factory(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets/node_'+f"{node_id}/"), self.config)
-        train_loader, valid_loader = data_f.get_dataset()
-        self.tr = Trainer(self.config, self.model, train_loader, valid_loader, device)
+        train_loader = data_f.get_dataset()
+        self.tr = Trainer(self.config, self.model, train_loader, device)
         self.node_id = node_id
-        
+        self.MACs = data_f.sample_length * self.config.MACs        
     def main(self):
         self.now_loss, acc = self.tr.train()
         print(f'Accuracy of node {self.node_id} is {acc}')

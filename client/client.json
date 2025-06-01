@@ -3,10 +3,10 @@
         "server_address": "10.102.0.230",
         "port": 12345
     },
-    "self": {
-        "client_name": "client0"
+    "Ability": {
+        "ability": [18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8]
     },
-    "random_seed": 54321,
+    "random_seed": 42,
     "datasets": [
         {
             "dataset_name": "HatefulMemes",

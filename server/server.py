@@ -8,9 +8,9 @@ import configparser
 from communication import *
 from Experiment.plt import plot
 from RL.utils import ReplayBuffer
+from torch.distributions import Normal
 from RL.Agent import Agent, AgentConfig
 from global_models.global_models import *
-
 class Config:
     def __init__(self):
         config = configparser.ConfigParser()
@@ -33,27 +33,17 @@ class Config:
         self.episode_round = config.getint('RL', 'episode_round')
         self.max_episode_length = config.getint('RL', 'max_episode_length')
         self.save_data_freq = config.getint('RL', 'save_data_freq')
-        self.RL_high_agent = {
-            'hidden_dim': config.getint('RL_high_agent', 'hidden_dim'),
-            'actor_lr': config.getfloat('RL_high_agent', 'actor_lr'),
-            'critic_lr': config.getfloat('RL_high_agent', 'critic_lr'),
-            'alpha_lr': config.getfloat('RL_high_agent', 'alpha_lr'),
-            'device': config.get('RL_high_agent', 'device'),
-            'tau': config.getfloat('RL_high_agent', 'tau'),
-            'target_entropy': config.getint('RL_high_agent', 'target_entropy'),
-            'gamma': config.getfloat('RL_high_agent', 'gamma')
+        self.RL_agent = {
+            'hidden_dim': config.getint('RL', 'hidden_dim'),
+            'action_dim': config.getint('RL', 'action_dim'),
+            'actor_lr': config.getfloat('RL', 'actor_lr'),
+            'critic_lr': config.getfloat('RL', 'critic_lr'),
+            'alpha_lr': config.getfloat('RL', 'alpha_lr'),
+            'device': config.get('RL', 'device'),
+            'tau': config.getfloat('RL', 'tau'),
+            'target_entropy': config.getint('RL', 'target_entropy'),
+            'gamma': config.getfloat('RL', 'gamma')
         }
-
-        self.RL_low_agent = {
-            'hidden_dim': config.getint('RL_low_agent', 'hidden_dim'),
-            'actor_lr': config.getfloat('RL_low_agent', 'actor_lr'),
-            'critic_lr': config.getfloat('RL_low_agent', 'critic_lr'),
-            'alpha_lr': config.getfloat('RL_low_agent', 'alpha_lr'),
-            'device': config.get('RL_low_agent', 'device'),
-            'tau': config.getfloat('RL_low_agent', 'tau'),
-            'target_entropy': config.getint('RL_low_agent', 'target_entropy'),
-            'gamma': config.getfloat('RL_low_agent', 'gamma')
-        }   
         
 def set_all_seeds(seed=42):
     random.seed(seed)
@@ -96,9 +86,8 @@ class Server:
             device = torch.device("cpu")
         
         self.agent = Agent(
-            High_config=AgentConfig(self.config.RL_high_agent), 
-            Low_config=AgentConfig(self.config.RL_low_agent), 
-            N=len(self.jobs),
+            AgentConfig(self.config.RL_agent), 
+            len(self.jobs),
             device=device
         )
         self.jobs_goal_sub = np.zeros(len(self.jobs))
@@ -107,6 +96,9 @@ class Server:
             self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
             self.jobs_model_size[i] = self.jobs[i]["model_size"]
             self.jobs_finish[i] = False
+        self.jobs_model_size_std = \
+            (self.jobs_model_size - np.mean(self.jobs_model_size)) \
+                / np.std(self.jobs_model_size)
         self.buffer = ReplayBuffer(device=device)
         
     def clear_connections(self):
@@ -117,10 +109,10 @@ class Server:
         set_all_seeds(42)
         with self.lock:
             self.episode_length = 0
-            absorbing_state = np.zeros(len(self.jobs) * 4 + 1 + 3)
+            absorbing_state = np.zeros(len(self.jobs) * 5 + 1)
             absorbing_action = np.zeros(2)
             absorbing_reward = np.zeros(2)
-            absorbing_next_state = np.zeros(len(self.jobs) * 4 + 1 + 3)
+            absorbing_next_state = np.zeros(len(self.jobs) * 5 + 1)
             absorbing_done = True
             self.buffer.add(
                 absorbing_state, 
@@ -151,7 +143,14 @@ class Server:
             self.train_time = np.zeros((len(self.threads), len(self.jobs)))
             self.clients_jobs = np.zeros(len(self.threads))
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
-            
+            self.losses = np.zeros((len(self.threads), len(self.jobs)))
+            self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
+            self.times_state = np.zeros((len(self.threads), len(self.jobs)))
+            self.remaining_time = np.zeros(len(self.threads))
+            self.states = np.zeros((len(self.threads), len(self.jobs)*5+1), dtype=np.float32)
+            self.o_action = np.zeros(len(self.threads))
+            self.xi_action = np.zeros(len(self.threads))
+            self.next_states = np.zeros((len(self.threads), len(self.jobs)*5+1), dtype=np.float32)                                
         print(f"All clients released. Sleeping for 5 seconds before next round...")
         time.sleep(5)
 
@@ -186,22 +185,23 @@ class Server:
             self.round_time_part = np.zeros((len(self.threads), 2)) 
             # part time:trans_time, train_time. 
             # self.round_time_part[i][0] + self.round_time_part[i][1] = self.round_time[i]
-            
+            self.losses = np.zeros((len(self.threads), len(self.jobs)))
+            self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
+            self.times_state = np.zeros((len(self.threads), len(self.jobs)))
+            self.remaining_time = np.zeros(len(self.threads))
+            self.states = np.zeros((len(self.threads), len(self.jobs)*5+1), dtype=np.float32)
+            self.o_action = np.zeros(len(self.threads))
+            self.xi_action = np.zeros(len(self.threads))
+            self.next_states = np.zeros((len(self.threads), len(self.jobs)*5+1), dtype=np.float32)                     
             self.band_width_reward = 0
             self.job_selection_reward = 0
             self.clients_band_width = np.zeros(len(self.threads))
             self.num_part = 0
             
             self.train_wake_barrier \
-                = threading.Barrier(len(self.threads))
-            self.job_selection_barrier \
-                = threading.Barrier(len(self.threads), action = self.add_select)
-            self.band_width_barrier \
-                = threading.Barrier(len(self.threads), action = self.reattribute)
-            self.round_time_barrier \
-                = threading.Barrier(len(self.threads), action = self.round_time_reward)
-            # self.recv_global_barrier = threading.Barrier(len(self.threads))
-            # self.local_train_barrier = threading.Barrier(len(self.threads))
+                = threading.Barrier(len(self.threads), action = self.state_batchnorm)
+            self.action_barrier\
+                = threading.Barrier(len(self.threads), action = self.get_actions)
             self.update_params_barrier \
                 = threading.Barrier(len(self.threads), action=self.update_global_models)
             self.next_round_barrier \
@@ -214,14 +214,14 @@ class Server:
                 thread.join()
 
             self.clear_connections()
-            
-    def add_select(self):
-        eligible_mask = (self.clients_jobs > 0) & (~self.jobs_finish[self.clients_jobs - 1])
-        eligible_indices = np.flatnonzero(eligible_mask)
 
-        if len(eligible_indices) > self.config.max_participant_clients:
+    def get_actions(self):
+        self.o_action, self.xi_action = self.agent.get_actions(self.states)
+        mask = (self.o_action > 0) & (~self.jobs_finish[self.o_action - 1]) & (self.remaining_time > 0)
+        indices = np.flatnonzero(mask)
+        if len(indices) > self.config.max_participant_clients:
             selected = np.random.choice(
-                eligible_indices,
+                indices,
                 size=self.config.max_participant_clients,
                 replace=False
             )
@@ -229,35 +229,18 @@ class Server:
             self.clients_part[selected] = True
             self.num_part = self.config.max_participant_clients
         else:
-            self.clients_part[:] = eligible_mask
-            self.num_part = len(eligible_indices)
+            self.clients_part[:] = mask
+            self.num_part = len(indices)        
         
-    def set_train_time(self, idx, update_time):
+        selected_xi = self.xi_action[mask]
+        exp_xi = np.exp(selected_xi - np.max(selected_xi))  # 减去最大值防止数值爆炸
+        xi_norm = exp_xi / np.sum(exp_xi)
+        self.xi_action[mask] = xi_norm    
         
-        mask = self.train_time[idx] == 0
-        self.train_time[idx][mask] = update_time[mask] 
-        self.train_time[idx][~mask] = self.config.train_time_decay * self.train_time[idx][~mask] + \
-                                    (1 - self.config.train_time_decay) * update_time[~mask]
+    def set_train_time(self, idx, update_time, time_pos):
+        self.train_time[idx][time_pos] = self.config.train_time_decay * self.train_time[idx][time_pos] + \
+                                    (1 - self.config.train_time_decay) * update_time 
                               
-    def reattribute(self):
-        if self.num_part == 0:
-            return
-        selected_indices = [i for i, is_selected in enumerate(self.clients_part) if is_selected]
-        selected_bandwidths = [self.clients_band_width[i] for i in selected_indices]
-
-        total_bandwidth = sum(selected_bandwidths)
-        
-        if total_bandwidth == 0:
-            num_selected = len(selected_indices)
-            if num_selected > 0:
-                normalized = [1.0 / num_selected for _ in selected_bandwidths]
-            else:
-                normalized = []
-        else:
-            normalized = [bw / total_bandwidth for bw in selected_bandwidths]
-
-        for idx, norm_value in zip(selected_indices, normalized):
-            self.clients_band_width[idx] = norm_value
        
     def update_global_models(self):
         if self.num_part != 0:
@@ -287,19 +270,9 @@ class Server:
             log.write(f"This round all jobs' acc are: {accs}\n")
         self.global_round += 1
         self.episode_length += 1
-        
-    def round_clean(self):
-        self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
-        self.clients_part = np.zeros(len(self.threads), dtype = bool)
-        # self.every_round_train_time = np.zeros(len(self.threads))
-        self.clients_band_width = np.zeros(len(self.threads))
-        self.round_time = np.zeros(len(self.threads))
-        self.round_time_part = np.zeros((len(self.threads), 2)) 
-        self.band_width_reward = 0
-        self.job_selection_reward = 0
-        self.num_part = 0     
+        self.get_reward()
     
-    def round_time_reward(self):
+    def get_reward(self):
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
                 with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
@@ -321,15 +294,31 @@ class Server:
                 if std == 0:
                     self.band_width_reward = std
                 else:
-                    self.band_width_reward = -1 * std
-        
-
-        self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+                    self.band_width_reward = -1 * std        
+        self.reward = (self.band_width_reward + self.job_selection_reward) / 2
+        self.state_batchnorm()
         self.is_done()
+                
+    def round_clean(self):
+        self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
+        self.clients_part = np.zeros(len(self.threads), dtype = bool)
+        # self.every_round_train_time = np.zeros(len(self.threads))
+        self.clients_band_width = np.zeros(len(self.threads))
+        self.round_time = np.zeros(len(self.threads))
+        self.round_time_part = np.zeros((len(self.threads), 2)) 
+        self.band_width_reward = 0
+        self.job_selection_reward = 0
+        self.num_part = 0     
 
         
     def update_Agent(self):
         # self.every_round_train_time = np.zeros(len(self.threads))
+        self.buffer.add(self.states,
+                        np.stack([self.o_action, self.xi_action], axis=1),
+                        self.next_states, 
+                        self.reward, 
+                        self.reward, 
+                        self.done)
         if len(self.buffer.states) > self.config.min_replay_buffer_size:
             print("This round start update_Agent()")
             s, a, ns, r, dr, d = self.buffer.sample(self.config.replay_buffer_batch_size)
@@ -369,6 +358,15 @@ class Server:
                 context.write(binary_round)
             self.buffer.save_data()
             self.agent.save_model()
+
+    def state_batchnorm(self):
+        self.losses_state = \
+            (self.losses - self.losses.mean(axis=0, keepdims=True)) \
+                / (self.losses.std(axis=0, keepdims=True) + 1e-8)
+        
+        self.times_state = \
+            (self.train_time - self.train_time.mean(axis=0, keepdims=True)) \
+                / (self.train_time.std(axis=0, keepdims=True) + 1e-8)
 
 if __name__ == "__main__":
     config = Config()  # Initialize the config

@@ -54,8 +54,8 @@ class Config:
         self.node_id = args.node_id
         self.server_address = data["Host"]["server_address"]
         self.port = data["Host"]["port"]
-        self.client_name = data["self"]["client_name"]
         self.datasets = data["datasets"]
+        self.ability = data["Ability"]["ability"][self.node_id]
         self.random_seed = data["random_seed"]
     def modality(self, row):
         return self.datasets[row]['modalities_name']

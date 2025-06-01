@@ -33,7 +33,7 @@ class Config:
         self.momentum = config_data.get('momentum', 0.9)
         self.num_classes = config_data.get('num_classes', 6)
         self.total_epochs = config_data.get('total_epochs', 200)
-
+        self.MACs = config_data.get('MACs', 1)
     def __repr__(self) -> str:
         return f"Config({self.__dict__})"
 
@@ -63,6 +63,7 @@ class HatefulMemes_main:
             os.path.dirname(os.path.abspath(__file__)), \
                 'datasets'), self.config
             )
+        self.MACs = df.sample_length * self.config.MACs
         train_loader = df.get_dataloader()
         self.node_id = node_id
         self.tr = Trainer(self.config, self.model, train_loader, device)

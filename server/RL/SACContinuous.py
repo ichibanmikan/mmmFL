@@ -5,34 +5,13 @@ from torch.nn import functional as F
 import numpy as np
 from torch.distributions import Normal
 
-# class AttentionLayer(nn.Module):
-#     def __init__(self, state_dim, hidden_dim):
-#         super(AttentionLayer, self).__init__()
-#         self.query = nn.Linear(state_dim, hidden_dim)
-#         self.key = nn.Linear(state_dim, hidden_dim)
-#         self.value = nn.Linear(state_dim, hidden_dim)
-
-#     def forward(self, ti, other_states):
-#         Q = self.query(ti.unsqueeze(-1))  # (bsz, 1, hidden_dim)
-#         K = self.key(other_states.unsqueeze(-1))  # (bsz, k' - 1, hidden_dim)
-#         V = self.value(other_states.unsqueeze(-1)) # (bsz, k' - 1, hidden_dim)
-#         attention_scores = torch.matmul(Q, K.transpose(-2, -1)) \
-#             / (K.size(-1) ** 0.5) # (bsz, 1, k' - 1)
-#         attention_weights = nn.Softmax(attention_scores, dim = -1)  # (bsz, 1, k' - 1)
-#         context = torch.matmul(attention_weights, V)  # (bsz, 1, hidden_dim)
-        
-#         return context.squeeze(dim = 1), \
-#             attention_weights.squeeze(dim = 1) # (bsz, hidden_dim), (bsz, k' - 1)
-
 class Actor(nn.Module):
-    def __init__(self, hidden_dim):
+    def __init__(self, N, hidden_dim, action_dim = 2):
         super(Actor, self).__init__()
-        # self.attention = AttentionLayer(1, hidden_dim)
-        # self.l1 = nn.Linear(hidden_dim + 2, hidden_dim + 2)
-        self.l1 = nn.Linear(3, hidden_dim)
-        self.l_mean = nn.Linear(hidden_dim, 1)
-        self.l_std = nn.Linear(hidden_dim, 1) 
-
+        self.l1 = nn.Linear(5 * N + 1, hidden_dim)
+        self.l_mean = nn.Linear(hidden_dim, action_dim)
+        self.l_std = nn.Linear(hidden_dim, action_dim) 
+        self.N = N
         nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))
         nn.init.constant_(self.l1.bias, 0.0)
         nn.init.uniform_(self.l_mean.weight, -1e-3, 1e-3)
@@ -41,32 +20,27 @@ class Actor(nn.Module):
         nn.init.constant_(self.l_std.bias, -1.0)
 
     def forward(self, x):
-        # Input x: (bsz, 3), 
-        # Ιnclude ti, model_size, T_remain.
-        # s_r = x[:, -2:] # (bsz, 2)
-        # x, _ = self.attention(x[:, 0].unsqueeze(-1), x[:, 1:-2]) # (bsz, h_d)
-        # x = torch.cat([x, s_r]) # (bsz, h_d + 2)
         x = F.relu(self.l1(x))
+        x_means = self.l_mean(x) 
+        x_stds = F.softplus(self.l_std(x))
+        x_stds = torch.clamp(x_stds, min=1e-6)
+          
+        o_dist = Normal(x_means[:, 0], x_stds[:, 0])
+        o_sampled = o_dist.rsample()
+        clipped = torch.clamp(o_sampled, 0.0, 1.0)
+        o = torch.floor(clipped * (self.N+1)).long()
+        o = torch.clamp(o, max=self.N)
         
-        x_mean = self.l_mean(x) 
-        x_std = F.softplus(self.l_std(x))
-        x_std = torch.clamp(x_std, min=1e-6)        
-        dist = Normal(x_mean, x_std)
-        normal_sample = dist.rsample()
-        log_prob = dist.log_prob(normal_sample)
-        action = (torch.tanh(normal_sample) + 1) / 2
-        action = action.clamp(min=0.05, max=0.95)
-        log_prob -= torch.log(1 - action.pow(2) + 1e-7)
-        return action, log_prob
+        xi_dist = Normal(x_means[:, 1], x_stds[:, 1])
+        xi_sampled = xi_dist.rsample()
+        xi = torch.clamp(xi_sampled, 0.0, 1.0)
+        xi = torch.clamp(xi, min=0.05, max=0.95)              
+        return o.cpu().detach().numpy(), xi.cpu().detach().numpy()
 
 class QValueNet(nn.Module):
-    def __init__(self, hidden_dim):
+    def __init__(self, N, action_dim, hidden_dim):
         super(QValueNet, self).__init__()
-        # self.attention = AttentionLayer(1, hidden_dim)
-        # self.l1 = nn.Linear(hidden_dim + 2, (hidden_dim + 2) * 2) 
-        # self.l2 = nn.Linear((hidden_dim + 2) * 2, hidden_dim + 2)
-        # self.l3 = nn.Linear(hidden_dim + 2, 1)
-        self.l1 = nn.Linear(3 + 1, (hidden_dim) * 2) 
+        self.l1 = nn.Linear(5 * N + 1 + action_dim, (hidden_dim) * 2) 
         self.l2 = nn.Linear((hidden_dim) * 2, hidden_dim)
         self.l3 = nn.Linear(hidden_dim, 1)
         for layer in [self.l1, self.l2]:
@@ -77,10 +51,6 @@ class QValueNet(nn.Module):
         nn.init.constant_(self.l3.bias, 0.0)   
      
     def forward(self, state, action):
-        # action.unsqueeze(-1)
-        # print("1111111111111")
-        # print(state.shape)
-        # print(action.shape)
         if action.dim() == 1:
             action = action.unsqueeze(-1)
         x = torch.cat([state, action], dim = -1) # (bsz, h_d + 2)
@@ -90,16 +60,16 @@ class QValueNet(nn.Module):
  
 class SACContinuous:
     def __init__(
-        self, hidden_dim, actor_lr, critic_lr, alpha_lr,\
+        self, N, hidden_dim, action_dim, actor_lr, critic_lr, alpha_lr,\
             target_entropy, tau, gamma, device,\
                 model_path = os.path.join(
                     os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SACContinuous.pth'
         )):
-        self.actor = Actor(hidden_dim).to(device)
-        self.critic_1 = QValueNet(hidden_dim).to(device)
-        self.critic_2 = QValueNet(hidden_dim).to(device)
-        self.target_critic_1 = QValueNet(hidden_dim).to(device)
-        self.target_critic_2 = QValueNet(hidden_dim).to(device)
+        self.actor = Actor(N, hidden_dim, action_dim).to(device)
+        self.critic_1 = QValueNet(N, action_dim, hidden_dim).to(device)
+        self.critic_2 = QValueNet(N, action_dim, hidden_dim).to(device)
+        self.target_critic_1 = QValueNet(N, action_dim, hidden_dim).to(device)
+        self.target_critic_2 = QValueNet(N, action_dim, hidden_dim).to(device)
         
         self.actor_optimizer = torch.optim.Adam(
             self.actor.parameters(), lr=actor_lr
@@ -128,30 +98,25 @@ class SACContinuous:
         else:
             self.target_critic_1.load_state_dict(self.critic_1.state_dict())
             self.target_critic_2.load_state_dict(self.critic_2.state_dict())
-            
+        self.N = N
     def take_action(self, state):
-        state = torch.tensor(state, dtype=torch.float32).to(self.device) # (N)
-        state = state.squeeze(0) # batch_size: 1
+        state = torch.tensor(state, dtype=torch.float32).to(self.device)
         self.epochs += 1
-        if self.epochs <= 50:
-            b = np.random.rand()
-            if b < 1e-4:
-                b = 1e-4
-            elif b >= 1 - 1e-4:
-                b = 1 - 1e-4
-            return b
-        action = self.actor(state)[0] # (1)
-        return action.cpu().detach().item()
+        o, xi = self.actor(state)
+        return o, xi
 
     def calc_target(self, rewards, next_states = None, dones = 1): 
         if rewards.dim() == 1:
             rewards = rewards.unsqueeze(-1)
         if dones.dim() == 1:
             dones = dones.unsqueeze(-1)
-        next_actions, log_probs = self.actor(next_states) # (bsz, 1), (bsz, 1)
-        entropy = -log_probs # (bsz, 1)
-        q1_value = self.target_critic_1(next_states, next_actions) # (bsz, 1)
-        q2_value = self.target_critic_2(next_states, next_actions) # (bsz, 1)
+            
+        means, stds = self.actor(next_states) 
+        o_dist = Normal(means[:, 0], stds[:, 0])
+        xi_dist = Normal(means[:, 1], stds[:, 1])
+        entropy = o_dist.entropy() + xi_dist.entropy()
+        q1_value = self.target_critic_1(next_states, torch.cat([means, stds], dim = 1)) # (bsz, 1)
+        q2_value = self.target_critic_2(next_states, torch.cat([means, stds], dim = 1)) # (bsz, 1)
         
         next_value = torch.minimum(q1_value, q2_value) \
             + self.log_alpha.exp() * entropy
@@ -175,20 +140,6 @@ class SACContinuous:
         filtered_rewards = []
         filtered_dones = []
         filtered_next_states = []
-        
-        for idx, s in enumerate(states):
-            if s[0] == -1.0 and s[1] == -1.0 and s[2] == -1.0:
-                continue
-            else:
-                filtered_states.append(s)
-                filtered_actions.append(actions[idx])
-                filtered_rewards.append(rewards[idx])
-                filtered_dones.append(dones[idx])
-                ns = next_states[idx]
-                if ns[0] == -1.0 and ns[1] == -1.0 and ns[2] == -1.0:
-                    filtered_next_states.append(torch.full_like(ns, 0))
-                else:
-                    filtered_next_states.append(ns)
 
         if not filtered_actions:
             return
