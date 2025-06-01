@@ -75,11 +75,11 @@ class ServerHandler():
         
         self.send("received modality! Start sample!")
         
-        self.one_epoch_time = self.recv()
-        self.one_epoch_loss = self.recv()
+        one_epoch_time = self.recv()
+        one_epoch_loss = self.recv()
         with self.server.lock:
-            self.server.losses[self.client_id] = self.one_epoch_loss
-            self.server.train_time[self.client_id] = self.one_epoch_time
+            self.server.losses[self.client_id] = one_epoch_loss
+            self.server.train_time[self.client_id] = one_epoch_time
         self.server.train_wake_barrier.wait()
         self.handle_train()
         
@@ -87,7 +87,9 @@ class ServerHandler():
         time_remain = \
             np.array([self.time_remain / self.server.config.max_participant_time])
         time_state_row = \
-            (self.one_epoch_time - self.one_epoch_time.mean()) / self.one_epoch_time.std()
+            (self.server.train_time[self.client_id] -\
+                self.server.train_time[self.client_id].mean()) /\
+                    self.server.train_time[self.client_id].std()
         time_state_col = \
             self.server.times_state[self.client_id]
         loss_state_col = \
@@ -173,13 +175,11 @@ class ServerHandler():
                     self.send("Train start!")
                     
                     train_time = self.recv()
+                    train_loss = self.recv()
                     self.time_remain -= train_time
                     
                     print(f"Received train_time from client {self.client_id} in job {now_job}: "\
                         , train_time)
-                    
-                    self.one_epoch_time = self.recv()
-                    self.one_epoch_loss = self.recv()
                     
                     # self.server.local_train_barrier.wait() 
                     
@@ -195,8 +195,8 @@ class ServerHandler():
                         self.server.current_round_all_params.append((
                             now_job, now_params
                         ))
-                        self.server.set_train_time(self.client_id, self.one_epoch_time, now_job)
-                        self.server.losses[self.client_id] = self.one_epoch_loss
+                        self.server.set_train_time(self.client_id, train_time, now_job)
+                        self.server.losses[self.client_id][now_job] = train_loss
                     self.jobs_participant[job_action - 1] += 1
                     self.server.update_params_barrier.wait()
                         
@@ -233,14 +233,15 @@ class ServerHandler():
                 time_remain = \
                     np.array([self.time_remain / self.server.config.max_participant_time])
                 time_state_row = \
-                    (self.one_epoch_time - self.one_epoch_time.mean()) / self.one_epoch_time.std()
+                    (self.server.train_time[self.client_id] -\
+                        self.server.train_time[self.client_id].mean()) /\
+                            self.server.train_time[self.client_id].std()
                 time_state_col = \
                     self.server.times_state[self.client_id]
                 loss_state_col = \
                     self.server.losses_state[self.client_id]
                 jobs_part = \
-                     (self.jobs_participant - self.jobs_participant.mean())\
-                         / (self.jobs_participant.std() + 1e-8)                            
+                    (self.jobs_participant - self.jobs_participant.mean()) / (self.jobs_participant.std() + 1e-8)                           
                 next_state_job_selection = np.concatenate([
                     time_remain, time_state_row, time_state_col, loss_state_col, jobs_part
                 ])
