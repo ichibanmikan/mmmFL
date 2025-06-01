@@ -6,7 +6,7 @@
     "Ability": {
         "ability": [18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8, 18e8]
     },
-    "random_seed": 54321,
+    "random_seed": 42,
     "datasets": [
         {
             "dataset_name": "HatefulMemes",
