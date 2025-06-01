@@ -30,7 +30,7 @@ class ClientHandler():
         for i in range(len(self.config.datasets)):
             samp = self.trainers[i].sample_time()
             self.one_epoch_time[i] = (self.trainers[i].MACs / self.config.ability) *\
-                np.clip(np.random.normal(1.0, 0.05), 0.5, 1.5)
+                np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)
             one_epoch_loss[i] = samp[1]
             self.trainers[i].now_loss = samp[1]
         self.send(self.one_epoch_time)
