@@ -107,7 +107,7 @@ class ClientHandler():
                 param_update = new_params - task__now_global_model[1]
                 self.one_epoch_time[task__now_global_model[0]] = \
                     self.trainers[task__now_global_model[0]].MACs / self.config.ability *\
-                        np.clip(np.random.normal(1.0, 0.05), 0.5, 1.5)                         
+                        np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)                        
                 one_epoch_loss = self.trainers[task__now_global_model[0]].now_loss          
                 self.send(self.one_epoch_time[task__now_global_model[0]]) # send train_time / epoches as one epoch time
                 self.send(one_epoch_loss) # send loss
