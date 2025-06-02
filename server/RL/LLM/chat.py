@@ -36,7 +36,7 @@ class chat_response:
     def validator(self, str_reward_function):
         try:
             local_vars = {}
-            exec(str_reward_function, {}, local_vars)
+            exec(str_reward_function, {"np": np}, local_vars)
             if 'reward_function' not in local_vars:
                 return {"success": False, "error": "reward_function not defined"}
 
