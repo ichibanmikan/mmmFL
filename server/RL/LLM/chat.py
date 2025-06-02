@@ -1,12 +1,28 @@
 import re
 import json
 import openai
+import traceback
+import numpy as np
 # from prompt import *
 from RL.LLM.prompt import *
 
+class validaor_server:
+    def __init__(self):
+        self.history_data={}
+        self.round_time = np.array([6.8111581446449945, 25.642555425314846, 28.96361294668462, 41.494333558984295, 19.518053340693065, 7.133228594436233, 24.368770571079494, 25.999492807389217, 21.900927560092953, 0.0, 3.7256212603105583, 24.09039822554036, 4.275423751066157, 0.0, 47.849016480439786, 40.266861298947155, 0.0, 0.0, 32.051147000106255, 0.0, 0.0, 84.0868359893467, 7.9928002047636175, 0.0, 4.116541121080727, 0.0, 0.0, 6.155168858395333, 3.6631206311095648, 46.203092340688265], dtype=np.float32)
+        self.round_time_part =  np.array([[2.89856721,1.01402372], [ 3.53047554 ,18.58160434], [ 4.93245782 ,19.09869731], [11.84274508 ,17.8088434 ], [ 3.23560086 ,13.04685162], [3.04519424 ,1.04284012], [ 5.629489  , 13.10979257], [ 3.60700937 ,18.78547407], [ 2.13282639 ,17.63527479], [0. ,0.], [1.44432892 ,0.83696342], [ 3.05972367, 17.97095088], [1.63761007, 1.00020361], [0.,0.], [ 8.28690789, 31.2752007 ], [ 9.9865556 ,20.2937501], [0., 0.], [0. ,0.], [ 5.97655482, 20.09803735], [0. ,0.], [0., 0.], [31.80593061, 20.47497476], [3.41566263, 1.16147494], [0. ,0.], [1.20348288,1.70957536], [0., 0.], [0., 0.], [2.55257047, 1.05002791], [1.23242405, 1.19827253], [11.84091422 ,22.5212639 ]], dtype=np.float32)
+        self.acc_array = np.array([-14.57807445526123, -14.57807445526123, 10.42192554473877, 10.42192554473877], dtype=np.float32)
+        self.jobs_goal_diff = np.array([58.70000076293945, 42.86991500854492, 16.11111068725586, 10.42192554473877], dtype=np.float32)
+        self.jobs_goal = np.array([75.0, 75.0, 100.0, 100.0], dtype=np.float32)
+        self.remain_time = np.array([299993, 299974, 299971, 299958, 299980, 299992, 299975, 299974, 299978, 300000, 299996, 299975, 299995, 300000, 299952, 299959, 300000, 300000, 299967, 300000, 300000, 299915, 299992, 300000, 299995, 300000, 300000, 299993, 299996, 299953])
+        self.clients_part = np.array([True, True, True, True, True, True, True, True, True, False, True, True, True, False, True, True, False, False, True, False, False, True, True, False, True, False, False, True, True, True])
+        self.clients_jobs = np.array([4, 1, 1, 1, 2, 4, 2, 1, 1, 0, 3, 1, 3, 0, 2, 2, 0, 0, 2, 0, 0, 1, 4, 0, 4, 0, 0, 3, 4, 1])
+        self.clients_band_width_origin = np.array([0.25453993678092957, 0.523273229598999, 0.3745401188473625, 0.15599452033620265, 0.9507143064099162, 0.24228376150131226, 0.546431839466095, 0.5121703743934631, 0.8661761457749352, 0.0, 0.7319939418114051, 0.6037811040878296, 0.645599365234375, 0.0, 0.37120383977890015, 0.30802732706069946, 0.0, 0.0, 0.5146998763084412, 0.0, 0.0, 0.05808361216819946, 0.21600526571273804, 0.0, 0.6130549311637878, 0.0, 0.0, 0.41418641805648804, 0.5986584841970366, 0.15601864044243652], dtype=np.float32)
+        self.rewards = np.zeros((30,9))
+
 class chat_response:
     def __init__(self):
-        self.OPENAI_API_KEY = "sk-c97a94a8bc504e0ea92df1f73738b626"
+        self.OPENAI_API_KEY = "sk-a8b4b1a3b4d64222b2fb30bc507eafd7"
 
         self.chat_client = openai.OpenAI(
             api_key=self.OPENAI_API_KEY,
@@ -16,6 +32,42 @@ class chat_response:
         self.prompt_reward = Prompt_reward()
         self.prompt_summary = Prompt_Summary()
         self.functions = []
+
+    def validator(self, str_reward_function):
+        try:
+            local_vars = {}
+            exec(str_reward_function, {}, local_vars)
+            if 'reward_function' not in local_vars:
+                return {"success": False, "error": "reward_function not defined"}
+
+            reward_function = local_vars['reward_function']
+
+            vs = validaor_server()
+            result = reward_function(
+                vs,
+                vs.round_time,
+                vs.round_time_part,
+                vs.acc_array,
+                vs.jobs_goal_diff,
+                vs.jobs_goal,
+                vs.remain_time,
+                vs.clients_part,
+                vs.clients_jobs,
+                vs.clients_band_width_origin
+            )
+
+            assert result.shape == vs.rewards.shape, \
+                f"Reward function output shape mismatch: expected {vs.rewards.shape}, got {result.shape}"
+
+            return {"success": True}
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            }
+
 
     def extract_json_content(self, text):
         match = re.search(r'```json\n(.*?)\n```', text, re.DOTALL)
@@ -74,28 +126,25 @@ class chat_response:
             str_reward_function = self.extract_python_code(data["Functions"])
 
             for i in range(5):
-                try:
-                    exec(str_reward_function)
+                errmess = self.validator(str_reward_function)
+                if(errmess["success"]):
                     break
-                except SyntaxError as e:
-                    print(f"Syntax Error in generated function: {e}")
-                    pr = Prompt_regenerate(str_reward_function, str(e))
-                    reresponse = self.chat_client.chat.completions.create(
-                        model="deepseek-reasoner",
-                        messages=[{"role": "user", "content": pr.get_context()}],
-                        stream=True
-                    )
-                    reasoning, answer = self.decode_stream(reresponse)
-                    with open('function.log', 'a') as file:
-                        file.write(f"Reasoning: \n{reasoning}\n")
-                        file.write(f"Answer: \n{answer}\n")
-                        file.write("\n")
-                    reresponse_content = self.extract_json_content(answer)
-                    print(reresponse_content)
-                    data = json.loads(reresponse_content)
-                    str_reward_function = self.extract_python_code(data["Functions"])
-                except Exception as e:
-                    print(f"Runtime Error in generated function: {e}")
+                print(f"Syntax Error in generated function: {errmess}")
+                pr = Prompt_regenerate(str_reward_function, errmess["error"])
+                reresponse = self.chat_client.chat.completions.create(
+                    model="deepseek-reasoner",
+                    messages=[{"role": "user", "content": pr.get_context()}],
+                    stream=True
+                )
+                reasoning, answer = self.decode_stream(reresponse)
+                with open('function.log', 'a') as file:
+                    file.write(f"Reasoning: \n{reasoning}\n")
+                    file.write(f"Answer: \n{answer}\n")
+                    file.write("\n")
+                reresponse_content = self.extract_json_content(answer)
+                print(reresponse_content)
+                data = json.loads(reresponse_content)
+                str_reward_function = self.extract_python_code(data["Functions"])
 
             return str_reward_function
         except json.JSONDecodeError as e:
@@ -122,8 +171,12 @@ class chat_response:
         data = json.loads(summary_content)
         str_reward_function = self.extract_python_code(data["Functions"])
         return str_reward_function
+    def get_function(self):
+        return "def reward_function(server, obs0, obs1, obs2, obs3, obs4, obs5, obs6, action0, action1):\n    import numpy as np\n    np.seterr(divide='ignore', invalid='ignore')\n    M, N = len(action0), len(obs4)\n    reward_array = np.zeros((M,9))\n    \n    # Initialize server history\n    if 'clients' not in server.history_data:\n        server.history_data['clients'] = [\n            {'participation': np.zeros(N), 'loss_hist': np.zeros(N)+1e-5, \n             'last_round': -1, 'reputation': 1.0} for _ in range(M)]\n        server.history_data['global_round'] = 0\n    clients = server.history_data['clients']\n    server.history_data['global_round'] +=1\n    \n    # Penalize if no clients participated\n    active = np.array(obs6, dtype=bool)\n    if not np.any(active):\n        remaining_ratios = obs5 / (np.max(obs5)+1e-8)\n        top_clients = np.where(remaining_ratios > np.percentile(remaining_ratios,80))[0]\n        reward_array[top_clients, 0:8] = -5.0\n        return np.nan_to_num(reward_array)\n    \n    # Precompute task stats\n    task_last_round = np.zeros(N)\n    for i in range(M):\n        if action0[i]>0:\n            task = action0[i]-1\n            clients[i]['last_round'] = server.history_data['global_round']\n            task_last_round[task] = server.history_data['global_round']\n    \n    for i in range(M):\n        sub_rewards = np.zeros(8)\n        task = action0[i]\n        \n        # Sub-reward 1: Penalize assigning converged tasks\n        if task>0:\n            t_idx = task-1\n            if obs3[t_idx] >= obs4[t_idx]:\n                sub_rewards[:] = -5.0\n                reward_array[i,:8] = sub_rewards\n                continue\n        \n        # Sub-reward 2: Penalize excluding reputable clients\n        if task==0 and clients[i]['reputation'] >0.8:\n            sub_rewards[:] = -5.0\n            reward_array[i,:8] = sub_rewards\n            continue\n        \n        if task>0 and active[i]:\n            t_idx = task-1\n            clients[i]['participation'][t_idx] +=1\n            \n            # Sub-reward 0: Scaled accuracy improvement\n            delta = obs2[t_idx]\n            scale = (obs4[t_idx]-obs3[t_idx])/obs4[t_idx] if obs4[t_idx]>0 else 1.0\n            sub_rewards[0] = np.clip(delta*scale*10, -5,5)\n            \n            # Sub-reward 3: Participation balance\n            part_var = np.var(clients[i]['participation'])\n            if part_var >10:\n                sub_rewards[3] = -np.clip((part_var-10)/10, 0,5)\n            \n            # Sub-reward 4: Encourage under-trained tasks\n            rounds_since = server.history_data['global_round'] - task_last_round[t_idx]\n            if rounds_since >100:\n                sub_rewards[4] = 2.0\n            \n            # Sub-reward 5: Resource exhaustion\n            if obs5[i]/(np.max(obs5)+1e-8) <0.1:\n                sub_rewards[5] = -3.0\n            \n            # Sub-reward 6: Training efficiency\n            comp_time = obs1[i][1]\n            avg_time = np.mean(obs1[active,1])\n            sub_rewards[6] = np.clip((avg_time-comp_time)/avg_time*3, -5,5)\n            \n            # Sub-reward 7: Loss-based penalty\n            if obs2[t_idx] <0:\n                sub_rewards[7] = np.clip(obs2[t_idx]*2, -5,0)\n            \n        reward_array[i,:8] = np.nan_to_num(sub_rewards)\n    \n    # Bandwidth reward\n    active_durations = obs0[active]\n    if len(active_durations)>0:\n        std_dev = np.std(active_durations)\n        avg_dur = np.mean(active_durations)\n        lower = np.clip(1 - std_dev/0.5, 0.1,1.0)\n        \n        for i in np.where(active)[0]:\n            dur = obs0[i]\n            ratio = (dur - avg_dur)/ (avg_dur +1e-8)\n            bw_reward = lower + (1 - abs(ratio))* (1 - lower)\n            \n            # Critical remaining time\n            if obs5[i] <0.01:\n                alloc_rank = np.sum(action1[i] >= action1[active])\n                if alloc_rank <0.1*len(action1[active]):\n                    bw_reward -=2.0\n                else:\n                    bw_reward +=1.0\n            reward_array[i,8] = np.clip(bw_reward*5, -5,5)\n    \n    return np.nan_to_num(reward_array)"
 
 if __name__ == "__main__":
     cr = chat_response()
-    reward_function = cr.generate()
-    print(reward_function)
+    # reward_function = cr.generate()
+    r_f = "def reward_function(server, obs0, obs1, obs2, obs3, obs4, obs5, obs6, action0, action1):\n    import numpy as np\n    np.seterr(divide='ignore', invalid='ignore')\n    M, N = len(action0), len(obs4)\n    reward_array = np.zeros((M,9))\n    \n    # Initialize server history\n    if 'clients' not in server.history_data:\n        server.history_data['clients'] = [\n            {'participation': np.zeros(N), 'loss_hist': np.zeros(N)+1e-5, \n             'last_round': -1, 'reputation': 1.0} for _ in range(M)]\n        server.history_data['global_round'] = 0\n    clients = server.history_data['clients']\n    server.history_data['global_round'] +=1\n    \n    # Penalize if no clients participated\n    active = np.array(obs6, dtype=bool)\n    if not np.any(active):\n        remaining_ratios = obs5 / (np.max(obs5)+1e-8)\n        top_clients = np.where(remaining_ratios > np.percentile(remaining_ratios,80))[0]\n        reward_array[top_clients, 0:8] = -5.0\n        return np.nan_to_num(reward_array)\n    \n    # Precompute task stats\n    task_last_round = np.zeros(N)\n    for i in range(M):\n        if action0[i]>0:\n            task = action0[i]-1\n            clients[i]['last_round'] = server.history_data['global_round']\n            task_last_round[task] = server.history_data['global_round']\n    \n    for i in range(M):\n        sub_rewards = np.zeros(8)\n        task = action0[i]\n        \n        # Sub-reward 1: Penalize assigning converged tasks\n        if task>0:\n            t_idx = task-1\n            if obs3[t_idx] >= obs4[t_idx]:\n                sub_rewards[:] = -5.0\n                reward_array[i,:8] = sub_rewards\n                continue\n        \n        # Sub-reward 2: Penalize excluding reputable clients\n        if task==0 and clients[i]['reputation'] >0.8:\n            sub_rewards[:] = -5.0\n            reward_array[i,:8] = sub_rewards\n            continue\n        \n        if task>0 and active[i]:\n            t_idx = task-1\n            clients[i]['participation'][t_idx] +=1\n            \n            # Sub-reward 0: Scaled accuracy improvement\n            delta = obs2[t_idx]\n            scale = (obs4[t_idx]-obs3[t_idx])/obs4[t_idx] if obs4[t_idx]>0 else 1.0\n            sub_rewards[0] = np.clip(delta*scale*10, -5,5)\n            \n            # Sub-reward 3: Participation balance\n            part_var = np.var(clients[i]['participation'])\n            if part_var >10:\n                sub_rewards[3] = -np.clip((part_var-10)/10, 0,5)\n            \n            # Sub-reward 4: Encourage under-trained tasks\n            rounds_since = server.history_data['global_round'] - task_last_round[t_idx]\n            if rounds_since >100:\n                sub_rewards[4] = 2.0\n            \n            # Sub-reward 5: Resource exhaustion\n            if obs5[i]/(np.max(obs5)+1e-8) <0.1:\n                sub_rewards[5] = -3.0\n            \n            # Sub-reward 6: Training efficiency\n            comp_time = obs1[i][1]\n            avg_time = np.mean(obs1[active,1])\n            sub_rewards[6] = np.clip((avg_time-comp_time)/avg_time*3, -5,5)\n            \n            # Sub-reward 7: Loss-based penalty\n            if obs2[t_idx] <0:\n                sub_rewards[7] = np.clip(obs2[t_idx]*2, -5,0)\n            \n        reward_array[i,:8] = np.nan_to_num(sub_rewards)\n    \n    # Bandwidth reward\n    active_durations = obs0[active]\n    if len(active_durations)>0:\n        std_dev = np.std(active_durations)\n        avg_dur = np.mean(active_durations)\n        lower = np.clip(1 - std_dev/0.5, 0.1,1.0)\n        \n        for i in np.where(active)[0]:\n            dur = obs0[i]\n            ratio = (dur - avg_dur)/ (avg_dur +1e-8)\n            bw_reward = lower + (1 - abs(ratio))* (1 - lower)\n            \n            # Critical remaining time\n            if obs5[i] <0.01:\n                alloc_rank = np.sum(action1[i] >= action1[active])\n                if alloc_rank <0.1*len(action1[active]):\n                    bw_reward -=2.0\n                else:\n                    bw_reward +=1.0\n            reward_array[i,8] = np.clip(bw_reward*5, -5,5)\n    \n    return np.nan_to_num(reward_array)"
+    # print(reward_function)
+    print(cr.validator(r_f))

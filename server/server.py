@@ -384,7 +384,9 @@ class Server:
             else:
                 if self.global_round > 0 \
                     and self.global_round % self.config.round_time_plot_freq == 0:
-                        plot(self.round_time_part, self.global_round)
+                        plot(time_table = self.round_time_part, round = self.global_round, plt_save=True)
+                if self.global_round % self.config.round_time_plot_freq != 0:
+                        plot(time_table = self.round_time_part, round = self.global_round)                    
             #     mean_time = np.mean(part_time)
             #     individual_impacts = (part_time - mean_time) ** 2
             #     individual_rewards = -individual_impacts
