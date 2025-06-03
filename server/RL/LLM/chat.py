@@ -39,7 +39,7 @@ class chat_response:
             exec(str_reward_function, {"np": np}, local_vars)
             if 'reward_function' not in local_vars:
                 return {"success": False, "error": "reward_function not defined"}
-
+            line = len(str_reward_function.strip().split('\n'))
             reward_function = local_vars['reward_function']
 
             vs = validaor_server()
@@ -58,7 +58,8 @@ class chat_response:
 
             assert result.shape == vs.rewards.shape, \
                 f"Reward function output shape mismatch: expected {vs.rewards.shape}, got {result.shape}"
-
+            assert line > 100, \
+                f"Reward function too short: {line} lines, expected more than 100 lines. The rules in Notes of Action are only intended for handling extreme edge cases in the system. They should not constitute the entire reward function. Meanwhile please do not use training accuracy as the sole evaluation criterion; the rewards for each client in every training round should comprehensively consider multiple factors, and the rewards should vary between clients accordingly."
             return {"success": True}
 
         except Exception as e:
