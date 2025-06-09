@@ -338,7 +338,9 @@ class Server:
             part_time = self.round_time[part_mask]
             if self.global_round > 0 \
                 and self.global_round % self.config.round_time_plot_freq == 0:
-                    plot(self.round_time_part, self.global_round)
+                    plot(time_table = self.round_time_part, round = self.global_round, plt_save=True)
+            if self.global_round % self.config.round_time_plot_freq != 0:
+                    plot(time_table = self.round_time_part, round = self.global_round)       
             if len(part_time) == 0:
                 std = -1
             else:
@@ -358,7 +360,7 @@ class Server:
                 if(self.clients_part[i]):
                     self.trans_rewards[i] = (1 - abs(self.round_time[i] - mu)/max_abs_rdtm) * (1/std + std) - std
 
-        # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         self.state_batchnorm()        
         self.is_done()
         
