@@ -61,7 +61,7 @@ class HatefulMemes_main:
         self.model = self.model.to(device)
         df = DataFactory(os.path.join(
             os.path.dirname(os.path.abspath(__file__)), \
-                'datasets/node_'+f"{node_id}/"+'.pkl'), self.config
+                'datasets/node_'+f"{node_id}"+'.pkl'), self.config
             )
         self.MACs = df.sample_length * self.config.MACs
         train_loader = df.get_dataloader()

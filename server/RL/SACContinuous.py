@@ -8,16 +8,16 @@ from torch.distributions import Normal
 class Actor(nn.Module):
     def __init__(self, N, hidden_dim, action_dim = 2):
         super(Actor, self).__init__()
-        self.l1 = nn.Linear(5 * N + 1, hidden_dim)
+        self.l1 = nn.Linear(4 * N + 1, hidden_dim)
         self.l_mean = nn.Linear(hidden_dim, action_dim)
         self.l_std = nn.Linear(hidden_dim, action_dim) 
         self.N = N
-        nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))
-        nn.init.constant_(self.l1.bias, 0.0)
-        nn.init.uniform_(self.l_mean.weight, -1e-3, 1e-3)
-        nn.init.constant_(self.l_mean.bias, 0.0)
-        nn.init.constant_(self.l_std.weight, 0.0)
-        nn.init.constant_(self.l_std.bias, -1.0)
+        # nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))
+        # nn.init.constant_(self.l1.bias, 0.0)
+        # nn.init.uniform_(self.l_mean.weight, -1e-3, 1e-3)
+        # nn.init.constant_(self.l_mean.bias, 0.0)
+        # nn.init.constant_(self.l_std.weight, 0.0)
+        # nn.init.constant_(self.l_std.bias, -1.0)
 
     def forward(self, x):
         x = F.relu(self.l1(x))
@@ -34,21 +34,21 @@ class Actor(nn.Module):
         xi_dist = Normal(x_means[:, 1], x_stds[:, 1])
         xi_sampled = xi_dist.rsample()
         xi = torch.clamp(xi_sampled, 0.0, 1.0)
-        xi = torch.clamp(xi, min=0.05, max=0.95)              
+        xi = torch.clamp(xi, min=0.001, max=0.999)              
         return o.cpu().detach().numpy(), xi.cpu().detach().numpy()
 
 class QValueNet(nn.Module):
     def __init__(self, N, action_dim, hidden_dim):
         super(QValueNet, self).__init__()
-        self.l1 = nn.Linear(5 * N + 1 + action_dim, (hidden_dim) * 2) 
+        self.l1 = nn.Linear(4 * N + 1 + action_dim, (hidden_dim) * 2) 
         self.l2 = nn.Linear((hidden_dim) * 2, hidden_dim)
         self.l3 = nn.Linear(hidden_dim, 1)
-        for layer in [self.l1, self.l2]:
-            nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
-            nn.init.constant_(layer.bias, 0.0)
+        # for layer in [self.l1, self.l2]:
+        #     nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
+        #     nn.init.constant_(layer.bias, 0.0)
 
-        nn.init.uniform_(self.l3.weight, -1e-3, 1e-3)
-        nn.init.constant_(self.l3.bias, 0.0)   
+        # nn.init.uniform_(self.l3.weight, -1e-3, 1e-3)
+        # nn.init.constant_(self.l3.bias, 0.0)   
      
     def forward(self, state, action):
         if action.dim() == 1:

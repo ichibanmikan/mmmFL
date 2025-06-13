@@ -90,8 +90,8 @@ class ServerHandler():
             (self.server.train_time[self.client_id] - \
                 self.server.train_time[self.client_id].mean()) /\
                     self.server.train_time[self.client_id].std()
-        time_state_col = \
-            self.server.times_state[self.client_id]
+        # time_state_col = \
+        #     self.server.times_state[self.client_id]
         loss_state_col = \
             self.server.losses_state[self.client_id]
         jobs_part = \
@@ -106,7 +106,7 @@ class ServerHandler():
                 self.server.states[self.client_id] = np.concatenate([
                     time_remain, 
                     time_state_row, 
-                    time_state_col, 
+                    # time_state_col, 
                     loss_state_col, 
                     jobs_part, 
                     self.server.jobs_model_size_std
@@ -118,8 +118,7 @@ class ServerHandler():
                 self.server.update_params_barrier.wait()
             else :
                 now_job = self.server.o_action[self.client_id] - 1
-                now_xi = self.server.xi_action[self.client_id]
-                print("xi xixixi: ", now_xi)              
+                now_xi = self.server.xi_action[self.client_id]          
                 trans_time = self.send([
                     now_job, self.server.global_models_manager.get_model_params(now_job)
                 ], now_xi)
@@ -161,8 +160,8 @@ class ServerHandler():
                 (self.server.train_time[self.client_id] - \
                     self.server.train_time[self.client_id].mean()) /\
                         self.server.train_time[self.client_id].std()
-            time_state_col = \
-                self.server.times_state[self.client_id]
+            # time_state_col = \
+            #     self.server.times_state[self.client_id]
             loss_state_col = \
                 self.server.losses_state[self.client_id]
             jobs_part = \
@@ -171,7 +170,7 @@ class ServerHandler():
                 self.server.next_states[self.client_id] = np.concatenate([
                     time_remain, 
                     time_state_row, 
-                    time_state_col, 
+                    # time_state_col, 
                     loss_state_col, 
                     jobs_part, 
                     self.server.jobs_model_size_std

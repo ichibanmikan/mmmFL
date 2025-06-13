@@ -5,15 +5,19 @@ import matplotlib.patches as patches
 
 def plot(time_table, 
          round, 
-         output_dir = os.path.join(os.path.dirname(__file__), 'client_graph')
+         output_dir = os.path.join(os.path.dirname(__file__), 'client_graph'),
+         plt_save = False
          ):
 
     os.makedirs(output_dir, exist_ok=True)
 
     with open(os.path.join(output_dir, 'times.csv'), 'a') as f:
         np.savetxt(f, [round], delimiter=",", fmt="%d")
-        np.savetxt(f, time_table, delimiter=",", fmt="%.6f")
-
+        np.savetxt(f, time_table, delimiter=",", fmt="%.6f")  
+         
+    if not plt_save:
+        return
+    return
     valid_clients = []
     for i in range(time_table.shape[0]):
         t0 = time_table[i, 0]

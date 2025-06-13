@@ -109,10 +109,10 @@ class Server:
         set_all_seeds(42)
         with self.lock:
             self.episode_length = 0
-            absorbing_state = np.zeros(len(self.jobs) * 5 + 1)
+            absorbing_state = np.zeros(len(self.jobs) * 4 + 1)
             absorbing_action = np.zeros(2)
             absorbing_reward = np.zeros(2)
-            absorbing_next_state = np.zeros(len(self.jobs) * 5 + 1)
+            absorbing_next_state = np.zeros(len(self.jobs) * 4 + 1)
             absorbing_done = True
             self.buffer.add(
                 absorbing_state, 
@@ -147,10 +147,10 @@ class Server:
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
             self.times_state = np.zeros((len(self.threads), len(self.jobs)))
             self.remaining_time = np.zeros(len(self.threads))
-            self.states = np.zeros((len(self.threads), len(self.jobs)*5+1), dtype=np.float32)
+            self.states = np.zeros((len(self.threads), len(self.jobs)*4+1), dtype=np.float32)
             self.o_action = np.zeros(len(self.threads))
             self.xi_action = np.zeros(len(self.threads))
-            self.next_states = np.zeros((len(self.threads), len(self.jobs)*5+1), dtype=np.float32)                                
+            self.next_states = np.zeros((len(self.threads), len(self.jobs)*4+1), dtype=np.float32)                                
         print(f"All clients released. Sleeping for 5 seconds before next round...")
         time.sleep(5)
 
@@ -189,10 +189,10 @@ class Server:
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
             self.times_state = np.zeros((len(self.threads), len(self.jobs)))
             self.remaining_time = np.zeros(len(self.threads))
-            self.states = np.zeros((len(self.threads), len(self.jobs)*5+1), dtype=np.float32)
+            self.states = np.zeros((len(self.threads), len(self.jobs)*4+1), dtype=np.float32)
             self.o_action = np.zeros(len(self.threads))
             self.xi_action = np.zeros(len(self.threads))
-            self.next_states = np.zeros((len(self.threads), len(self.jobs)*5+1), dtype=np.float32)                     
+            self.next_states = np.zeros((len(self.threads), len(self.jobs)*4+1), dtype=np.float32)                     
             self.band_width_reward = 0
             self.job_selection_reward = 0
             self.clients_band_width = np.zeros(len(self.threads))
@@ -233,8 +233,11 @@ class Server:
             self.num_part = len(indices)        
         
         selected_xi = self.xi_action[mask]
-        exp_xi = np.exp(selected_xi - np.max(selected_xi))  # 减去最大值防止数值爆炸
-        xi_norm = exp_xi / np.sum(exp_xi)
+        if selected_xi.size > 0:
+            exp_xi = np.exp(selected_xi - np.max(selected_xi))
+        else:
+            exp_xi = np.zeros_like(selected_xi)
+        xi_norm = exp_xi / (np.sum(exp_xi) + 1e-8)
         self.xi_action[mask] = xi_norm    
         
     def set_train_time(self, idx, update_time, time_pos):
@@ -285,7 +288,9 @@ class Server:
             part_time = self.round_time[part_mask]
             if self.global_round > 0 \
                 and self.global_round % self.config.round_time_plot_freq == 0:
-                    plot(self.round_time_part, self.global_round)
+                    plot(time_table = self.round_time_part, round = self.global_round, plt_save=True)
+            if self.global_round % self.config.round_time_plot_freq != 0:
+                plot(time_table = self.round_time_part, round = self.global_round)       
             if len(part_time) == 0:
                 std = -1
                 self.band_width_reward = -1
@@ -294,7 +299,8 @@ class Server:
                 if std == 0:
                     self.band_width_reward = std
                 else:
-                    self.band_width_reward = -1 * std        
+                    self.band_width_reward = -1 * std     
+        self.stds[(self.global_round - 1) % self.config.save_std_freq] = std           
         self.reward = (self.band_width_reward + self.job_selection_reward) / 2
         self.state_batchnorm()
         self.is_done()

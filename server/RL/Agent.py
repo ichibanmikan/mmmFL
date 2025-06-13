@@ -9,7 +9,7 @@ class AgentConfig:
         self.critic_lr = config_dict.get('critic_lr', 1e-2)
         self.alpha_lr = config_dict.get('alpha_lr', 1e-2)
         self.tau = config_dict.get('tau', 0.005)
-        self.target_entropy = config_dict.get('target_entropy', -1)
+        self.target_entropy = config_dict.get('target_entropy', -2)
         self.gamma = config_dict.get('gamma', 0.9)
 
 class Agent:
