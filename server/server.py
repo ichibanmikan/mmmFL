@@ -189,7 +189,7 @@ class Server:
     def get_round_time_rewards(self):
         if (self.global_round - 1) > 0 \
             and (self.global_round - 1) % self.config.save_std_freq == 0:
-                with open(os.path.join(os.path.dirname(__file__), 'LLM_HRL_std.log'), "a") as log:
+                with open(os.path.join(os.path.dirname(__file__), 'Random_std.log'), "a") as log:
                     np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
                     log.write('\n')
         if self.num_part == 0:
