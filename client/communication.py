@@ -23,18 +23,6 @@ class ClientHandler():
         modal_mess = self.recv()
         
         print("modal_mess: ", modal_mess)
-
-        self.one_epoch_time = np.zeros(len(self.config.datasets))
-        one_epoch_loss = np.zeros(len(self.config.datasets))
-        
-        for i in range(len(self.config.datasets)):
-            samp = self.trainers[i].sample_time()
-            self.one_epoch_time[i] = (self.trainers[i].MACs / self.config.ability) *\
-                np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)
-            one_epoch_loss[i] = samp[1]
-            self.trainers[i].now_loss = samp[1]
-        self.send(self.one_epoch_time)
-        self.send(one_epoch_loss)
         
     def send(self, content):
         try:
@@ -109,18 +97,11 @@ class ClientHandler():
                 param_update = new_params - task__now_global_model[1]
                 train_time = \
                     self.trainers[task__now_global_model[0]].MACs / self.config.ability *\
-                        np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)      
-                train_loss =  self.trainers[task__now_global_model[0]].now_loss          
+                        np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)               
                 self.send(train_time) # send train_time / epoches as one epoch time
-                self.send(train_loss) # send loss
                 
                 send_start_mess = self.recv()
                 print(send_start_mess) #，
-                
-                # start_time = time.time()
+
                 self.send(param_update)
-                # end_time = time.time()
-                
-                # self.send(end_time - start_time) # 
-            
                 self.round += 1
