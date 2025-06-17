@@ -1,4 +1,6 @@
 # A DRL-based Multi-Task Scheduling Algorithm for Heterogeneous Multi-Modal Federated Learning Tasks
+## Random version
+https://github.com/ichibanmikan/mmmFL/tree/Random
 ## RL version
 https://github.com/ichibanmikan/mmmFL/tree/RL
 ## HRL version
