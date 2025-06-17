@@ -330,6 +330,7 @@ class Server:
                 with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
                     np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline = ' ')
                     log.write('\n')
+        mu = 0
         if self.num_part == 0:
             std = -1
         else:
@@ -351,7 +352,11 @@ class Server:
                 # # self.rewards[part_indices, 1] = individual_rewards
                 # self.trans_rewards[part_indices] = individual_rewards
                 std = np.std(part_time)
-        max_abs_rdtm = np.max(np.abs(part_time - mu))
+        arr = np.abs(part_time - mu)
+        if arr.size == 0:
+            max_abs_rdtm = 0
+        else:
+            max_abs_rdtm = np.max(arr)
         if std == 0:
             for i in range(len(self.threads)):
                 self.trans_rewards[i] = 5             
