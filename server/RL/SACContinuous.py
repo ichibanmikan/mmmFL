@@ -12,12 +12,12 @@ class Actor(nn.Module):
         self.l_mean = nn.Linear(hidden_dim, action_dim)
         self.l_std = nn.Linear(hidden_dim, action_dim) 
         self.N = N
-        # nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))
-        # nn.init.constant_(self.l1.bias, 0.0)
-        # nn.init.uniform_(self.l_mean.weight, -1e-3, 1e-3)
-        # nn.init.constant_(self.l_mean.bias, 0.0)
-        # nn.init.constant_(self.l_std.weight, 0.0)
-        # nn.init.constant_(self.l_std.bias, -1.0)
+        nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))
+        nn.init.constant_(self.l1.bias, 0.0)
+        nn.init.uniform_(self.l_mean.weight, -1e-3, 1e-3)
+        nn.init.constant_(self.l_mean.bias, 0.0)
+        nn.init.constant_(self.l_std.weight, 0.0)
+        nn.init.constant_(self.l_std.bias, -1.0)
 
     def forward(self, x):
         x = F.relu(self.l1(x))
@@ -43,12 +43,12 @@ class QValueNet(nn.Module):
         self.l1 = nn.Linear(4 * N + 1 + action_dim, (hidden_dim) * 2) 
         self.l2 = nn.Linear((hidden_dim) * 2, hidden_dim)
         self.l3 = nn.Linear(hidden_dim, 1)
-        # for layer in [self.l1, self.l2]:
-        #     nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
-        #     nn.init.constant_(layer.bias, 0.0)
+        for layer in [self.l1, self.l2]:
+            nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
+            nn.init.constant_(layer.bias, 0.0)
 
-        # nn.init.uniform_(self.l3.weight, -1e-3, 1e-3)
-        # nn.init.constant_(self.l3.bias, 0.0)   
+        nn.init.uniform_(self.l3.weight, -1e-3, 1e-3)
+        nn.init.constant_(self.l3.bias, 0.0)   
      
     def forward(self, state, action):
         if action.dim() == 1:
