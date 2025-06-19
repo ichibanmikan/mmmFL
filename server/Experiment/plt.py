@@ -18,6 +18,7 @@ def plot(time_table,
     if not plt_save:
         return
     
+    return
     valid_clients = []
     for i in range(time_table.shape[0]):
         t0 = time_table[i, 0]
