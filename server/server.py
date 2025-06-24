@@ -331,12 +331,12 @@ class Server:
                     np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline = ' ')
                     log.write('\n')
         mu = 0
+        part_mask = (self.round_time > 0)
+        # part_indices = np.where(part_mask)[0]
+        part_time = self.round_time[part_mask]
         if self.num_part == 0:
             std = -1
         else:
-            part_mask = (self.round_time > 0)
-            # part_indices = np.where(part_mask)[0]
-            part_time = self.round_time[part_mask]
             if self.global_round > 0 \
                 and self.global_round % self.config.round_time_plot_freq == 0:
                     plot(time_table = self.round_time_part, round = self.global_round, plt_save=True)
