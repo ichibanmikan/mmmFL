@@ -26,11 +26,11 @@ class Config:
         return f"Config({self.__dict__})"
 
 class MHAD_main:
-    def __init__(self, modality, node_id):
+    def __init__(self, modality, node_id, modal_size):
         self.modality = modality
         self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
-        
+        self.modal_size = modal_size
         self.model = MyMMModel(self.config.num_classes)      
 
         if torch.backends.mps.is_available():
@@ -119,3 +119,14 @@ class MHAD_main:
         
         self.tr.train_tools.save_model(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models/', str + '.pth'))
         
+    
+
+# The distance between the clients and the BS follows a uniform distribution di ∼ Uniform(1, 100) in
+# meters. The wireless transmission powers of the clients are 10 − 20 dBm. The communication bandwidth
+# between the BS and the clients is 20 MHz, and the Gaussian noise power is around −101 dBm. We
+# adopt long-distance path loss model to calculate the channel gain for each client. Specifically, we have
+# PL(di) = 40 + 30 log10 di + ϱ (in dB) where ϱ ∼ N (0, 62), and gi = 10−PL(di)/10.
+# We assume the MAC rate of each client i ∈ N , i.e., κi, is in the range [5 × 107, 3 × 108] MAC/s,
+# and the energy consumption of each client i to performance one MAC operation, i.e., ρi, is in the range
+# [0.1, 1] pJ/MAC. Let the energy budgets of the clients be in the range [xx, xx] J for both communications
+# and computations.

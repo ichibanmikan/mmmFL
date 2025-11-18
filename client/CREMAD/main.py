@@ -38,11 +38,11 @@ class Config:
         return f"Config({self.__dict__})"
 
 class CREMAD_main:
-    def __init__(self, modality, node_id):
+    def __init__(self, modality, node_id, modal_size):
         self.modality = modality
         self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
-        
+        self.modal_size = modal_size
         self.model = MMActionClassifier(num_classes=self.config.num_classes)  
         
         if torch.backends.mps.is_available():

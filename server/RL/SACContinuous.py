@@ -29,7 +29,7 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
         # self.attention = AttentionLayer(1, hidden_dim)
         # self.l1 = nn.Linear(hidden_dim + 2, hidden_dim + 2)
-        self.l1 = nn.Linear(4, hidden_dim)
+        self.l1 = nn.Linear(3, hidden_dim)
         self.l_mean = nn.Linear(hidden_dim, 1)
         self.l_std = nn.Linear(hidden_dim, 1) 
 
@@ -41,7 +41,7 @@ class Actor(nn.Module):
         nn.init.constant_(self.l_std.bias, -1.0)
 
     def forward(self, x):
-        # Input x: (bsz, 4), 
+        # Input x: (bsz, 3), 
         # Ιnclude ti, model_size, T_remain.
         # s_r = x[:, -2:] # (bsz, 2)
         # x, _ = self.attention(x[:, 0].unsqueeze(-1), x[:, 1:-2]) # (bsz, h_d)
@@ -66,7 +66,7 @@ class QValueNet(nn.Module):
         # self.l1 = nn.Linear(hidden_dim + 2, (hidden_dim + 2) * 2) 
         # self.l2 = nn.Linear((hidden_dim + 2) * 2, hidden_dim + 2)
         # self.l3 = nn.Linear(hidden_dim + 2, 1)
-        self.l1 = nn.Linear(4 + 1, (hidden_dim) * 2) 
+        self.l1 = nn.Linear(3 + 1, (hidden_dim) * 2) 
         self.l2 = nn.Linear((hidden_dim) * 2, hidden_dim)
         self.l3 = nn.Linear(hidden_dim, 1)
         for layer in [self.l1, self.l2]:
@@ -164,10 +164,10 @@ class SACContinuous:
                 * (1.0 - self.tau) + param.data * self.tau)
 
     def update(self, transition_dict):
-        states = transition_dict['states']         # (b, 4)
+        states = transition_dict['states']         # (b, 3)
         actions = transition_dict['actions']         # (b, 1)
         rewards = transition_dict['rewards']  # (b, 1)
-        next_states = transition_dict['next_states'] # (b, 4)
+        next_states = transition_dict['next_states'] # (b, 3)
         dones = transition_dict['dones']      # (b, 1)
         
         filtered_states = []

@@ -4,6 +4,7 @@ import os
 import matplotlib.patches as patches
 
 def plot(time_table, 
+         energy_table,
          round, 
          output_dir = os.path.join(os.path.dirname(__file__), 'client_graph'),
          plt_save = False
@@ -14,6 +15,10 @@ def plot(time_table,
     with open(os.path.join(output_dir, 'times.csv'), 'a') as f:
         np.savetxt(f, [round], delimiter=",", fmt="%d")
         np.savetxt(f, time_table, delimiter=",", fmt="%.6f")
+
+    with open(os.path.join(output_dir, 'energies.csv'), 'a') as f:
+        np.savetxt(f, [round], delimiter=",", fmt="%d")
+        np.savetxt(f, energy_table, delimiter=",", fmt="%.6f")
 
     if not plt_save:
         return

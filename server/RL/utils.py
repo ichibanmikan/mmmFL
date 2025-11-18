@@ -43,7 +43,7 @@ class ReplayBuffer:
         dense_reward = dense_reward.astype(np.float32) \
             if isinstance(dense_reward, np.ndarray) and dense_reward.dtype == np.float64\
                 else dense_reward
-              
+
         self.states.append(state)
         self.actions.append(action)
         self.next_states.append(next_state)

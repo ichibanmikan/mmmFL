@@ -66,18 +66,18 @@ class Agent:
         high_trans = {}
         low_trans = {}
         
-        high_trans['states'] = transition_dict['states'][:, :4 * self.N + 1]
+        high_trans['states'] = transition_dict['states'][:, :2 * self.N + 1]
         high_trans['actions'] = transition_dict['actions'][:, 0]
         high_trans['rewards'] = transition_dict['rewards'][:, 0]
         high_trans['dense_reward'] = transition_dict['dense_reward'][:, 0]
-        high_trans['next_states'] = transition_dict['next_states'][:, :4 * self.N + 1]
+        high_trans['next_states'] = transition_dict['next_states'][:, :2 * self.N + 1]
         high_trans['dones'] = transition_dict['dones']
 
-        low_trans['states'] = transition_dict['states'][:, 4 * self.N + 1:]
+        low_trans['states'] = transition_dict['states'][:, 2 * self.N + 1:]
         low_trans['actions'] = transition_dict['actions'][:, 1]
         low_trans['rewards'] = transition_dict['rewards'][:, 1]
         low_trans['dense_reward'] = transition_dict['dense_reward'][:, 1]
-        low_trans['next_states'] = transition_dict['next_states'][:, 4 * self.N + 1:]
+        low_trans['next_states'] = transition_dict['next_states'][:, 2 * self.N + 1:]
         low_trans['dones'] = transition_dict['dones']
         
         # print("transition_dict state shape is: ", transition_dict['states'].shape)

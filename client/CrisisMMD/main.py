@@ -38,7 +38,7 @@ class Config:
         return f"Config({self.__dict__})"
 
 class CrisisMMD_main:
-    def __init__(self, modality, node_id):
+    def __init__(self, modality, node_id, modal_size):
         self.modality = modality
         self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')) 
@@ -49,6 +49,7 @@ class CrisisMMD_main:
             d_hid=256,
             d_head=8
         )  
+        self.modal_size = modal_size
         
         if torch.backends.mps.is_available():
             device = torch.device("mps")
