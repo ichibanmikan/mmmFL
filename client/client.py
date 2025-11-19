@@ -56,8 +56,13 @@ class Config:
         self.port = data["Host"]["port"]
         self.datasets = data["datasets"]
         self.random_seed = data["random_seed"]
-        self.ability = data["Ability"]["ability"][self.node_id]
-        
+        self.kappa = data["Ability"]["ability"][self.node_id]
+        self.distance = data["Energy"]["distance"][self.node_id]
+        self.tx_power_dbm = data["Energy"]["tx_power_dbm"][self.node_id]
+        self.rho = data["Energy"]["rho"][self.node_id]
+        self.noise_dbm = data["Energy"]["noise_dbm"]
+        self.bandwidth_hz = data["Energy"]["bandwidth_hz"]
+        self.total_energy = data["Energy"]["total_energy"][self.node_id]
 
     def modality(self, row):
         return self.datasets[row]['modalities_name']
@@ -73,7 +78,7 @@ class Client:
         for i in range(len(self.config.datasets)):
             trainer = eval(\
                 f"{self.config.datasets[i]['dataset_name']}_main")\
-                    (self.config.modality(i), self.config.node_id)
+                    (self.config.modality(i), self.config.node_id, self.config.datasets[i]['modal_size'])
             self.trainers.append(trainer)
         handler = ClientHandler(self.config, self.trainers)
         handler.handle()
