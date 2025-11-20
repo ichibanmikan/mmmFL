@@ -214,7 +214,7 @@ class ServerHandler():
                         self.server.losses[self.client_id][now_job] = train_loss
                         self.server.performances[self.client_id] = self.perf
                     self.jobs_participant[job_action - 1] += 1
-                    self.server.update_params_get_rewards_barrier.wait()
+                    self.server.update_params_barrier.wait()
                         
                     # if(self.server.config.max_round_time < train_time):
                     #     reward[0] = -0.05
@@ -241,7 +241,7 @@ class ServerHandler():
                     self.send("Wait a round")
                     # self.server.set_train_time_barrier.wait()
                     self.server.band_width_barrier.wait() 
-                    self.server.update_params_get_rewards_barrier.wait()
+                    self.server.update_params_barrier.wait()
                     self.server.round_time_barrier.wait()
                     # self.server.recv_global_barrier.wait()
                     # self.server.local_train_barrier.wait()

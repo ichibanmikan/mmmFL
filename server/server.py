@@ -258,7 +258,7 @@ class Server:
                 = threading.Barrier(len(self.threads), action = self.get_rewards)
             # self.recv_global_barrier = threading.Barrier(len(self.threads))
             # self.local_train_barrier = threading.Barrier(len(self.threads))
-            self.update_params_get_rewards_barrier \
+            self.update_params_barrier \
                 = threading.Barrier(len(self.threads), action=self.update_global_models)
             self.next_round_barrier \
                 = threading.Barrier(len(self.threads), action=self.update_Agent)
