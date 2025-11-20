@@ -78,7 +78,7 @@ class Client:
         for i in range(len(self.config.datasets)):
             trainer = eval(\
                 f"{self.config.datasets[i]['dataset_name']}_main")\
-                    (self.config.modality(i), self.config.node_id, self.config.datasets[i]['modal_size'])
+                    (self.config.modality(i), self.config.node_id, self.config.datasets[i]['model_size'])
             self.trainers.append(trainer)
         handler = ClientHandler(self.config, self.trainers)
         handler.handle()

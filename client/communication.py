@@ -141,7 +141,7 @@ class ClientHandler():
                 # self.send(end_time - start_time)
                 self.send( \
                     self.performance.compute_round( \
-                        self.trainers[task__now_global_model[0]].modal_size, 
+                        self.trainers[task__now_global_model[0]].model_size * 8, 
                         self.trainers[task__now_global_model[0]].MACs, 
                         band_width
                     )
