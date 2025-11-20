@@ -20,7 +20,7 @@ class Config:
         self.MAX_CLIENTS = config.getint('Clients', 'max_clients')
         self.MIN_CLIENTS = config.getint('Clients', 'min_clients')
         self.TIMEOUT = config.getint('Server', 'timeout', fallback=30)
-        self.band_width = config.getint('Server', 'band_width')
+        # self.band_width = config.getint('Server', 'band_width')
         self.round_time_plot_freq = config.getint('Server', 'round_time_plot_freq')
         self.context_file = config.get('Server', 'context_file')
         self.save_std_freq = config.getint('Server', 'save_std_freq')
@@ -77,7 +77,7 @@ class Server:
         self.lock = threading.Lock()
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager()
-        self.stds = np.zeros(self.config.save_std_freq)
+        # self.stds = np.zeros(self.config.save_std_freq)
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
@@ -109,10 +109,10 @@ class Server:
         set_all_seeds(42)
         with self.lock:
             self.episode_length = 0
-            absorbing_state = np.zeros(len(self.jobs) * 4 + 1)
+            absorbing_state = np.zeros(len(self.jobs) * 3 + 2)
             absorbing_action = np.zeros(2)
             absorbing_reward = np.zeros(2)
-            absorbing_next_state = np.zeros(len(self.jobs) * 4 + 1)
+            absorbing_next_state = np.zeros(len(self.jobs) * 3 + 2)
             absorbing_done = True
             self.buffer.add(
                 absorbing_state, 
@@ -145,12 +145,13 @@ class Server:
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.losses = np.zeros((len(self.threads), len(self.jobs)))
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
-            self.times_state = np.zeros((len(self.threads), len(self.jobs)))
-            self.remaining_time = np.zeros(len(self.threads))
-            self.states = np.zeros((len(self.threads), len(self.jobs)*4+1), dtype=np.float32)
+            # self.times_state = np.zeros((len(self.threads), len(self.jobs)))
+            self.performances = [{} for _ in range(len(self.threads))]
+            self.states = np.zeros((len(self.threads), len(self.jobs) * 3 + 2), dtype=np.float32)
             self.o_action = np.zeros(len(self.threads))
             self.xi_action = np.zeros(len(self.threads))
-            self.next_states = np.zeros((len(self.threads), len(self.jobs)*4+1), dtype=np.float32)                                
+            self.reward = 0.0
+            self.next_states = np.zeros((len(self.threads), len(self.jobs) * 3 + 2), dtype=np.float32)                                
         print(f"All clients released. Sleeping for 5 seconds before next round...")
         time.sleep(5)
 
@@ -188,16 +189,17 @@ class Server:
             self.losses = np.zeros((len(self.threads), len(self.jobs)))
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
             self.times_state = np.zeros((len(self.threads), len(self.jobs)))
-            self.remaining_time = np.zeros(len(self.threads))
-            self.states = np.zeros((len(self.threads), len(self.jobs)*4+1), dtype=np.float32)
+            # self.remaining_time = np.zeros(len(self.threads))
+            self.states = np.zeros((len(self.threads), len(self.jobs)* 3 + 2), dtype=np.float32)
             self.o_action = np.zeros(len(self.threads))
             self.xi_action = np.zeros(len(self.threads))
-            self.next_states = np.zeros((len(self.threads), len(self.jobs)*4+1), dtype=np.float32)                     
+            self.next_states = np.zeros((len(self.threads), len(self.jobs) * 3 + 2), dtype=np.float32)                     
             self.band_width_reward = 0
+            self.reward = 0.0
             self.job_selection_reward = 0
             self.clients_band_width = np.zeros(len(self.threads))
             self.num_part = 0
-            
+            self.performances = [{} for _ in range(len(self.threads))]
             self.train_wake_barrier \
                 = threading.Barrier(len(self.threads), action = self.state_batchnorm)
             self.action_barrier\
@@ -217,7 +219,7 @@ class Server:
 
     def get_actions(self):
         self.o_action, self.xi_action = self.agent.get_actions(self.states)
-        mask = (self.o_action > 0) & (~self.jobs_finish[self.o_action - 1]) & (self.remaining_time > 0)
+        mask = (self.o_action > 0) & (~self.jobs_finish[self.o_action - 1])
         indices = np.flatnonzero(mask)
         if len(indices) > self.config.max_participant_clients:
             selected = np.random.choice(
@@ -273,35 +275,49 @@ class Server:
             log.write(f"This round all jobs' acc are: {accs}\n")
         self.global_round += 1
         self.episode_length += 1
-        self.get_reward()
+        self.get_rewards()
     
-    def get_reward(self):
-        if (self.global_round - 1) > 0 \
-            and (self.global_round - 1) % self.config.save_std_freq == 0:
-                with open(os.path.join(os.path.dirname(__file__), 'std.log'), "a") as log:
-                    np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
-                    log.write('\n')
-        if self.num_part == 0:
-            std = -1
-        else:
-            part_mask = (self.round_time > 0)
-            part_time = self.round_time[part_mask]
-            if self.global_round > 0 \
-                and self.global_round % self.config.round_time_plot_freq == 0:
-                    plot(time_table = self.round_time_part, round = self.global_round, plt_save=True)
-            if self.global_round % self.config.round_time_plot_freq != 0:
-                plot(time_table = self.round_time_part, round = self.global_round)       
-            if len(part_time) == 0:
-                std = -1
-                self.band_width_reward = -1
-            else:
-                std = np.std(part_time)
-                if std == 0:
-                    self.band_width_reward = std
-                else:
-                    self.band_width_reward = -1 * std     
-        self.stds[(self.global_round - 1) % self.config.save_std_freq] = std           
-        self.reward = (self.band_width_reward + self.job_selection_reward) / 2
+    def get_rewards(self):
+        N = len(self.performances)
+        assigned = self.clients_part.astype(np.int32)
+
+        b_i = self.clients_band_width
+
+        comm_latency = np.array([p.get("comm_latency", 0.0) for p in self.performances])
+        comp_latency = np.array([p.get("comp_latency",  0.0) for p in self.performances])
+        comm_energy  = np.array([p.get("comm_energy",   0.0) for p in self.performances])
+        comp_energy  = np.array([p.get("comp_energy",   0.0) for p in self.performances])
+        remaining_e  = np.array([p.get("remaining_energy", 1.0) for p in self.performances])
+        total_energy = np.array([p.get("total_energy",     1.0) for p in self.performances])
+
+        # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        # self.state_batchnorm()        
+        comm_latency[assigned == 0] = 0
+        comp_latency[assigned == 0] = 0
+        comm_energy[assigned == 0] = 0
+        comp_energy[assigned == 0] = 0
+
+        delta_i = comm_latency + comp_latency
+        delta_t = np.max(delta_i)
+        if delta_t < 1e-12:
+            delta_t = 1.0
+
+        e_i = comm_energy + comp_energy
+
+        soft_penalty = np.sum(e_i / (total_energy + 1e-12))
+
+        hard_penalty = np.sum(
+            ((remaining_e <= 0) & (assigned >= 1)) |
+            ((remaining_e <= 0) & (b_i > 0))
+        )
+
+        w0, w1, w2, w3 = 1, 0.01, 0.5, 10
+
+        self.reward = w0 * self.job_selection_reward \
+                    - w1 * delta_t \
+                    - w2 * soft_penalty \
+                    - w3 * hard_penalty
+
         self.state_batchnorm()
         self.is_done()
                 
@@ -313,6 +329,7 @@ class Server:
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
         self.band_width_reward = 0
+        self.reward = 0.0
         self.job_selection_reward = 0
         self.num_part = 0     
 
@@ -370,9 +387,9 @@ class Server:
             (self.losses - self.losses.mean(axis=0, keepdims=True)) \
                 / (self.losses.std(axis=0, keepdims=True) + 1e-8)
         
-        self.times_state = \
-            (self.train_time - self.train_time.mean(axis=0, keepdims=True)) \
-                / (self.train_time.std(axis=0, keepdims=True) + 1e-8)
+        # self.times_state = \
+        #     (self.train_time - self.train_time.mean(axis=0, keepdims=True)) \
+        #         / (self.train_time.std(axis=0, keepdims=True) + 1e-8)
 
 if __name__ == "__main__":
     config = Config()  # Initialize the config

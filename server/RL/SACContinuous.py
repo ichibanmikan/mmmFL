@@ -8,7 +8,7 @@ from torch.distributions import Normal
 class Actor(nn.Module):
     def __init__(self, N, hidden_dim, action_dim = 2):
         super(Actor, self).__init__()
-        self.l1 = nn.Linear(4 * N + 1, hidden_dim)
+        self.l1 = nn.Linear(3 * N + 2, hidden_dim)
         self.l_mean = nn.Linear(hidden_dim, action_dim)
         self.l_std = nn.Linear(hidden_dim, action_dim) 
         self.N = N
@@ -40,7 +40,7 @@ class Actor(nn.Module):
 class QValueNet(nn.Module):
     def __init__(self, N, action_dim, hidden_dim):
         super(QValueNet, self).__init__()
-        self.l1 = nn.Linear(4 * N + 1 + action_dim, (hidden_dim) * 2) 
+        self.l1 = nn.Linear(3 * N + 2 + action_dim, (hidden_dim) * 2) 
         self.l2 = nn.Linear((hidden_dim) * 2, hidden_dim)
         self.l3 = nn.Linear(hidden_dim, 1)
         for layer in [self.l1, self.l2]:

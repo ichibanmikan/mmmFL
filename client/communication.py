@@ -4,6 +4,7 @@ import pickle
 import socket
 import time
 import numpy as np
+from Performance import Performance
 
 class ClientHandler():
     def __init__(self, config, trainers):
@@ -24,17 +25,31 @@ class ClientHandler():
         
         print("modal_mess: ", modal_mess)
 
-        self.one_epoch_time = np.zeros(len(self.config.datasets))
+        # self.one_epoch_time = np.zeros(len(self.config.datasets))
         one_epoch_loss = np.zeros(len(self.config.datasets))
         
         for i in range(len(self.config.datasets)):
             samp = self.trainers[i].sample_time()
-            self.one_epoch_time[i] = (self.trainers[i].MACs / self.config.ability) *\
-                np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)
+            # self.one_epoch_time[i] = (self.trainers[i].MACs / self.config.ability) *\
+            #     np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)
             one_epoch_loss[i] = samp[1]
             self.trainers[i].now_loss = samp[1]       
-        self.send(self.one_epoch_time)
+        # self.send(self.one_epoch_time)
         self.send(one_epoch_loss)
+        self.performance = Performance(self.config) 
+        gain_0 = self.performance.compute_channel_gain()
+        perf_0 = {
+            "client_id": self.config.node_id,
+            "g_i": gain_0,
+            "xi_i": self.performance.compute_spectrum_efficiency(gain_0),
+            "comm_latency": 0,
+            "comm_energy": 0,
+            "comp_latency": 0,
+            "comp_energy": 0,
+            "total_energy": 0,
+            "remaining_energy": 1.0
+        }
+        self.send(perf_0)    
         
     def send(self, content):
         try:
@@ -98,18 +113,18 @@ class ClientHandler():
                 pass
             else:
                 self.trainers[task__now_global_model[0]].reset_model_parameter(task__now_global_model[1])
-                
+                band_width = self.recv()
                 # self.send(end_time - start_time)     
                 
                 train_start_mess = self.recv() #，
                 print(train_start_mess)
                 new_params = self.trainers[task__now_global_model[0]].main()
                 param_update = new_params - task__now_global_model[1]
-                self.one_epoch_time[task__now_global_model[0]] = \
-                    self.trainers[task__now_global_model[0]].MACs / self.config.ability *\
-                        np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)                        
+                # self.one_epoch_time[task__now_global_model[0]] = \
+                #     self.trainers[task__now_global_model[0]].MACs / self.config.ability *\
+                #         np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)                        
                 one_epoch_loss = self.trainers[task__now_global_model[0]].now_loss          
-                self.send(self.one_epoch_time[task__now_global_model[0]]) # send train_time / epoches as one epoch time
+                # self.send(self.one_epoch_time[task__now_global_model[0]]) # send train_time / epoches as one epoch time
                 self.send(one_epoch_loss) # send loss
                 
                 send_start_mess = self.recv()
@@ -120,5 +135,11 @@ class ClientHandler():
                 # end_time = time.time()
                 
                 # self.send(end_time - start_time) # 
-            
+                self.send( \
+                    self.performance.compute_round( \
+                        self.trainers[task__now_global_model[0]].modal_size, 
+                        self.trainers[task__now_global_model[0]].MACs, 
+                        band_width
+                    )
+                )                  
                 self.round += 1

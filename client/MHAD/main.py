@@ -25,11 +25,11 @@ class Config:
         return f"Config({self.__dict__})"
 
 class MHAD_main:
-    def __init__(self, modality, node_id):
+    def __init__(self, modality, node_id, model_size):
         self.modality = modality
         self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
-        
+        self.model_size = model_size
         self.model = MyMMModel(self.config.num_classes)      
 
         if torch.backends.mps.is_available():
