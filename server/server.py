@@ -219,7 +219,12 @@ class Server:
 
     def get_actions(self):
         self.o_action, self.xi_action = self.agent.get_actions(self.states)
-        mask = (self.o_action > 0) & (~self.jobs_finish[self.o_action - 1])
+        energy_mask = np.array([p.get("remaining_energy", 0) > 0 for p in self.performances])
+
+        mask = (self.o_action > 0) \
+            & (~self.jobs_finish[self.o_action - 1]) \
+            & energy_mask
+
         indices = np.flatnonzero(mask)
         if len(indices) > self.config.max_participant_clients:
             selected = np.random.choice(
