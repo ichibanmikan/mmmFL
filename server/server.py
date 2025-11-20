@@ -106,6 +106,7 @@ class Server:
             self.train_time = np.zeros((len(self.threads), len(self.jobs)))
             self.agent = RandomAgent(N=len(self.jobs), M=len(self.threads))
             self.high_actions = np.zeros(len(self.threads))
+            self.performances = [{}] * len(self.threads)
             self.low_actions = np.zeros(len(self.threads))
             self.num_part = 0
         print(f"All clients released. Sleeping for 5 seconds before next round...")
@@ -134,11 +135,13 @@ class Server:
                     print(f"Timeout reached with {len(self.threads)} clients.")
                     break
             
-            self.round_time = np.zeros(len(self.threads))
+            # self.round_time = np.zeros(len(self.threads))
             self.agent = RandomAgent(N=len(self.jobs), M=len(self.threads))
-            self.round_time_part = np.zeros((len(self.threads), 2))
+            # self.round_time_part = np.zeros((len(self.threads), 2))
             self.high_actions = np.zeros(len(self.threads))
-            self.low_actions = np.zeros(len(self.threads))      
+            self.low_actions = np.zeros(len(self.threads))   
+            self.performances = [{}] * len(self.threads)   
+            self.clients_part = np.zeros(len(self.threads), dtype=bool)
             self.num_part = 0      
             self.actions_barrier \
                 = threading.Barrier(len(self.threads), action = self.get_actions)
@@ -181,32 +184,44 @@ class Server:
         self.global_round += 1
         
     def round_clean(self):
-        self.round_time = np.zeros(len(self.threads))
-        self.round_time_part = np.zeros((len(self.threads), 2)) 
-        self.round_rewards = np.zeros((len(self.threads), 2))
+        # self.round_time = np.zeros(len(self.threads))
+        # self.round_time_part = np.zeros((len(self.threads), 2)) 
+        # self.round_rewards = np.zeros((len(self.threads), 2))
+        self.clients_part = np.zeros(len(self.threads), dtype=bool)
         self.num_part = 0     
 
     def get_round_time_rewards(self):
-        if (self.global_round - 1) > 0 \
-            and (self.global_round - 1) % self.config.save_std_freq == 0:
-                with open(os.path.join(os.path.dirname(__file__), 'Random_std.log'), "a") as log:
-                    np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
-                    log.write('\n')
-        if self.num_part == 0:
-            std = -1
-        else:
-            part_mask = (self.round_time > 0)
-            part_time = self.round_time[part_mask]
-            if len(part_time) == 0:
-                std = -1
-            else:
-                if self.global_round > 0 \
-                    and self.global_round % self.config.round_time_plot_freq == 0:
-                        plot(time_table = self.round_time_part, round = self.global_round, plt_save=True)
-                if self.global_round % self.config.round_time_plot_freq != 0:
-                        plot(time_table = self.round_time_part, round = self.global_round)                    
-                std = np.std(part_time)
-        self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+        energy_consuptions = np.zeros((len(self.threads), 2))
+        time_table = np.zeros((len(self.threads), 2))
+        for i in range(len(self.threads)):
+            if self.clients_part[i]:
+                perf = self.performances[i]
+                energy_consuptions[i] = (perf['comm_energy'], perf['comp_energy'])
+                time_table[i] = (perf['comm_latency'], perf['comp_latency'])
+        plot(time_table = time_table,
+             energy_table=energy_consuptions,
+             round = self.global_round,
+             )
+        # if (self.global_round - 1) > 0 \
+        #     and (self.global_round - 1) % self.config.save_std_freq == 0:
+        #         with open(os.path.join(os.path.dirname(__file__), 'Random_std.log'), "a") as log:
+        #             np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
+        #             log.write('\n')
+        # if self.num_part == 0:
+        #     std = -1
+        # else:
+        #     part_mask = (self.round_time > 0)
+        #     part_time = self.round_time[part_mask]
+        #     if len(part_time) == 0:
+        #         std = -1
+        #     else:
+        #         if self.global_round > 0 \
+        #             and self.global_round % self.config.round_time_plot_freq == 0:
+        #                 plot(time_table = self.round_time_part, round = self.global_round, plt_save=True)
+        #         if self.global_round % self.config.round_time_plot_freq != 0:
+        #                 plot(time_table = self.round_time_part, round = self.global_round)                    
+        #         std = np.std(part_time)
+        # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         
 if __name__ == "__main__":
     config = Config()  # Initialize the config

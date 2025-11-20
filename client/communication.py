@@ -4,12 +4,14 @@ import pickle
 import socket
 import time
 import numpy as np
+from Performance import Performance
 
 class ClientHandler():
     def __init__(self, config, trainers):
         self.config = config
         self.trainers = trainers
         self.round = 0
+        self.performance = Performance(config)
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.config.server_address, self.config.port))
         print(f"Connected to server {self.config.server_address}:{self.config.port}")
@@ -86,7 +88,7 @@ class ClientHandler():
                 pass
             else:
                 self.trainers[task__now_global_model[0]].reset_model_parameter(task__now_global_model[1])
-                
+                band_width = self.recv()
                 # self.send(end_time - start_time)     
                 
                 train_start_mess = self.recv() #，
@@ -95,11 +97,16 @@ class ClientHandler():
                 new_params = self.trainers[task__now_global_model[0]].main()
                 
                 param_update = new_params - task__now_global_model[1]
-                train_time = \
-                    self.trainers[task__now_global_model[0]].MACs / self.config.ability *\
-                        np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)               
-                self.send(train_time) # send train_time / epoches as one epoch time
-                
+                # train_time = \
+                #     self.trainers[task__now_global_model[0]].MACs / self.config.ability *\
+                #         np.clip(np.random.default_rng().normal(1.0, 0.05), 0.5, 1.5)   
+                self.send(
+                    self.performance.compute_round(
+                        self.trainers[task__now_global_model[0]].model_size * 8,
+                        self.trainers[task__now_global_model[0]].MACs,
+                        band_width
+                    )
+                ) 
                 send_start_mess = self.recv()
                 print(send_start_mess) #，
 

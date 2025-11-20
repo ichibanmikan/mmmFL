@@ -14,7 +14,8 @@ class ServerHandler():
         # self.job_manager = job_manager
         self.server = server
         self.round = 0
-        self.time_remain = self.server.config.max_participant_time
+        self.perf = {"remaining_energy": 1.0}
+        # self.time_remain = self.server.config.max_participant_time
     def send(self, content, band_width = None):
         try:
             send_data = pickle.dumps(content, pickle.HIGHEST_PROTOCOL)
@@ -22,9 +23,6 @@ class ServerHandler():
             # print(f"Content memory size (bytes): {asizeof.asizeof(content)}")
             self.server_socket.sendall(send_header)
             self.server_socket.sendall(send_data)
-            if not band_width == None:
-                return (asizeof.asizeof(content) / (1024 * 1024)) /\
-                    (self.server.config.band_width * band_width)
         except (OSError, ConnectionResetError) as e:
             print(f"Content: {content} \n Send failed: {e}")
             return False
@@ -88,42 +86,31 @@ class ServerHandler():
                 job_action = self.server.high_actions[self.client_id]
                 band_width = self.server.low_actions[self.client_id]
                 if job_action > 0 and \
-                    self.time_remain > 0 and \
+                    self.perf["remaining_energy"] > 0 and \
                         not self.job_finish(job_action - 1):
                     Ptcp = True
                     with self.server.lock:
                         self.server.num_part += 1
-                    trans_time = self.send([
+                        self.server.clients_part[self.client_id] = True
+                    self.send([
                         job_action - 1, self.server.global_models_manager.get_model_params(job_action - 1)
-                    ], band_width)
-                    self.time_remain -= trans_time
-                    print(f"Received recv_time from client {self.client_id} in job {job_action - 1}: "\
-                        , trans_time)
+                    ])
+                    self.send(band_width)
                     
                     self.send("Train start!")
                     
-                    train_time = self.recv()
-                    self.time_remain -= train_time
-                    
-                    print(f"Received train_time from client {self.client_id} in job {job_action - 1}: "\
-                        , train_time)                    
+                    self.perf = self.recv()
+                                     
                     self.send("Send start!")
 
                     now_params = self.recv()
-                    self.time_remain -= trans_time
-                    print(f"Received send_time from client {self.client_id} : in job {job_action - 1}"\
-                        , trans_time)
                     
                     with self.server.lock:
                         self.server.current_round_all_params.append((
                             job_action - 1, now_params
                         ))
+                        self.server.performances[self.client_id] = self.perf
                     self.server.update_params_barrier.wait()
-                    
-                    with self.server.lock:
-                        self.server.round_time[self.client_id] =  2 * trans_time + train_time
-                        self.server.round_time_part[self.client_id][0] = trans_time
-                        self.server.round_time_part[self.client_id][1] = train_time
                     self.server.round_time_barrier.wait()
                 else:
                     self.send("Wait a round")

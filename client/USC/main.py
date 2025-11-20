@@ -39,13 +39,13 @@ class Config:
         return f"Config({self.__dict__})"
 
 class USC_main:
-    def __init__(self, modality, node_id):
+    def __init__(self, modality, node_id, model_size):
         self.modality = modality
         self.now_loss = 999
         self.config = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json'))
         
         self.model = MMModel(1, self.config.num_classes)      
-
+        self.model_size = model_size
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
