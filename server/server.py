@@ -495,7 +495,7 @@ class Server:
                 
             is_done = is_done and self.jobs_finish[i]
         
-        if is_done or self.episode_length >= self.config.max_episode_length:
+        if is_done or self.episode_length + 1 >= self.config.max_episode_length:
             self.done = True
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
                 binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
