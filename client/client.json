@@ -48,7 +48,7 @@
                 "text", 
                 "img"
             ],
-            "modal_size" : 3008784
+            "model_size" : 3008784
         },
         {
             "dataset_name": "CrisisMMD",
@@ -57,7 +57,7 @@
                 "text", 
                 "img"
             ],
-            "modal_size" : 5009960
+            "model_size" : 5009960
         },
         {
             "dataset_name": "MHAD",
@@ -66,7 +66,7 @@
                 "acc",
                 "skeleton"
             ],
-            "modal_size" : 1721880
+            "model_size" : 1721880
         },
         {
             "dataset_name": "USC",
@@ -75,7 +75,7 @@
                 "acc",
                 "gyr"
             ],
-            "modal_size" : 1201624
+            "model_size" : 1201624
         }
     ],
     "Energy": {
