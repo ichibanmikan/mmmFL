@@ -295,6 +295,29 @@ class Server:
         remaining_e  = np.array([p.get("remaining_energy", 1.0) for p in self.performances])
         total_energy = np.array([p.get("total_energy",     1.0) for p in self.performances])
 
+        transmission_training_times = np.zeros((len(self.threads), 2)) #
+        energy_consuptions = np.zeros((len(self.threads), 2))
+        for i in range(len(self.threads)):
+            if self.clients_part[i]:
+                perf = self.performances[i]
+                transmission_training_times[i][0] = perf['comm_latency']
+                transmission_training_times[i][1] = perf['comp_latency']
+                energy_consuptions[i] = (perf['comm_energy'], perf['comp_energy'])
+
+        plot(
+            time_table=transmission_training_times,
+            energy_table=energy_consuptions,
+            round=self.global_round,
+            plt_save=False
+        )
+
+        # if self.global_round > 0 \
+        #     and self.global_round % self.config.round_time_plot_freq == 0:
+        #         plot(time_table = transmission_training_times, round = self.global_round, plt_save=True)
+        # if self.global_round % self.config.round_time_plot_freq != 0:
+        plot(time_table = transmission_training_times, energy_table = energy_consuptions, round = self.global_round)  
+
+
         # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         # self.state_batchnorm()        
         comm_latency[assigned == 0] = 0
