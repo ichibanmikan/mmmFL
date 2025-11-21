@@ -135,20 +135,11 @@ class SACContinuous:
         next_states = transition_dict['next_states'] # (b, 3)
         dones = transition_dict['dones']      # (b, 1)
         
-        filtered_states = []
-        filtered_actions = []
-        filtered_rewards = []
-        filtered_dones = []
-        filtered_next_states = []
-
-        if not filtered_actions:
-            return
-        
-        states_tensor = torch.stack(filtered_states).float()
-        actions_tensor = torch.stack(filtered_actions).float()
-        rewards_tensor = torch.stack(filtered_rewards).float()
-        dones_tensor = torch.stack(filtered_dones).float()
-        next_states_tensor = torch.stack(filtered_next_states).float()
+        states_tensor = torch.stack(states).float()
+        actions_tensor = torch.stack(actions).float()
+        rewards_tensor = torch.stack(rewards).float()
+        dones_tensor = torch.stack(dones).float()
+        next_states_tensor = torch.stack(next_states).float()
 
         states = states_tensor.to(self.device)
         actions = actions_tensor.to(self.device)
