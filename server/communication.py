@@ -79,6 +79,7 @@ class ServerHandler():
         with self.server.lock:
             self.server.losses[self.client_id] = one_epoch_loss
             # self.server.train_time[self.client_id] = one_epoch_time
+            self.server.performances[self.client_id] = self.perf
         self.server.train_wake_barrier.wait()
         self.handle_train()
         
