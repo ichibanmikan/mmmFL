@@ -315,7 +315,7 @@ class Server:
         #     and self.global_round % self.config.round_time_plot_freq == 0:
         #         plot(time_table = transmission_training_times, round = self.global_round, plt_save=True)
         # if self.global_round % self.config.round_time_plot_freq != 0:
-        plot(time_table = transmission_training_times, energy_table = energy_consuptions, round = self.global_round)  
+        # plot(time_table = transmission_training_times, energy_table = energy_consuptions, round = self.global_round)  
 
 
         # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
