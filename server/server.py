@@ -367,8 +367,8 @@ class Server:
 
         w0, w1, w2, w3 = 0.01, 0.01, 0.5, 10
 
-        r_TA_global = w0 * self.acc_array - w1 - w2 * soft_penalty - w3 * hard_penalty
-        self.acc_array = np.ones(N) * r_TA_global
+        r_TA_global = w0 * np.sum(self.acc_array) - w1 - w2 * soft_penalty - w3 * hard_penalty
+        self.acc_rewards = np.ones(N) * r_TA_global
 
         comm_sum = np.sum(comm_latency)
         comm_energy_sum = np.sum(comm_energy / (total_energy + 1e-12))
