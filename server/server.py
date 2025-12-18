@@ -110,7 +110,8 @@ class Server:
             device=device
         )
         cr = chat_response()
-        self.reward_function = cr.generate()
+        # self.reward_function = cr.generate()
+        self.reward_function = cr.get_function()
         exec(self.reward_function, globals())
         self.jobs_goal = np.zeros(len(self.jobs))
         self.jobs_goal_sub = np.zeros(len(self.jobs))
@@ -156,7 +157,7 @@ class Server:
                 absorbing_reward, 
                 absorbing_done
             )
-            average_sub_rewards = np.array(self.buffer.average_sub_rewards, dtype=np.float32)
+            # average_sub_rewards = np.array(self.buffer.average_sub_rewards, dtype=np.float32)
             # self.reward_decoder.train(
             #     practice_length, 
             #     self.config.max_episode_length, 
@@ -378,33 +379,38 @@ class Server:
                 self.energy_consuption[i] = (perf['comm_energy'] + perf['comp_energy']) / perf['total_energy']
 
     def get_rewards(self):
-        # if (self.global_round - 1) > 0 \
-        #     and (self.global_round - 1) % self.config.save_std_freq == 0:
-        #         with open(os.path.join(os.path.dirname(__file__), 'LLM_HRL_std.log'), "a") as log:
-        #             np.savetxt(log, self.stds, fmt='%f', delimiter=' ', newline=' ')
-        #             log.write('\n')
-        # if self.num_part == 0:
-        #     std = -1
-        # else:
-        #     part_mask = (self.round_time > 0)
-        #     part_indices = np.where(part_mask)[0]
-        #     part_train_trans_time = self.round_time_part[part_mask]
-        #     part_time = self.round_time[part_mask]
-        #     if len(part_time) == 0:
-        #         std = -1
-        #     else:
-        #         if self.global_round > 0 \
-        #             and self.global_round % self.config.round_time_plot_freq == 0:
-        #                 plot(time_table = self.round_time_part, round = self.global_round, plt_save=True)
-        #         if self.global_round % self.config.round_time_plot_freq != 0:
-        #                 plot(time_table = self.round_time_part, round = self.global_round)                    
-        #         mean_time = np.mean(part_time)
-        #         individual_impacts = (part_time - mean_time) ** 2
-        #         individual_rewards = -individual_impacts
-        #         # self.rewards[part_indices, 1] = individual_rewards
-        #         self.trans_rewards[part_indices] = individual_rewards
-        #         std = np.std(part_time)
-        # self.perfs
+        N = len(self.performances)
+        assigned = self.clients_part.astype(np.int32)
+
+        b_i = self.clients_band_width
+
+        comm_latency = np.array([p.get("comm_latency", 0.0) for p in self.performances])
+        comp_latency = np.array([p.get("comp_latency",  0.0) for p in self.performances])
+        comm_energy  = np.array([p.get("comm_energy",   0.0) for p in self.performances])
+        comp_energy  = np.array([p.get("comp_energy",   0.0) for p in self.performances])
+        remaining_e  = np.array([p.get("remaining_energy", 1.0) for p in self.performances])
+        total_energy = np.array([p.get("total_energy",     1.0) for p in self.performances])
+
+        comm_latency[assigned == 0] = 0
+        comp_latency[assigned == 0] = 0
+        comm_energy[assigned == 0] = 0
+        comp_energy[assigned == 0] = 0
+
+        delta_i = comm_latency + comp_latency
+        delta_t = np.max(delta_i)
+        if delta_t < 1e-12:
+            delta_t = 1.0
+        e_i = comm_energy + comp_energy
+
+        soft_penalty = np.sum(e_i / (total_energy + 1e-12))
+
+        hard_penalty = np.sum(
+            ((remaining_e <= 0) & (assigned >= 1)) |
+            ((remaining_e <= 0) & (b_i > 0))
+        )
+
+        w0, w1, w2, w3 = 0.01, 0.001, 0.5, 10
+        
         round_time = np.zeros(len(self.threads))
         transmission_training_times = np.zeros((len(self.threads), 2)) #
         energy_consuptions = np.zeros((len(self.threads), 2))
@@ -415,15 +421,16 @@ class Server:
                 transmission_training_times[i][0] = perf['comm_latency']
                 transmission_training_times[i][1] = perf['comp_latency']
                 energy_consuptions[i] = (perf['comm_energy'], perf['comp_energy'])
+        acc_sum = np.sum(self.acc_array)
+        global_reward = w0 * acc_sum \
+                    - w1 * delta_t \
+                    - w2 * soft_penalty \
+                    - w3 * hard_penalty
+
         for i in range(len(self.threads)):  
             if self.clients_part[i]:
                 perf = self.performances[i]
                 self.remaining_energy[i] = perf['remaining_energy']
-
-        # if self.global_round > 0 \
-        #     and self.global_round % self.config.round_time_plot_freq == 0:
-        #         plot(time_table = transmission_training_times, round = self.global_round, plt_save=True)
-        # if self.global_round % self.config.round_time_plot_freq != 0:
         plot(
             time_table=transmission_training_times,
             energy_table=energy_consuptions,
@@ -445,7 +452,8 @@ class Server:
             self.energy_consuption,
             self.remaining_energy,
             self.clients_jobs,
-            self.clients_band_width_origin
+            self.clients_band_width_origin,
+            global_reward
         )
         """
         四个维度: 
@@ -454,14 +462,14 @@ class Server:
             self.prefermances[0 - N][remaining_energy], 
             self.prefermances[i][remaining_energy]>0 and self.clients_part[i]
         """
-        sub_rewards = np.array(sub_rewards, dtype = np.float32)
-        train_rewards = sub_rewards[:, 0:8]
-        self.round_rewards[:, 1] = sub_rewards[:, 8]
-        asr = np.mean(train_rewards, axis=0)
-        self.buffer.add_average_sub_rewards(asr)
-        self.round_rewards[:, 0] = self.reward_decoder.get_dense_rewards(
-            torch.tensor(train_rewards, dtype=torch.float32)
-        ).squeeze(-1).detach().cpu().numpy()
+        self.round_rewards = np.array(sub_rewards, dtype = np.float32)
+        # train_rewards = sub_rewards[:, 0:8]
+        # self.round_rewards[:, 1] = sub_rewards[:, 8]
+        # asr = np.mean(train_rewards, axis=0)
+        # self.buffer.add_average_sub_rewards(asr)
+        # self.round_rewards[:, 0] = self.reward_decoder.get_dense_rewards(
+        #     torch.tensor(train_rewards, dtype=torch.float32)
+        # ).squeeze(-1).detach().cpu().numpy()
         # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         self.state_batchnorm()
         self.is_done()

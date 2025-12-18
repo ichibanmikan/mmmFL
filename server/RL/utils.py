@@ -83,8 +83,8 @@ class ReplayBuffer:
         
     #     # self.sum_reward = 0
     #     self.isFirst = True
-    def add_average_sub_rewards(self, sub_rewards):
-        self.average_sub_rewards.append(sub_rewards)
+    # def add_average_sub_rewards(self, sub_rewards):
+    #     self.average_sub_rewards.append(sub_rewards)
         
     def sample(self, batch_size):
         if len(self.states) <= batch_size:
