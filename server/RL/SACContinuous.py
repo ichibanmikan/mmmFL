@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import numpy as np
-from torch.distributions import Normal
+from torch.distributions import Normal, Dirichlet
 
 # class AttentionLayer(nn.Module):
 #     def __init__(self, state_dim, hidden_dim):
@@ -27,37 +27,38 @@ from torch.distributions import Normal
 class Actor(nn.Module):
     def __init__(self, hidden_dim):
         super(Actor, self).__init__()
-        # self.attention = AttentionLayer(1, hidden_dim)
-        # self.l1 = nn.Linear(hidden_dim + 2, hidden_dim + 2)
         self.l1 = nn.Linear(3, hidden_dim)
-        self.l_mean = nn.Linear(hidden_dim, 1)
-        self.l_std = nn.Linear(hidden_dim, 1) 
+        self.l2 = nn.Linear(hidden_dim, hidden_dim)
+        self.l_alpha = nn.Linear(hidden_dim, 2)
 
         nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))
         nn.init.constant_(self.l1.bias, 0.0)
-        nn.init.uniform_(self.l_mean.weight, -1e-3, 1e-3)
-        nn.init.constant_(self.l_mean.bias, 0.0)
-        nn.init.constant_(self.l_std.weight, 0.0)
-        nn.init.constant_(self.l_std.bias, -1.0)
+        nn.init.orthogonal_(self.l2.weight, gain=np.sqrt(2))
+        nn.init.constant_(self.l2.bias, 0.0)
+
+        nn.init.uniform_(self.l_alpha.weight, -1e-3, 1e-3)
+        nn.init.constant_(self.l_alpha.bias, 0.5)
 
     def forward(self, x):
-        # Input x: (bsz, 3), 
-        # Ιnclude ti, model_size, T_remain.
-        # s_r = x[:, -2:] # (bsz, 2)
-        # x, _ = self.attention(x[:, 0].unsqueeze(-1), x[:, 1:-2]) # (bsz, h_d)
-        # x = torch.cat([x, s_r]) # (bsz, h_d + 2)
+        single_input = False
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+            single_input = True
         x = F.relu(self.l1(x))
+        x = F.relu(self.l2(x))
+
+        alpha = F.softplus(self.l_alpha(x)) + 1e-6
+        dist = Dirichlet(alpha)
+        sample = dist.rsample()
+        action = sample[:, 0:1]
+        log_prob = dist.log_prob(sample).unsqueeze(-1)
         
-        x_mean = self.l_mean(x) 
-        x_std = F.softplus(self.l_std(x))
-        x_std = torch.clamp(x_std, min=1e-6)        
-        dist = Normal(x_mean, x_std)
-        normal_sample = dist.rsample()
-        log_prob = dist.log_prob(normal_sample)
-        action = (torch.tanh(normal_sample) + 1) / 2
-        action = action.clamp(min=0.05, max=0.95)
-        log_prob -= torch.log(1 - action.pow(2) + 1e-7)
+        if single_input:
+            action = action.squeeze(0)
+            log_prob = log_prob.squeeze(0)
+
         return action, log_prob
+
 
 class QValueNet(nn.Module):
     def __init__(self, hidden_dim):
@@ -78,9 +79,6 @@ class QValueNet(nn.Module):
      
     def forward(self, state, action):
         # action.unsqueeze(-1)
-        # print("1111111111111")
-        # print(state.shape)
-        # print(action.shape)
         if action.dim() == 1:
             action = action.unsqueeze(-1)
         x = torch.cat([state, action], dim = -1) # (bsz, h_d + 2)
