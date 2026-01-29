@@ -25,39 +25,33 @@ from torch.distributions import Normal, Dirichlet
 #             attention_weights.squeeze(dim = 1) # (bsz, hidden_dim), (bsz, k' - 1)
 
 class Actor(nn.Module):
+    """
+    Client-wise actor:
+    input : (bsz, state_dim)
+    output: (bsz, 1)  -> alpha_i
+    """
     def __init__(self, hidden_dim):
-        super(Actor, self).__init__()
+        super().__init__()
         self.l1 = nn.Linear(3, hidden_dim)
         self.l2 = nn.Linear(hidden_dim, hidden_dim)
-        self.l_alpha = nn.Linear(hidden_dim, 2)
+        self.l_alpha = nn.Linear(hidden_dim, 1)
 
-        nn.init.orthogonal_(self.l1.weight, gain=np.sqrt(2))
-        nn.init.constant_(self.l1.bias, 0.0)
-        nn.init.orthogonal_(self.l2.weight, gain=np.sqrt(2))
-        nn.init.constant_(self.l2.bias, 0.0)
+        for layer in [self.l1, self.l2]:
+            nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
+            nn.init.constant_(layer.bias, 0.0)
 
         nn.init.uniform_(self.l_alpha.weight, -1e-3, 1e-3)
         nn.init.constant_(self.l_alpha.bias, 0.5)
 
-    def forward(self, x):
-        single_input = False
-        if x.dim() == 1:
-            x = x.unsqueeze(0)
-            single_input = True
-        x = F.relu(self.l1(x))
+    def forward(self, state_i):
+        """
+        state_i: (bsz, state_dim)
+        """
+        x = F.relu(self.l1(state_i))
         x = F.relu(self.l2(x))
+        alpha_i = F.softplus(self.l_alpha(x)) + 1e-6
+        return alpha_i
 
-        alpha = F.softplus(self.l_alpha(x)) + 1e-6
-        dist = Dirichlet(alpha)
-        sample = dist.rsample()
-        action = sample[:, 0:1]
-        log_prob = dist.log_prob(sample).unsqueeze(-1)
-        
-        if single_input:
-            action = action.squeeze(0)
-            log_prob = log_prob.squeeze(0)
-
-        return action, log_prob
 
 
 class QValueNet(nn.Module):

@@ -42,7 +42,7 @@ class Agent:
     def job_selection(self, state, take_next = False):
         return self.high_agent.take_action(state, take_next)
     
-    def bandwidth_attribute(self, state):
+    def bandwidth_attribute_dirichlet_para(self, state):
         return self.low_agent.take_action(state)
     
     def save_model(self):

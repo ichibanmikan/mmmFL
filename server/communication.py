@@ -167,15 +167,15 @@ class ServerHandler():
                         np.array([self.perf['g_i']]),
                     ])
                     
-                    band_width = self.server.agent.bandwidth_attribute(low_state)
-                    action[1] = band_width
+                    dirichlet_para = self.server.agent.bandwidth_attribute_dirichlet_para(low_state)
+                    # action[1] = band_width
                     state[-3:] = low_state
                     
                     with self.server.lock:
-                        self.server.clients_band_width_origin[self.client_id] = band_width
+                        self.server.dirichlet_params[self.client_id] = dirichlet_para
                     
                     self.server.band_width_barrier.wait() 
-                    
+                    action[1] = self.server.bandwidths[self.client_id]
                     # job_now_acc_sub = self.server.jobs_goal_sub[now_job]
                     self.send([
                         now_job, self.server.global_models_manager.get_model_params(now_job)

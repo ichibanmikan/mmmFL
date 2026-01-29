@@ -110,7 +110,8 @@ class Server:
             device=device
         )
         cr = chat_response()
-        self.reward_function = cr.generate()
+        # self.reward_function = cr.generate()
+        self.reward_function = cr.get_function()
         exec(self.reward_function, globals())
         self.jobs_goal = np.zeros(len(self.jobs))
         self.jobs_goal_sub = np.zeros(len(self.jobs))
@@ -189,6 +190,8 @@ class Server:
             self.round_rewards[:, 1] = -1
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
+            self.bandwidths = np.zeros(len(self.threads))
+            self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
             # self.remain_time = np.full(len(self.threads), self.config.max_participant_time)
             self.losses = np.zeros((len(self.threads), len(self.jobs)))
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
@@ -222,6 +225,8 @@ class Server:
             
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
+            self.bandwidths = np.zeros(len(self.threads))
+            self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
             # self.train_time = np.zeros((len(self.threads), len(self.jobs)))
             # self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
             # self.every_round_train_time = np.zeros(len(self.threads))
@@ -243,8 +248,8 @@ class Server:
             # self.times_state = np.zeros((len(self.threads), len(self.jobs)))
             
             # self.band_width_reward = 0
-            self.clients_band_width = np.zeros(len(self.threads))
-            self.clients_band_width_origin = np.zeros(len(self.threads))
+            # self.clients_band_width = np.zeros(len(self.threads))
+            # self.clients_band_width_origin = np.zeros(len(self.threads))
             # self.remain_time = np.full(len(self.threads), self.config.max_participant_time)
             self.num_part = 0
             self.performances = [{} for _ in range(len(self.threads))]
@@ -253,7 +258,7 @@ class Server:
             self.job_selection_barrier \
                 = threading.Barrier(len(self.threads), action = self.add_select)
             self.band_width_barrier \
-                = threading.Barrier(len(self.threads), action = self.reattribute)
+                = threading.Barrier(len(self.threads), action = self.sample_bandwidth)
             self.round_time_barrier \
                 = threading.Barrier(len(self.threads), action = self.get_rewards)
             # self.recv_global_barrier = threading.Barrier(len(self.threads))
@@ -292,25 +297,25 @@ class Server:
         self.train_time[idx][time_pos] = self.config.train_time_decay * self.train_time[idx][time_pos] + \
                                     (1 - self.config.train_time_decay) * update_time      
                               
-    def reattribute(self):
-        if self.num_part == 0:
-            return
-        selected_indices = [i for i, is_selected in enumerate(self.clients_part) if is_selected]
-        selected_bandwidths = [self.clients_band_width_origin[i] for i in selected_indices]
+    # def reattribute(self):
+    #     if self.num_part == 0:
+    #         return
+    #     selected_indices = [i for i, is_selected in enumerate(self.clients_part) if is_selected]
+    #     selected_bandwidths = [self.clients_band_width_origin[i] for i in selected_indices]
 
-        total_bandwidth = sum(selected_bandwidths)
+    #     total_bandwidth = sum(selected_bandwidths)
         
-        if total_bandwidth == 0:
-            num_selected = len(selected_indices)
-            if num_selected > 0:
-                normalized = [1.0 / num_selected for _ in selected_bandwidths]
-            else:
-                normalized = []
-        else:
-            normalized = [bw / total_bandwidth for bw in selected_bandwidths]
+    #     if total_bandwidth == 0:
+    #         num_selected = len(selected_indices)
+    #         if num_selected > 0:
+    #             normalized = [1.0 / num_selected for _ in selected_bandwidths]
+    #         else:
+    #             normalized = []
+    #     else:
+    #         normalized = [bw / total_bandwidth for bw in selected_bandwidths]
 
-        for idx, norm_value in zip(selected_indices, normalized):
-            self.clients_band_width[idx] = norm_value
+    #     for idx, norm_value in zip(selected_indices, normalized):
+    #         self.clients_band_width[idx] = norm_value
        
     def update_global_models(self):
         if self.num_part != 0:
@@ -346,9 +351,11 @@ class Server:
     def round_clean(self):
         self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
         self.clients_part = np.zeros(len(self.threads), dtype = bool)
+        self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
+        self.bandwidths = np.zeros(len(self.threads))
         # self.every_round_train_time = np.zeros(len(self.threads))
-        self.clients_band_width = np.zeros(len(self.threads))
-        self.clients_band_width_origin = np.zeros(len(self.threads))
+        # self.clients_band_width = np.zeros(len(self.threads))
+        # self.clients_band_width_origin = np.zeros(len(self.threads))
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
         self.round_rewards = np.zeros((len(self.threads), 2))
@@ -370,7 +377,19 @@ class Server:
     #                 acc_array[j] * (1 - self.config.acc_reward_decay) +
     #                 self.config.acc_reward_decay * self.acc_reward[i][j]
     #             )
-    
+
+    def sample_bandwidth(self, eps=1e-6):
+        self.bandwidths.fill(0.0)
+        active_idx = np.where(self.clients_part)[0]
+        if active_idx.size == 0:
+            return
+        alpha = self.dirichlet_params[active_idx].astype(np.float64, copy=False)
+        alpha = np.clip(alpha, eps, None)
+        sampled = np.random.dirichlet(alpha).astype(np.float32)  # (K,)
+        self.bandwidths[active_idx] = sampled
+
+
+
     def get_energy_consuption(self):
         for i in range(len(self.threads)):
             if self.clients_part[i]:
@@ -408,7 +427,7 @@ class Server:
             ((remaining_e <= 0) & (b_i > 0))
         )
 
-        w0, w1, w2, w3 = 0.01, 0.001, 0.5, 10
+        w0, w1, w2, w3 = 1, 0.0001, 0.1, 0
         
         round_time = np.zeros(len(self.threads))
         transmission_training_times = np.zeros((len(self.threads), 2)) #
@@ -451,7 +470,8 @@ class Server:
             self.energy_consuption,
             self.remaining_energy,
             self.clients_jobs,
-            self.clients_band_width_origin,
+            # self.clients_band_width_origin,
+            self.bandwidths,
             global_reward
         )
         """
