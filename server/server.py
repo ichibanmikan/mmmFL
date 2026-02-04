@@ -31,8 +31,10 @@ class Config:
         self.max_round_time = config.getint('Clients', 'max_round_time')
         self.max_participant_time = config.getint('Clients', 'max_participant_time')
         self.train_time_decay = config.getfloat('Clients', 'train_time_decay')
-        self.min_replay_buffer_size = config.getint('RL', 'min_size')
-        self.replay_buffer_batch_size = config.getint('RL', 'batch_size')
+        self.min_replay_buffer_size_high = config.getint('RL', 'min_size_high')
+        self.min_replay_buffer_size_low = config.getint('RL', 'min_size_low')
+        self.replay_buffer_batch_size_high = config.getint('RL', 'batch_size_high')
+        self.replay_buffer_batch_size_low = config.getint('RL', 'batch_size_low')
         self.episode_round = config.getint('RL', 'episode_round')
         self.save_data_freq = config.getint('RL', 'save_data_freq')
         self.max_episode_length = config.getint('RL', 'max_episode_length')
@@ -102,16 +104,9 @@ class Server:
             device = torch.device("cuda")
         else:
             device = torch.device("cpu")
-        
-        self.agent = Agent(
-            High_config=AgentConfig(self.config.RL_high_agent), 
-            Low_config=AgentConfig(self.config.RL_low_agent), 
-            N=len(self.jobs),
-            device=device
-        )
+        self.device = device
         cr = chat_response()
-        # self.reward_function = cr.generate()
-        self.reward_function = cr.get_function()
+        self.reward_function = cr.generate()
         exec(self.reward_function, globals())
         self.jobs_goal = np.zeros(len(self.jobs))
         self.jobs_goal_sub = np.zeros(len(self.jobs))
@@ -191,6 +186,9 @@ class Server:
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.bandwidths = np.zeros(len(self.threads))
+            self.current_round_low_states = np.zeros((len(self.threads), 3))
+            self.current_round_high_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 1))
+            self.next_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 3 + 1))
             self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
             # self.remain_time = np.full(len(self.threads), self.config.max_participant_time)
             self.losses = np.zeros((len(self.threads), len(self.jobs)))
@@ -222,10 +220,21 @@ class Server:
                 except socket.timeout:
                     print(f"Timeout reached with {len(self.threads)} clients.")
                     break
-            
+
+            self.agent = Agent(
+                High_config=AgentConfig(self.config.RL_high_agent), 
+                Low_config=AgentConfig(self.config.RL_low_agent), 
+                N=len(self.jobs),
+                M=len(self.threads),
+                device=self.device
+            )
+
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.bandwidths = np.zeros(len(self.threads))
+            self.current_round_low_states = np.zeros((len(self.threads), 3))
+            self.current_round_high_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 1))
+            self.next_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 3 + 1))
             self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
             # self.train_time = np.zeros((len(self.threads), len(self.jobs)))
             # self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
@@ -353,6 +362,9 @@ class Server:
         self.clients_part = np.zeros(len(self.threads), dtype = bool)
         self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
         self.bandwidths = np.zeros(len(self.threads))
+        self.current_round_low_states = np.zeros((len(self.threads), 3))
+        self.current_round_high_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 1))
+        self.next_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 3 + 1))
         # self.every_round_train_time = np.zeros(len(self.threads))
         # self.clients_band_width = np.zeros(len(self.threads))
         # self.clients_band_width_origin = np.zeros(len(self.threads))
@@ -378,16 +390,8 @@ class Server:
     #                 self.config.acc_reward_decay * self.acc_reward[i][j]
     #             )
 
-    def sample_bandwidth(self, eps=1e-6):
-        self.bandwidths.fill(0.0)
-        active_idx = np.where(self.clients_part)[0]
-        if active_idx.size == 0:
-            return
-        alpha = self.dirichlet_params[active_idx].astype(np.float64, copy=False)
-        alpha = np.clip(alpha, eps, None)
-        sampled = np.random.dirichlet(alpha).astype(np.float32)  # (K,)
-        self.bandwidths[active_idx] = sampled
-
+    def sample_bandwidth(self):
+        self.bandwidths = self.agent.bandwidth_attribute(self.current_round_low_states)
 
 
     def get_energy_consuption(self):
@@ -400,7 +404,8 @@ class Server:
         N = len(self.performances)
         assigned = self.clients_part.astype(np.int32)
 
-        b_i = self.clients_band_width
+        # b_i = self.clients_band_width
+        b_i = self.bandwidths
 
         comm_latency = np.array([p.get("comm_latency", 0.0) for p in self.performances])
         comp_latency = np.array([p.get("comp_latency",  0.0) for p in self.performances])
@@ -474,37 +479,52 @@ class Server:
             self.bandwidths,
             global_reward
         )
-        """
-        四个维度: 
-            self.acc_array, 
-            self.energy_consuption, 
-            self.prefermances[0 - N][remaining_energy], 
-            self.prefermances[i][remaining_energy]>0 and self.clients_part[i]
-        """
         self.round_rewards = np.array(sub_rewards, dtype = np.float32)
-        # train_rewards = sub_rewards[:, 0:8]
-        # self.round_rewards[:, 1] = sub_rewards[:, 8]
-        # asr = np.mean(train_rewards, axis=0)
-        # self.buffer.add_average_sub_rewards(asr)
-        # self.round_rewards[:, 0] = self.reward_decoder.get_dense_rewards(
-        #     torch.tensor(train_rewards, dtype=torch.float32)
-        # ).squeeze(-1).detach().cpu().numpy()
-        # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
         self.state_batchnorm()
         self.is_done()
-        
+    
+
     def update_Agent(self):
+        self.buffer.add(
+            np.concatenate([self.current_round_high_states, self.current_round_low_states], axis=1), #(n, 2 * m + 4)
+            np.stack((self.clients_jobs, self.bandwidths), axis=1), #(n, 2)
+            self.next_states, #(n, 2 * m + 4)
+            self.round_rewards, #(n, 2)
+            self.round_rewards, #(n, 2)
+            self.done # 1
+        )
         # self.every_round_train_time = np.zeros(len(self.threads))
-        if len(self.buffer.states) > self.config.min_replay_buffer_size:
+        if len(self.buffer.states) * len(self.threads) > self.config.min_replay_buffer_size_high \
+            and len(self.buffer.states) > self.config.min_replay_buffer_size_low:
             print("This round start update_Agent()")
-            s, a, ns, r, dr, d = self.buffer.sample(self.config.replay_buffer_batch_size)
-            transition_dict = {'states': s,
-                            'actions': a,
-                            'rewards': r,
-                            'next_states': ns,
-                            'dense_reward': dr,
-                            'dones': d}
-            self.agent.update(transition_dict)
+            high_batch = self.buffer.high_sample(self.config.replay_buffer_batch_size_high)
+            hs, ha, hns, hr, hdr, hd = high_batch
+
+            high_transition_dict = {
+                'states': hs,
+                'actions': ha,
+                'rewards': hr,
+                'next_states': hns,
+                'dense_rewards': hdr,
+                'dones': hd
+            }
+            low_batch = self.buffer.low_sample(self.config.replay_buffer_batch_size_low)
+            if low_batch is None:
+                return
+            ls, la, lns, lr, ldr, ld = low_batch
+            low_transition_dict = {
+                'states': ls,
+                'actions': la,
+                'rewards': lr,
+                'next_states': lns,
+                'dense_rewards': ldr,
+                'dones': ld
+            }
+            self.agent.update(
+                high_transition_dict=high_transition_dict,
+                low_transition_dict=low_transition_dict
+            )
+
         
         if self.global_round > 0\
             and self.global_round % self.config.save_data_freq == 0:

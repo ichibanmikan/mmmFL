@@ -5,44 +5,36 @@ import pickle
 import numpy as np
 
 
-"""_summary_
-state: 
-"""
-
 class ReplayBuffer:
-    def __init__(self, device = 'cpu'):
+    def __init__(self, device='cpu'):
+        self.states = []          # (N, 2N+4)
+        self.actions = []         # (N, 2)
+        self.next_states = []     # (N, 2N+4)
+        self.rewards = []         # (N, 2)
+        self.dense_rewards = []   # (N, 2)
+        self.dones = []           # scalar
 
-        self.states = []
-        self.actions = []
-        self.next_states = []
-        self.rewards = []
-        self.dense_rewards = []
-        self.dones = []
-        # self.a_log_probs = []
-        
-
-        self.traj_head_id = []
-        self.traj_end_id = []
-        self.episode_return = []
-        self.episode_length = []
-        
         self.device = device
-        
-        self.isFirst = True #record a traj
-        # self.sum_reward = 0
-        self.average_sub_rewards = []
         self.load_data()
-    
+
+    # -------------------------------------------------
+    # ADD
+    # -------------------------------------------------
     def add(self, state, action, next_state, reward, dense_reward, done):
-        
-        state = state.astype(np.float32) if state.dtype == np.float64 else state
-        next_state = next_state.astype(np.float32) \
-            if next_state.dtype == np.float64 else next_state
-        reward = reward.astype(np.float32) \
-            if isinstance(reward, np.ndarray) and reward.dtype == np.float64 else reward
-        dense_reward = dense_reward.astype(np.float32) \
-            if isinstance(dense_reward, np.ndarray) and dense_reward.dtype == np.float64\
-                else dense_reward
+        """
+        state:       (N, 2N+4)
+        action:      (N, 2)
+        next_state:  (N, 2N+4)
+        reward:      (N, 2)
+        dense_reward:(N, 2)
+        done:        scalar
+        """
+
+        state = state.astype(np.float32)
+        next_state = next_state.astype(np.float32)
+        action = action.astype(np.float32)
+        reward = reward.astype(np.float32)
+        dense_reward = dense_reward.astype(np.float32)
 
         self.states.append(state)
         self.actions.append(action)
@@ -50,154 +42,111 @@ class ReplayBuffer:
         self.rewards.append(reward)
         self.dense_rewards.append(dense_reward)
         self.dones.append(done)
-        if done:
-            self.episode_length.append(len(self.average_sub_rewards))
-        # self.a_log_probs.append(a_log_prob)
-        # self.sum_reward += reward
 
-    # def add_done(self, state, action, next_state, reward,\
-    #     dense_reward, eposide_length, eposide_reward):
-
-    #     state = state.astype(np.float32) if state.dtype == np.float64 else state
-    #     next_state = next_state.astype(np.float32) \
-    #         if next_state.dtype == np.float64 else next_state
-
-    #     self.states.append(state)
-    #     self.actions.append(action)
-    #     self.next_states.append(next_state)
-    #     self.rewards.append(reward)
-    #     self.dense_rewards.append(dense_reward)
-    #     self.dones.append(True)
-    #     # self.a_log_probs.append(a_log_prob)            
-    #     # self.sum_reward += reward
-        
-    #     self.traj_end_id.append(len(self.states) - 1)
-    #     self.episode_return.append(eposide_reward)
-    #     self.episode_length.append(eposide_length)
-        
-    #     assert eposide_length == \
-    #         self.traj_end_id[len(self.traj_end_id) - 1] - \
-    #             self.traj_head_id[len(self.traj_head_id) - 1] + 1
-    #     assert len(self.traj_end_id) == len(self.traj_head_id)
-    #     assert len(self.episode_return) == len(self.episode_length)
-        
-    #     # self.sum_reward = 0
-    #     self.isFirst = True
-    # def add_average_sub_rewards(self, sub_rewards):
-    #     self.average_sub_rewards.append(sub_rewards)
-        
-    def sample(self, batch_size):
-        if len(self.states) <= batch_size:
+    # -------------------------------------------------
+    # LOW-LEVEL SAMPLE
+    # -------------------------------------------------
+    def low_sample(self, low_batch_size):
+        batch_size = low_batch_size
+        if len(self.states) < batch_size:
             return None
 
-        indices = random.sample(range(len(self.states)), batch_size)
+        idx = random.sample(range(len(self.states)), batch_size)
 
-        sampled_states = [self.states[i] for i in indices]
-        sampled_actions = [self.actions[i] for i in indices]
-        sampled_next_states = [self.next_states[i] for i in indices]
-        sampled_rewards = [self.rewards[i] for i in indices]
-        sampled_dense_rewards = [self.dense_rewards[i] for i in indices]
-        sampled_dones = [self.dones[i] for i in indices]
+        states = []
+        actions = []
+        next_states = []
+        rewards = []
+        dense_rewards = []
+        dones = []
 
-        sampled_states = torch.tensor(np.array(sampled_states)).to(self.device)
-        sampled_actions = torch.tensor(
-            np.array(sampled_actions).astype(np.int64)
-        ).to(self.device)
-        sampled_next_states = torch.tensor(np.array(sampled_next_states)).to(self.device)
-        sampled_rewards = torch.tensor(np.array(sampled_rewards).astype(np.float32)).to(self.device)
-        sampled_dense_rewards = torch.tensor(np.array(sampled_dense_rewards).astype(np.float32)).to(self.device)
-        sampled_dones = torch.tensor(np.array(sampled_dones), dtype=torch.float).to(self.device)
+        for i in idx:
+            # 后 3 列
+            states.append(self.states[i][:, -3:])
+            next_states.append(self.next_states[i][:, -3:])
 
-        return (sampled_states, sampled_actions, sampled_next_states,
-                sampled_rewards, sampled_dense_rewards, sampled_dones)
-    
-    # def sample_traj(self, batch_size):
-    #     if len(self.traj_head_id) <= batch_size:
-    #         return None
+            # action / reward 后一列
+            actions.append(self.actions[i][:, 1])
+            rewards.append(self.rewards[i][:, 1].sum())
+            dense_rewards.append(self.dense_rewards[i][:, 1].sum())
 
-    #     selected_idxs = np.random.randint(0, len(self.traj_head_id), size=batch_size)
-        
-    #     sampled_states = []
-    #     sampled_actions = []
-    #     sampled_next_states = []
-    #     sampled_rewards = []
-    #     sampled_dense_rewards = []
-    #     sampled_dones = []
-    #     sampled_episode_returns = []
-    #     sampled_episode_lengths = []
+            dones.append(self.dones[i])
 
-    #     for idx in selected_idxs:
-    #         head = self.traj_head_id[idx]
-    #         end = self.traj_end_id[idx] + 1 
+        return (
+            torch.tensor(np.stack(states), dtype=torch.float32).to(self.device),
+            torch.tensor(np.stack(actions), dtype=torch.float32).to(self.device),
+            torch.tensor(np.stack(next_states), dtype=torch.float32).to(self.device),
+            torch.tensor(np.stack(rewards), dtype=torch.float32).to(self.device),
+            torch.tensor(np.stack(dense_rewards), dtype=torch.float32).to(self.device),
+            torch.tensor(dones, dtype=torch.float32).to(self.device),
+        )
 
-    #         sampled_states.extend(self.states[head:end])
-    #         sampled_actions.extend(self.actions[head:end])
-    #         sampled_next_states.extend(self.next_states[head:end])
-    #         sampled_rewards.extend(self.rewards[head:end])
-    #         sampled_dense_rewards.extend(self.dense_rewards[head:end])
-    #         sampled_dones.extend([done for done in self.dones[head:end]])
+    # -------------------------------------------------
+    # HIGH-LEVEL SAMPLE
+    # -------------------------------------------------
+    def high_sample(self, high_batch_size):
+        """
+        Treat each (transition, client) as an independent sample
+        """
+        batch_size =  high_batch_size
+        if len(self.states) == 0:
+            return None
 
-    #         sampled_episode_returns.append(self.episode_return[idx])
-    #         sampled_episode_lengths.append(self.episode_length[idx])
+        N = self.states[0].shape[0]
+        total = len(self.states) * N
 
-    #     return (
-    #         torch.tensor(np.array(sampled_states)).to(self.device),
-    #         torch.tensor(np.array(sampled_actions).astype(np.int64)).to(self.device),
-    #         torch.tensor(np.array(sampled_next_states)).to(self.device),
-    #         torch.tensor(np.array(sampled_rewards).astype(np.float32)).to(self.device),
-    #         torch.tensor(np.array(sampled_dense_rewards).astype(np.float32)).to(self.device),
-    #         torch.tensor(np.array(sampled_dones)).to(self.device),  
-    #         torch.tensor(np.array(sampled_episode_returns)).to(self.device),
-    #         torch.tensor(np.array(sampled_episode_lengths)).to(self.device)
-    #     )
-    
+        if total < batch_size:
+            return None
+
+        indices = random.sample(range(total), batch_size)
+
+        states = []
+        actions = []
+        next_states = []
+        rewards = []
+        dense_rewards = []
+        dones = []
+
+        for idx in indices:
+            t = idx // N   # transition id
+            c = idx % N    # client id
+
+            states.append(self.states[t][c, :-3])
+            next_states.append(self.next_states[t][c, :-3])
+
+            actions.append(self.actions[t][c, 0])
+            rewards.append(self.rewards[t][c, 0])
+            dense_rewards.append(self.dense_rewards[t][c, 0])
+            dones.append(self.dones[t])
+
+        return (
+            torch.tensor(np.stack(states), dtype=torch.float32).to(self.device),
+            torch.tensor(np.array(actions), dtype=torch.long).to(self.device),
+            torch.tensor(np.stack(next_states), dtype=torch.float32).to(self.device),
+            torch.tensor(np.array(rewards), dtype=torch.float32).to(self.device),
+            torch.tensor(np.array(dense_rewards), dtype=torch.float32).to(self.device),
+            torch.tensor(dones, dtype=torch.float32).to(self.device),
+        )
+
+    # -------------------------------------------------
+    # SAVE / LOAD
+    # -------------------------------------------------
     def save_data(self):
         data_dir = os.path.join(os.path.dirname(__file__), 'data')
         os.makedirs(data_dir, exist_ok=True)
-
         file_path = os.path.join(data_dir, 'replay_buffer.pkl')
 
-        data = {
-            'states': self.states,
-            'actions': self.actions,
-            'next_states': self.next_states,
-            'rewards': self.rewards,
-            'dense_rewards': self.dense_rewards,
-            'dones': self.dones,
-            'traj_head_id': self.traj_head_id,
-            'traj_end_id': self.traj_end_id,
-            'episode_return': self.episode_return,
-            'episode_length': self.episode_length,
-            'average_sub_rewards': self.average_sub_rewards
-        }
-
         with open(file_path, 'wb') as f:
-            pickle.dump(data, f)
+            pickle.dump(self.__dict__, f)
 
-        print(f"ReplayBuffer data saved to {file_path}")  
-              
+        print(f"ReplayBuffer saved to {file_path}")
+
     def load_data(self):
-
-        file_path = os.path.join(os.path.dirname(__file__), \
-            'data', 'replay_buffer.pkl')
-
+        file_path = os.path.join(os.path.dirname(__file__), 'data', 'replay_buffer.pkl')
         if not os.path.exists(file_path):
-            # print(f"File {file_path} does not exist.")
             return
 
         with open(file_path, 'rb') as f:
-            data = pickle.load(f)
-            
-        self.states = data['states']
-        self.actions = data['actions']
-        self.next_states = data['next_states']
-        self.rewards = data['rewards']
-        self.dense_rewards = data['dense_rewards']
-        self.dones = data['dones']
-        self.traj_head_id = data['traj_head_id']
-        self.traj_end_id = data['traj_end_id']
-        self.episode_return = data['episode_return']
-        self.episode_length = data['episode_length']
-        self.average_sub_rewards = data['average_sub_rewards']
+            self.__dict__.update(pickle.load(f))
 
-        print(f"ReplayBuffer data loaded from {file_path}")
+        print(f"ReplayBuffer loaded from {file_path}")

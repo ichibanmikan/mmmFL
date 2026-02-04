@@ -78,6 +78,7 @@ class ServerHandler():
         self.perf = self.recv()
         with self.server.lock:
             self.server.losses[self.client_id] = one_epoch_loss
+            
             # self.server.train_time[self.client_id] = one_epoch_time
         self.server.train_wake_barrier.wait()
         self.handle_train()
@@ -126,15 +127,13 @@ class ServerHandler():
                 job_action = self.server.agent.job_selection(
                     state_job_selection
                 )
-                
-                state = np.concatenate([state_job_selection, np.array([-1.0, -1.0, -1.0])])
                 action = np.concatenate([np.array([job_action]), np.array([-1.0])], axis=0)
                 reward = np.concatenate([np.array([-1.0]), np.array([-1.0])], axis=0)
                 
                 now_job = job_action - 1
                 with self.server.lock:
                     self.server.clients_jobs[self.client_id] = job_action
-                    
+                    self.server.current_round_high_states[self.client_id] = state_job_selection
                 self.server.job_selection_barrier.wait()
                 epochs_length += 1
 
@@ -143,36 +142,17 @@ class ServerHandler():
                         not self.job_finish(now_job) and \
                             self.server.clients_part[self.client_id]:
                     Ptcp = True
-                    # with self.server.lock:
-                    #     self.server.every_round_train_time[self.client_id] \
-                    #         = self.server.train_time[self.client_id][now_job]
-                    
-                    # self.server.set_train_time_barrier.wait()
-                    
-                    # self_train_time_row = time_state_row[now_job]
-                    # self_train_time_col = time_state_col[now_job]
-                    # others_train_time = [
-                    #     t for i, t in enumerate(self.server.every_round_train_time) 
-                    #     if t != 0 and i != self.client_id
-                    # ]                   
-                    # low_state = np.concatenate([
-                    #     np.array([self_train_time_row]),
-                    #     np.array([self_train_time_col]),
-                    #     np.array([self.server.jobs_model_size_std[now_job]]),
-                    #     time_remain
-                    # ], axis=0)
+
                     low_state = np.concatenate([
                         np.array([self.server.jobs_model_size_std[now_job]]),
                         np.array([self.perf['remaining_energy']]),
                         np.array([self.perf['g_i']]),
                     ])
                     
-                    dirichlet_para = self.server.agent.bandwidth_attribute_dirichlet_para(low_state)
-                    # action[1] = band_width
-                    state[-3:] = low_state
+                    # state[-3:] = low_state
                     
                     with self.server.lock:
-                        self.server.dirichlet_params[self.client_id] = dirichlet_para
+                        self.server.current_round_low_states[self.client_id] = low_state
                     
                     self.server.band_width_barrier.wait() 
                     action[1] = self.server.bandwidths[self.client_id]
@@ -180,27 +160,17 @@ class ServerHandler():
                     self.send([
                         now_job, self.server.global_models_manager.get_model_params(now_job)
                     ])
-                    self.send(self.server.clients_band_width[self.client_id])
-                    print(f"Bandwidth allocation for client {self.client_id}: {self.server.clients_band_width[self.client_id]}")
-                    # recv_time = self.recv()  
-                    # self.time_remain -= trans_time
-                    # print(f"Received recv_time from client {self.client_id} in job {now_job}: "\
-                    #     , trans_time)
-                    
+                    self.send(self.server.bandwidths[self.client_id])
+                    print(f"Bandwidth allocation for client {self.client_id}: {self.server.bandwidths[self.client_id]}")
+
                     self.send("Train start!")
                     
-                    # train_time = self.recv()
                     train_loss = self.recv()
-                    # self.time_remain -= train_time                 
-                    # self.server.local_train_barrier.wait() 
                     
                     self.send("Send start!")
 
                     now_params = self.recv()
-                    # send_time = self.recv()
                     self.perf = self.recv()
-                    # print(self.perf)
-                    # self.time_remain -= trans_time
                     print(f"Received train_time from client {self.client_id} in job {now_job}: "\
                         , self.perf['comp_latency'])   
                     print(f"Received send_time from client {self.client_id} : in job {now_job}"\
@@ -210,41 +180,18 @@ class ServerHandler():
                         self.server.current_round_all_params.append((
                             now_job, now_params
                         ))
-                        # self.server.set_train_time(self.client_id, train_time, now_job)
                         self.server.losses[self.client_id][now_job] = train_loss
                         self.server.performances[self.client_id] = self.perf
                     self.jobs_participant[job_action - 1] += 1
                     self.server.update_params_barrier.wait()
-                        
-                    # if(self.server.config.max_round_time < train_time):
-                    #     reward[0] = -0.05
-                    # else:
-                    #     reward[0] = self.server.acc_reward[self.client_id][now_job]
-                        # (goal - now_acc_before_this_round) - (goal - now_acc_after_this_round)
-                    # epochs_return_train += reward[0]
-                    
-                    # with self.server.lock:
-                    #     self.server.round_time[self.client_id] =  2 * trans_time + train_time
-                    #     self.server.round_time_part[self.client_id][0] = trans_time
-                    #     self.server.round_time_part[self.client_id][1] = train_time
-                    #     self.server.remain_time[self.client_id] = self.time_remain
                     self.server.round_time_barrier.wait()
-                    # epochs_return_trans += self.server.trans_rewards[self.client_id]
-                    # reward[1] = self.server.trans_rewards[self.client_id]
                 else:
-                    # if (self.time_remain <= 0 and job_action > 0) or self.job_finish(now_job):
-                    #     reward[0] = -0.1
-                    # else:
-                    #     reward[0] = 0
                     if job_action > 0 and not self.server.clients_part[self.client_id]:
                         job_action = 0
                     self.send("Wait a round")
-                    # self.server.set_train_time_barrier.wait()
                     self.server.band_width_barrier.wait() 
                     self.server.update_params_barrier.wait()
                     self.server.round_time_barrier.wait()
-                    # self.server.recv_global_barrier.wait()
-                    # self.server.local_train_barrier.wait()
                 reward[0] = self.server.round_rewards[self.client_id][0]
                 reward[1] = self.server.round_rewards[self.client_id][1]
                 print(f"Node {self.client_id} has rewards: ", reward)
@@ -258,21 +205,6 @@ class ServerHandler():
                 energy_remaining = \
                     np.array([self.perf['remaining_energy']])
 
-                # time_remain = \
-                #     np.array([self.time_remain / self.server.config.max_participant_time])
-                # time_state_row = \
-                #     (self.server.train_time[self.client_id] -\
-                #         self.server.train_time[self.client_id].mean()) /\
-                #             self.server.train_time[self.client_id].std()
-                # time_state_col = \
-                #     self.server.times_state[self.client_id]
-                # loss_state_col = \
-                #     self.server.losses_state[self.client_id]
-                # jobs_part = \
-                #     (self.jobs_participant - self.jobs_participant.mean()) / (self.jobs_participant.std() + 1e-8)
-                # next_state_job_selection = np.concatenate([
-                #     time_remain, time_state_row, time_state_col, loss_state_col, jobs_part
-                # ])
                 next_state_job_selection = np.concatenate([loss_state_col, tasks_round, energy_remaining])
                 next_state = np.concatenate([next_state_job_selection, np.array([-1.0, -1.0, -1.0])])
                 
@@ -304,9 +236,10 @@ class ServerHandler():
                 with self.server.lock:
                     if self.server.done:
                         next_state = np.zeros_like(next_state)
-                    self.server.buffer.add(
-                        state, action, next_state, reward, reward, done
-                    )
+                    self.server.next_states[self.client_id] = next_state
+                    # self.server.buffer.add(
+                    #     state, action, next_state, reward, reward, done
+                    # )
 
                 self.round += 1
                 self.server.next_round_barrier.wait()

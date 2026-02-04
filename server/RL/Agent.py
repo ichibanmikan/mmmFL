@@ -1,4 +1,5 @@
 import math
+import torch
 from RL.SACDiscrete import SACDiscrete
 from RL.SACContinuous import SACContinuous
 
@@ -14,7 +15,7 @@ class AgentConfig:
         self.device = config_dict.get('device')
 
 class Agent:
-    def __init__(self, High_config, Low_config, N, device="cuda"):
+    def __init__(self, High_config, Low_config, N, M, device="cuda"):
         self.N = N
         self.high_agent = SACDiscrete(
             N = N,
@@ -29,6 +30,7 @@ class Agent:
         )
 
         self.low_agent = SACContinuous(
+            N = M,
             hidden_dim = Low_config.hidden_dim,
             actor_lr = Low_config.actor_lr,
             critic_lr = Low_config.critic_lr,
@@ -42,45 +44,21 @@ class Agent:
     def job_selection(self, state, take_next = False):
         return self.high_agent.take_action(state, take_next)
     
-    def bandwidth_attribute_dirichlet_para(self, state):
-        return self.low_agent.take_action(state)
-    
+    def bandwidth_attribute(self, states):
+        states = torch.as_tensor(states, dtype=torch.float32, device=self.low_agent.device)
+        states = states.unsqueeze(0)   # (1, N, 3)
+        bandwidth, _, _, _ = self.low_agent.sample_action(states)
+        bandwidth = torch.clamp(bandwidth, min=0.01, max=0.99)
+        return bandwidth.squeeze(0).detach().cpu().numpy()
+
     def save_model(self):
         self.high_agent.save_model()
         self.low_agent.save_model()
-
-    """            
-    transition_dict = {'states': s,
-                        'actions': a,
-                        'rewards': r,
-                        'next_states': ns,
-                        'dense_reward': dr,
-                        'dones': d}
-    """
-    
+        
     def load_model(self):
         self.high_agent.load_model()
         self.low_agent.load_model()
     
-    def update(self, transition_dict):
-        high_trans = {}
-        low_trans = {}
-        
-        high_trans['states'] = transition_dict['states'][:, :2 * self.N + 1]
-        high_trans['actions'] = transition_dict['actions'][:, 0]
-        high_trans['rewards'] = transition_dict['rewards'][:, 0]
-        high_trans['dense_reward'] = transition_dict['dense_reward'][:, 0]
-        high_trans['next_states'] = transition_dict['next_states'][:, :2 * self.N + 1]
-        high_trans['dones'] = transition_dict['dones']
-
-        low_trans['states'] = transition_dict['states'][:, 2 * self.N + 1:]
-        low_trans['actions'] = transition_dict['actions'][:, 1]
-        low_trans['rewards'] = transition_dict['rewards'][:, 1]
-        low_trans['dense_reward'] = transition_dict['dense_reward'][:, 1]
-        low_trans['next_states'] = transition_dict['next_states'][:, 2 * self.N + 1:]
-        low_trans['dones'] = transition_dict['dones']
-        
-        # print("transition_dict state shape is: ", transition_dict['states'].shape)
-        
-        self.high_agent.update(high_trans)
-        self.low_agent.update(low_trans)
+    def update(self, high_transition_dict, low_transition_dict):
+        self.high_agent.update(high_transition_dict)
+        self.low_agent.update(low_transition_dict)
