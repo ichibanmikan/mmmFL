@@ -393,12 +393,17 @@ class Server:
     def sample_bandwidth(self):
         self.bandwidths = self.agent.bandwidth_attribute(self.current_round_low_states)
 
-
     def get_energy_consuption(self):
         for i in range(len(self.threads)):
             if self.clients_part[i]:
                 perf = self.performances[i]
-                self.energy_consuption[i] = (perf['comm_energy'] + perf['comp_energy']) / perf['total_energy']
+                if not perf:
+                    self.energy_consuption[i] = 0.0
+                    continue
+                self.energy_consuption[i] = \
+                    (perf.get('comm_energy', 0.0) + perf.get('comp_energy', 0.0)) \
+                    / (perf.get('total_energy', 1.0) + 1e-12)
+
 
     def get_rewards(self):
         N = len(self.performances)
