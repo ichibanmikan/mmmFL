@@ -384,6 +384,11 @@ class Server:
             - w2 * (e_i / (total_energy + 1e-12))
             - w3 * hard_penalty_mask
         ).astype(np.float32)
+        round_reward_sum = float(np.sum(self.round_rewards))
+        with open(os.path.join(os.path.dirname(__file__), 'reward.log'), "a") as log:
+            log.write(
+                f"Round {self.global_round} reward sum: {round_reward_sum}\n"
+            )
         self.state_batchnorm()
         self.is_done()
     
