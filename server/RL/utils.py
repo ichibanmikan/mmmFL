@@ -7,12 +7,11 @@ import numpy as np
 
 class ReplayBuffer:
     def __init__(self, device='cpu'):
-        self.states = []          # (N, 2N+4)
-        self.actions = []         # (N, 2)
-        self.next_states = []     # (N, 2N+4)
-        self.rewards = []         # (N, 2)
-        self.dense_rewards = []   # (N, 2)
-        self.dones = []           # scalar
+        self.states = []
+        self.actions = []
+        self.next_states = []
+        self.rewards = []
+        self.dones = []
 
         self.device = device
         self.load_data()
@@ -20,66 +19,25 @@ class ReplayBuffer:
     # -------------------------------------------------
     # ADD
     # -------------------------------------------------
-    def add(self, state, action, next_state, reward, dense_reward, done):
+    def add(self, state, action, next_state, reward, done):
         """
-        state:       (N, 2N+4)
-        action:      (N, 2)
-        next_state:  (N, 2N+4)
-        reward:      (N, 2)
-        dense_reward:(N, 2)
-        done:        scalar
+        state: (N, 2N+4)
+        action: (N, 2)
+        next_state: (N, 2N+4)
+        reward: (N,)
+        done: scalar
         """
 
         state = state.astype(np.float32)
         next_state = next_state.astype(np.float32)
         action = action.astype(np.float32)
         reward = reward.astype(np.float32)
-        dense_reward = dense_reward.astype(np.float32)
 
         self.states.append(state)
         self.actions.append(action)
         self.next_states.append(next_state)
         self.rewards.append(reward)
-        self.dense_rewards.append(dense_reward)
         self.dones.append(done)
-
-    # -------------------------------------------------
-    # LOW-LEVEL SAMPLE
-    # -------------------------------------------------
-    def low_sample(self, low_batch_size):
-        batch_size = low_batch_size
-        if len(self.states) < batch_size:
-            return None
-
-        idx = random.sample(range(len(self.states)), batch_size)
-
-        states = []
-        actions = []
-        next_states = []
-        rewards = []
-        dense_rewards = []
-        dones = []
-
-        for i in idx:
-            # 后 3 列
-            states.append(self.states[i][:, -3:])
-            next_states.append(self.next_states[i][:, -3:])
-
-            # action / reward 后一列
-            actions.append(self.actions[i][:, 1])
-            rewards.append(self.rewards[i][:, 1].sum())
-            dense_rewards.append(self.dense_rewards[i][:, 1].sum())
-
-            dones.append(self.dones[i])
-
-        return (
-            torch.tensor(np.stack(states), dtype=torch.float32).to(self.device),
-            torch.tensor(np.stack(actions), dtype=torch.float32).to(self.device),
-            torch.tensor(np.stack(next_states), dtype=torch.float32).to(self.device),
-            torch.tensor(np.stack(rewards), dtype=torch.float32).to(self.device),
-            torch.tensor(np.stack(dense_rewards), dtype=torch.float32).to(self.device),
-            torch.tensor(dones, dtype=torch.float32).to(self.device),
-        )
 
     # -------------------------------------------------
     # HIGH-LEVEL SAMPLE
@@ -104,7 +62,6 @@ class ReplayBuffer:
         actions = []
         next_states = []
         rewards = []
-        dense_rewards = []
         dones = []
 
         for idx in indices:
@@ -115,8 +72,7 @@ class ReplayBuffer:
             next_states.append(self.next_states[t][c, :-3])
 
             actions.append(self.actions[t][c, 0])
-            rewards.append(self.rewards[t][c, 0])
-            dense_rewards.append(self.dense_rewards[t][c, 0])
+            rewards.append(self.rewards[t][c])
             dones.append(self.dones[t])
 
         return (
@@ -124,7 +80,6 @@ class ReplayBuffer:
             torch.tensor(np.array(actions), dtype=torch.long).to(self.device),
             torch.tensor(np.stack(next_states), dtype=torch.float32).to(self.device),
             torch.tensor(np.array(rewards), dtype=torch.float32).to(self.device),
-            torch.tensor(np.array(dense_rewards), dtype=torch.float32).to(self.device),
             torch.tensor(dones, dtype=torch.float32).to(self.device),
         )
 

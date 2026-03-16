@@ -1,18 +1,18 @@
 import os
 import time
 import json
+import pickle
+import random
 import socket
 import threading
 import numpy as np
 import configparser
+import torch
 from communication import *
 from Experiment.plt import plot
 from RL.utils import ReplayBuffer
-from RL.LLM.chat import chat_response
-from RL.LLM.round_fit import round_fit
 from RL.Agent import Agent, AgentConfig
 from global_models.global_models import *
-from RL.LLM.reward_decoder import RewardDecoder
 
 class Config:
     def __init__(self):
@@ -23,22 +23,15 @@ class Config:
         self.MAX_CLIENTS = config.getint('Clients', 'max_clients')
         self.MIN_CLIENTS = config.getint('Clients', 'min_clients')
         self.TIMEOUT = config.getint('Server', 'timeout', fallback=30)
-        # self.band_width = config.getint('Server', 'band_width')
-        self.round_time_plot_freq = config.getint('Server', 'round_time_plot_freq')
         self.context_file = config.get('Server', 'context_file')
-        self.save_std_freq = config.getint('Server', 'save_std_freq')
         self.max_participant_clients = config.getint('Clients', 'max_participant_clients')
         self.max_round_time = config.getint('Clients', 'max_round_time')
         self.max_participant_time = config.getint('Clients', 'max_participant_time')
-        self.train_time_decay = config.getfloat('Clients', 'train_time_decay')
         self.min_replay_buffer_size_high = config.getint('RL', 'min_size_high')
-        self.min_replay_buffer_size_low = config.getint('RL', 'min_size_low')
         self.replay_buffer_batch_size_high = config.getint('RL', 'batch_size_high')
-        self.replay_buffer_batch_size_low = config.getint('RL', 'batch_size_low')
         self.episode_round = config.getint('RL', 'episode_round')
         self.save_data_freq = config.getint('RL', 'save_data_freq')
         self.max_episode_length = config.getint('RL', 'max_episode_length')
-        # self.acc_reward_decay = config.getfloat('RL', 'acc_reward_decay')
         self.RL_high_agent = {
             'hidden_dim': config.getint('RL_high_agent', 'hidden_dim'),
             'actor_lr': config.getfloat('RL_high_agent', 'actor_lr'),
@@ -50,16 +43,20 @@ class Config:
             'gamma': config.getfloat('RL_high_agent', 'gamma')
         }
 
-        self.RL_low_agent = {
-            'hidden_dim': config.getint('RL_low_agent', 'hidden_dim'),
-            'actor_lr': config.getfloat('RL_low_agent', 'actor_lr'),
-            'critic_lr': config.getfloat('RL_low_agent', 'critic_lr'),
-            'alpha_lr': config.getfloat('RL_low_agent', 'alpha_lr'),
-            'device': config.get('RL_low_agent', 'device'),
-            'tau': config.getfloat('RL_low_agent', 'tau'),
-            'target_entropy': config.getint('RL_low_agent', 'target_entropy'),
-            'gamma': config.getfloat('RL_low_agent', 'gamma')
-        }  
+        pso_section = 'PSO_low_agent' if config.has_section('PSO_low_agent') else 'RL_low_agent'
+        self.PSO_low_agent = {
+            'swarm_size': config.getint(pso_section, 'swarm_size'),
+            'max_iterations': config.getint(pso_section, 'max_iterations'),
+            'inertia_weight': config.getfloat(pso_section, 'inertia_weight'),
+            'cognitive_coeff': config.getfloat(pso_section, 'cognitive_coeff'),
+            'social_coeff': config.getfloat(pso_section, 'social_coeff'),
+            'min_bandwidth': config.getfloat(pso_section, 'min_bandwidth'),
+            'fitness_lambda_time': config.getfloat(pso_section, 'fitness_lambda_time'),
+            'fitness_lambda_energy': config.getfloat(pso_section, 'fitness_lambda_energy'),
+            'fitness_lambda_fairness': config.getfloat(pso_section, 'fitness_lambda_fairness'),
+            'random_seed': config.getint(pso_section, 'random_seed'),
+            'device': config.get(pso_section, 'device', fallback='cpu'),
+        }
 
 def set_all_seeds(seed=42):
     random.seed(seed)
@@ -80,8 +77,6 @@ class Server:
         self.config = config
         set_all_seeds(42)
         self.done = False
-        self.history_data = {}
-        # self.clients = {}
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
             self.jobs = json.load(job_json)["Jobs"]
         self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
@@ -94,9 +89,6 @@ class Server:
         self.lock = threading.Lock()
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager()
-        # self.stds = np.zeros(self.config.save_std_freq)
-        self.reward_decoder = RewardDecoder(8)
-        self.episode_accs = []
         
         if torch.backends.mps.is_available():
             device = torch.device("mps")
@@ -105,9 +97,6 @@ class Server:
         else:
             device = torch.device("cpu")
         self.device = device
-        cr = chat_response()
-        self.reward_function = cr.generate()
-        exec(self.reward_function, globals())
         self.jobs_goal = np.zeros(len(self.jobs))
         self.jobs_goal_sub = np.zeros(len(self.jobs))
         self.jobs_model_size = np.zeros(len(self.jobs))
@@ -128,20 +117,10 @@ class Server:
             log.write("\n")
         set_all_seeds(42)
         with self.lock:
-            if self.episode_length <= self.config.max_episode_length:
-                practice_length = self.episode_length
-            else:
-                episode_accs_np = np.array(self.episode_accs, dtype=np.float32)
-                # round_fit.train(episode_accs_np)
-                rf = round_fit(episode_accs_np, np.arange(1, len(episode_accs_np) + 1))
-                practice_length = rf.get_prob_length(self.jobs_goal)
-                if(practice_length <= self.config.max_episode_length):
-                    practice_length = 655 # e * (M - T) + T
             self.episode_length = 0
-            self.history_data = {}
             absorbing_state = np.zeros(len(self.jobs) * 2 + 3 + 1)
             absorbing_action = np.zeros(2)
-            absorbing_reward = np.zeros(2)
+            absorbing_reward = np.zeros(1)
             absorbing_next_state = np.zeros(len(self.jobs) * 2 + 3 + 1)
             absorbing_done = True
             self.buffer.add(
@@ -149,19 +128,11 @@ class Server:
                 absorbing_action, 
                 absorbing_next_state, 
                 absorbing_reward, 
-                absorbing_reward, 
                 absorbing_done
             )
-            # average_sub_rewards = np.array(self.buffer.average_sub_rewards, dtype=np.float32)
-            # self.reward_decoder.train(
-            #     practice_length, 
-            #     self.config.max_episode_length, 
-            #     500, average_sub_rewards, self.buffer.episode_length)
             self.done = False
             self.buffer.save_data()
             self.agent.save_model()
-            self.reward_decoder.save_model()
-            self.episode_accs = []
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
                 binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
                 context.write(binary_round)
@@ -178,11 +149,7 @@ class Server:
                 self.jobs_finish[i] = False
             self.threads.clear()
             self.server_socket.close()
-            # self.train_time = np.zeros((len(self.threads), len(self.jobs)))
-            # self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
-            self.round_rewards = np.zeros((len(self.threads), 2))
-            self.round_rewards[:, 0] = -1
-            self.round_rewards[:, 1] = -1
+            self.round_rewards = np.full(len(self.threads), -1.0, dtype=np.float32)
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.bandwidths = np.zeros(len(self.threads))
@@ -190,10 +157,8 @@ class Server:
             self.current_round_high_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 1))
             self.next_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 3 + 1))
             self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
-            # self.remain_time = np.full(len(self.threads), self.config.max_participant_time)
             self.losses = np.zeros((len(self.threads), len(self.jobs)))
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
-            # self.times_state = np.zeros((len(self.threads), len(self.jobs)))
             self.performances = [{} for _ in range(len(self.threads))]    
         print(f"All clients released. Sleeping for 5 seconds before next round...")
         time.sleep(5)
@@ -223,7 +188,7 @@ class Server:
 
             self.agent = Agent(
                 High_config=AgentConfig(self.config.RL_high_agent), 
-                Low_config=AgentConfig(self.config.RL_low_agent), 
+                Low_config=AgentConfig(self.config.PSO_low_agent), 
                 N=len(self.jobs),
                 M=len(self.threads),
                 device=self.device
@@ -236,30 +201,13 @@ class Server:
             self.current_round_high_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 1))
             self.next_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 3 + 1))
             self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
-            # self.train_time = np.zeros((len(self.threads), len(self.jobs)))
-            # self.acc_reward = np.zeros((len(self.threads), len(self.jobs)))
-            # self.every_round_train_time = np.zeros(len(self.threads))
-            self.round_rewards = np.zeros((len(self.threads), 2))
-            self.round_rewards[:, 0] = -1
-            self.round_rewards[:, 1] = -1
-            # self.round_time = np.zeros(len(self.threads)) # whole time
-            # self.round_time_part = np.zeros((len(self.threads), 2))
+            self.round_rewards = np.full(len(self.threads), -1.0, dtype=np.float32)
             self.acc_array = np.zeros(len(self.jobs))
             self.energy_consuption = np.zeros(len(self.threads))
             self.remaining_energy = np.zeros(len(self.threads))
-            # self.rewards = np.zeros((len(self.threads), 2)) 
-            # self.trans_rewards = np.zeros(len(self.threads))
-            # part time:trans_time, train_time. 
-            # self.round_time_part[i][0] + self.round_time_part[i][1] = self.round_time[i]
             
             self.losses = np.zeros((len(self.threads), len(self.jobs)))
             self.losses_state = np.zeros((len(self.threads), len(self.jobs)))
-            # self.times_state = np.zeros((len(self.threads), len(self.jobs)))
-            
-            # self.band_width_reward = 0
-            # self.clients_band_width = np.zeros(len(self.threads))
-            # self.clients_band_width_origin = np.zeros(len(self.threads))
-            # self.remain_time = np.full(len(self.threads), self.config.max_participant_time)
             self.num_part = 0
             self.performances = [{} for _ in range(len(self.threads))]
             self.train_wake_barrier \
@@ -302,30 +250,6 @@ class Server:
             self.clients_part[:] = eligible_mask
             self.num_part = len(eligible_indices)
         
-    def set_train_time(self, idx, update_time, time_pos = -1):
-        self.train_time[idx][time_pos] = self.config.train_time_decay * self.train_time[idx][time_pos] + \
-                                    (1 - self.config.train_time_decay) * update_time      
-                              
-    # def reattribute(self):
-    #     if self.num_part == 0:
-    #         return
-    #     selected_indices = [i for i, is_selected in enumerate(self.clients_part) if is_selected]
-    #     selected_bandwidths = [self.clients_band_width_origin[i] for i in selected_indices]
-
-    #     total_bandwidth = sum(selected_bandwidths)
-        
-    #     if total_bandwidth == 0:
-    #         num_selected = len(selected_indices)
-    #         if num_selected > 0:
-    #             normalized = [1.0 / num_selected for _ in selected_bandwidths]
-    #         else:
-    #             normalized = []
-    #     else:
-    #         normalized = [bw / total_bandwidth for bw in selected_bandwidths]
-
-    #     for idx, norm_value in zip(selected_indices, normalized):
-    #         self.clients_band_width[idx] = norm_value
-       
     def update_global_models(self):
         if self.num_part != 0:
             current_round_update = []
@@ -342,7 +266,6 @@ class Server:
                         self.global_models_manager.reset_models(i, np.array(current_round_update[i]))
 
         accs = self.global_models_manager.test()
-        self.episode_accs.append(np.array(accs, dtype=np.float32))
         temp_goal_sub = self.jobs_goal_sub.copy()
         
         for i in range(len(self.jobs)):
@@ -354,7 +277,6 @@ class Server:
         self.episode_length += 1
         
         self.acc_array = temp_goal_sub - self.jobs_goal_sub[i]
-        # self.get_train_rewards(acc_array)
         self.get_energy_consuption()
         
     def round_clean(self):
@@ -365,30 +287,14 @@ class Server:
         self.current_round_low_states = np.zeros((len(self.threads), 3))
         self.current_round_high_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 1))
         self.next_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 3 + 1))
-        # self.every_round_train_time = np.zeros(len(self.threads))
-        # self.clients_band_width = np.zeros(len(self.threads))
-        # self.clients_band_width_origin = np.zeros(len(self.threads))
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
-        self.round_rewards = np.zeros((len(self.threads), 2))
-        self.round_rewards[:, 0] = -1
-        self.round_rewards[:, 1] = -1
-        # self.rewards = np.zeros((len(self.threads), 2)) 
-        # self.trans_rewards = np.zeros(len(self.threads))
-        # self.band_width_reward = 0
+        self.round_rewards = np.full(len(self.threads), -1.0, dtype=np.float32)
         self.num_part = 0     
         self.acc_array = np.zeros(len(self.jobs))
         self.energy_consuption = np.zeros(len(self.threads))
         self.remaining_energy = np.zeros(len(self.threads))
         self.performances = [{} for _ in range(len(self.threads))]
-    # def get_train_rewards(self, acc_array):
-    #     for i in range(len(self.acc_reward)):
-    #         if self.clients_part[i]: 
-    #             j = self.clients_jobs[i] - 1
-    #             self.acc_reward[i][j] = (
-    #                 acc_array[j] * (1 - self.config.acc_reward_decay) +
-    #                 self.config.acc_reward_decay * self.acc_reward[i][j]
-    #             )
 
     def sample_bandwidth(self):
         self.bandwidths = self.agent.bandwidth_attribute(self.current_round_low_states)
@@ -406,10 +312,7 @@ class Server:
 
 
     def get_rewards(self):
-        N = len(self.performances)
         assigned = self.clients_part.astype(np.int32)
-
-        # b_i = self.clients_band_width
         b_i = self.bandwidths
 
         comm_latency = np.array([p.get("comm_latency", 0.0) for p in self.performances])
@@ -439,13 +342,11 @@ class Server:
 
         w0, w1, w2, w3 = 1, 0.0001, 0.1, 0
         
-        round_time = np.zeros(len(self.threads))
         transmission_training_times = np.zeros((len(self.threads), 2)) #
         energy_consuptions = np.zeros((len(self.threads), 2))
         for i in range(len(self.threads)):
             if self.clients_part[i]:
                 perf = self.performances[i]
-                round_time[i] = perf['comp_latency'] + perf['comm_latency']
                 transmission_training_times[i][0] = perf['comm_latency']
                 transmission_training_times[i][1] = perf['comp_latency']
                 energy_consuptions[i] = (perf['comm_energy'], perf['comp_energy'])
@@ -465,70 +366,35 @@ class Server:
             round=self.global_round,
             plt_save=False
         )
-
-        sub_rewards = reward_function(
-            self,
-            round_time,
-            # self.round_time_part, 
-            transmission_training_times,
-            self.acc_array,
-            self.jobs_goal - self.jobs_goal_sub,
-            self.jobs_goal,
-
-            # self.remain_time,
-            self.clients_part,
-            self.energy_consuption,
-            self.remaining_energy,
-            self.clients_jobs,
-            # self.clients_band_width_origin,
-            self.bandwidths,
-            global_reward
-        )
-        self.round_rewards = np.array(sub_rewards, dtype = np.float32)
+        self.round_rewards = np.full(len(self.threads), global_reward, dtype=np.float32)
         self.state_batchnorm()
         self.is_done()
     
 
     def update_Agent(self):
         self.buffer.add(
-            np.concatenate([self.current_round_high_states, self.current_round_low_states], axis=1), #(n, 2 * m + 4)
-            np.stack((self.clients_jobs, self.bandwidths), axis=1), #(n, 2)
-            self.next_states, #(n, 2 * m + 4)
-            self.round_rewards, #(n, 2)
-            self.round_rewards, #(n, 2)
-            self.done # 1
+            np.concatenate([self.current_round_high_states, self.current_round_low_states], axis=1),
+            np.stack((self.clients_jobs, self.bandwidths), axis=1),
+            self.next_states,
+            self.round_rewards,
+            self.done
         )
-        # self.every_round_train_time = np.zeros(len(self.threads))
         if len(self.buffer.states) * len(self.threads) > self.config.min_replay_buffer_size_high \
-            and len(self.buffer.states) > self.config.min_replay_buffer_size_low:
+            and len(self.buffer.states) > 0:
             print("This round start update_Agent()")
             high_batch = self.buffer.high_sample(self.config.replay_buffer_batch_size_high)
-            hs, ha, hns, hr, hdr, hd = high_batch
+            if high_batch is None:
+                return
+            hs, ha, hns, hr, hd = high_batch
 
             high_transition_dict = {
                 'states': hs,
                 'actions': ha,
                 'rewards': hr,
                 'next_states': hns,
-                'dense_rewards': hdr,
                 'dones': hd
             }
-            low_batch = self.buffer.low_sample(self.config.replay_buffer_batch_size_low)
-            if low_batch is None:
-                return
-            ls, la, lns, lr, ldr, ld = low_batch
-            low_transition_dict = {
-                'states': ls,
-                'actions': la,
-                'rewards': lr,
-                'next_states': lns,
-                'dense_rewards': ldr,
-                'dones': ld
-            }
-            self.agent.update(
-                high_transition_dict=high_transition_dict,
-                low_transition_dict=low_transition_dict
-            )
+            self.agent.update(high_transition_dict=high_transition_dict)
 
         
         if self.global_round > 0\
@@ -540,7 +406,6 @@ class Server:
                 self.agent.save_model()
         
         self.round_clean()
-        # self.is_done()
     
     def is_done(self):
         is_done = True
@@ -564,10 +429,6 @@ class Server:
         self.losses_state = \
             (self.losses - self.losses.mean(axis=0, keepdims=True)) \
                 / (self.losses.std(axis=0, keepdims=True) + 1e-8)
-        
-        # self.times_state = \
-        #     (self.train_time - self.train_time.mean(axis=0, keepdims=True)) \
-        #         / (self.train_time.std(axis=0, keepdims=True) + 1e-8)
 
 if __name__ == "__main__":
     config = Config()  # Initialize the config

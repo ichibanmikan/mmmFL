@@ -1,12 +1,6 @@
 import pickle
-import random
 import struct
 import numpy as np
-from pympler import asizeof
-# from RL.SACContinuous import 
-
-# def get_now_train_job(num):
-#     return random.randrange(0, 1)
 
 class ServerHandler():
     def __init__(self, server_socket, server):
@@ -17,11 +11,11 @@ class ServerHandler():
         self.time_remain = self.server.config.max_participant_time
         self.jobs_participant = np.zeros(len(self.server.jobs))
         self.tasks_round = np.zeros(len(self.server.jobs))
+
     def send(self, content):
         try:
             send_data = pickle.dumps(content, pickle.HIGHEST_PROTOCOL)
             send_header = struct.pack('i', len(send_data))
-            # print(f"Content memory size (bytes): {asizeof.asizeof(content)}")
             self.server_socket.sendall(send_header)
             self.server_socket.sendall(send_data)
         except (OSError, ConnectionResetError) as e:
@@ -103,7 +97,6 @@ class ServerHandler():
         energy_remaining = \
             np.array([self.perf['remaining_energy']])
 
-        done = False
         while True:
             Ptcp = False
             if self.server.done:
@@ -127,8 +120,6 @@ class ServerHandler():
                 job_action = self.server.agent.job_selection(
                     state_job_selection
                 )
-                action = np.concatenate([np.array([job_action]), np.array([-1.0])], axis=0)
-                reward = np.concatenate([np.array([-1.0]), np.array([-1.0])], axis=0)
                 
                 now_job = job_action - 1
                 with self.server.lock:
@@ -155,8 +146,6 @@ class ServerHandler():
                         self.server.current_round_low_states[self.client_id] = low_state
                     
                     self.server.band_width_barrier.wait() 
-                    action[1] = self.server.bandwidths[self.client_id]
-                    # job_now_acc_sub = self.server.jobs_goal_sub[now_job]
                     self.send([
                         now_job, self.server.global_models_manager.get_model_params(now_job)
                     ])
@@ -192,9 +181,7 @@ class ServerHandler():
                     self.server.band_width_barrier.wait() 
                     self.server.update_params_barrier.wait()
                     self.server.round_time_barrier.wait()
-                reward[0] = self.server.round_rewards[self.client_id][0]
-                reward[1] = self.server.round_rewards[self.client_id][1]
-                print(f"Node {self.client_id} has rewards: ", reward)
+                print(f"Node {self.client_id} has reward: {self.server.round_rewards[self.client_id]}")
 
                 loss_state_col = \
                     self.server.losses_state[self.client_id]
@@ -237,9 +224,6 @@ class ServerHandler():
                     if self.server.done:
                         next_state = np.zeros_like(next_state)
                     self.server.next_states[self.client_id] = next_state
-                    # self.server.buffer.add(
-                    #     state, action, next_state, reward, reward, done
-                    # )
 
                 self.round += 1
                 self.server.next_round_barrier.wait()
