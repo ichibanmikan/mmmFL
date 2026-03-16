@@ -83,6 +83,7 @@ class Server:
         self.threads = []
         self.global_round = 0
         self.episode_length = 0
+        self.global_reward = 0.0
         if os.path.exists(os.path.join(os.path.dirname(__file__), self.config.context_file)):
             with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'rb') as context:
                 self.global_round = pickle.load(context)
@@ -150,6 +151,7 @@ class Server:
             self.threads.clear()
             self.server_socket.close()
             self.round_rewards = np.full(len(self.threads), -1.0, dtype=np.float32)
+            self.global_reward = 0.0
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)
             self.clients_part = np.zeros(len(self.threads), dtype = bool)
             self.bandwidths = np.zeros(len(self.threads))
@@ -202,6 +204,7 @@ class Server:
             self.next_states = np.zeros((len(self.threads), len(self.jobs) * 2 + 3 + 1))
             self.dirichlet_params = np.zeros(len(self.threads), dtype=np.float32)
             self.round_rewards = np.full(len(self.threads), -1.0, dtype=np.float32)
+            self.global_reward = 0.0
             self.acc_array = np.zeros(len(self.jobs))
             self.energy_consuption = np.zeros(len(self.threads))
             self.remaining_energy = np.zeros(len(self.threads))
@@ -276,7 +279,7 @@ class Server:
         self.global_round += 1
         self.episode_length += 1
         
-        self.acc_array = temp_goal_sub - self.jobs_goal_sub[i]
+        self.acc_array = temp_goal_sub - self.jobs_goal_sub
         self.get_energy_consuption()
         
     def round_clean(self):
@@ -290,6 +293,7 @@ class Server:
         self.round_time = np.zeros(len(self.threads))
         self.round_time_part = np.zeros((len(self.threads), 2)) 
         self.round_rewards = np.full(len(self.threads), -1.0, dtype=np.float32)
+        self.global_reward = 0.0
         self.num_part = 0     
         self.acc_array = np.zeros(len(self.jobs))
         self.energy_consuption = np.zeros(len(self.threads))
@@ -335,10 +339,10 @@ class Server:
 
         soft_penalty = np.sum(e_i / (total_energy + 1e-12))
 
-        hard_penalty = np.sum(
+        hard_penalty_mask = (
             ((remaining_e <= 0) & (assigned >= 1)) |
             ((remaining_e <= 0) & (b_i > 0))
-        )
+        ).astype(np.float32)
 
         w0, w1, w2, w3 = 1, 0.0001, 0.1, 0
         
@@ -351,10 +355,17 @@ class Server:
                 transmission_training_times[i][1] = perf['comp_latency']
                 energy_consuptions[i] = (perf['comm_energy'], perf['comp_energy'])
         acc_sum = np.sum(self.acc_array)
-        global_reward = w0 * acc_sum \
-                    - w1 * delta_t \
-                    - w2 * soft_penalty \
-                    - w3 * hard_penalty
+        self.global_reward = w0 * acc_sum \
+                           - w1 * delta_t \
+                           - w2 * soft_penalty \
+                           - w3 * np.sum(hard_penalty_mask)
+
+        client_acc = np.zeros(len(self.threads), dtype=np.float32)
+        for i in range(len(self.threads)):
+            if self.clients_part[i] and self.clients_jobs[i] > 0:
+                task_idx = self.clients_jobs[i] - 1
+                if 0 <= task_idx < len(self.acc_array):
+                    client_acc[i] = self.acc_array[task_idx]
 
         for i in range(len(self.threads)):  
             if self.clients_part[i]:
@@ -366,7 +377,13 @@ class Server:
             round=self.global_round,
             plt_save=False
         )
-        self.round_rewards = np.full(len(self.threads), global_reward, dtype=np.float32)
+        num_clients = max(len(self.threads), 1)
+        self.round_rewards = (
+            w0 * client_acc
+            - w1 * (delta_t / num_clients)
+            - w2 * (e_i / (total_energy + 1e-12))
+            - w3 * hard_penalty_mask
+        ).astype(np.float32)
         self.state_batchnorm()
         self.is_done()
     
