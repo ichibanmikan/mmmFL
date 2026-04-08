@@ -1,31 +1,45 @@
 # Copyright 2024 ichibanmikan
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     https://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import json
-import time
 import argparse
-from communication import ClientHandler
-from FLASH.main import FLASH_main
-from MHAD.main import MHAD_main
-from CREMAD.main import CREMAD_main
-from USC.main import USC_main
-from CrisisMMD.main import CrisisMMD_main
-from HatefulMemes.main import HatefulMemes_main
+import importlib
+import json
+import os
 import random
-import numpy as np
+import time
+from pathlib import Path
+
+# os.environ.setdefault("KMP_USE_SHM", "0")
+# os.environ.setdefault("OMP_NUM_THREADS", "1")
+# os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import torch
+import numpy as np
+
+from communication import ClientHandler
+
+
+TRAINER_REGISTRY = {
+    "CIFAR": ("CIFAR.main", "CIFAR_main"),
+    "CrisisMMD": ("CrisisMMD.main", "CrisisMMD_main"),
+    "FMNIST": ("FMNIST.main", "FMNIST_main"),
+    "HatefulMemes": ("HatefulMemes.main", "HatefulMemes_main"),
+    "MHAD": ("MHAD.main", "MHAD_main"),
+    "MNIST": ("MNIST.main", "MNIST_main"),
+    "USC": ("USC.main", "USC_main"),
+}
+
 
 def set_all_seeds(seed=42):
     random.seed(seed)
@@ -37,25 +51,50 @@ def set_all_seeds(seed=42):
     if torch.backends.mps.is_available():
         torch.mps.manual_seed(seed)
     torch.set_default_dtype(torch.float32)
-    g = torch.Generator()
-    g.manual_seed(seed)
-    torch.set_rng_state(g.get_state())
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    torch.set_rng_state(generator.get_state())
+
+
+def load_active_datasets(data):
+    if "dataset_profiles" not in data:
+        return data["datasets"]
+    active_profile = data.get("active_profile")
+    if active_profile not in data["dataset_profiles"]:
+        raise KeyError(f"Unknown dataset profile: {active_profile}")
+    return data["dataset_profiles"][active_profile]
+
+
+def load_trainer_class(dataset_name):
+    module_name, class_name = TRAINER_REGISTRY[dataset_name]
+    module = importlib.import_module(module_name)
+    return getattr(module, class_name)
+
 
 class Config:
     def __init__(self):
-        with open(os.path.join(os.path.dirname(__file__), "client.json")) as js:
+        base_dir = Path(__file__).resolve().parent
+        config_path = base_dir / "client.json"
+        with config_path.open("r") as js:
             data = json.load(js)
-            parser = argparse.ArgumentParser(description="Process node ID.")
 
-        parser.add_argument('--node_id', type=int, required=True, help='Node ID of the client')
-
+        parser = argparse.ArgumentParser(description="Process node ID.")
+        parser.add_argument("--node_id", type=int, required=True, help="Node ID of the client")
         args = parser.parse_args()
-        
+
         self.node_id = args.node_id
         self.server_address = data["Host"]["server_address"]
         self.port = data["Host"]["port"]
-        self.datasets = data["datasets"]
+        self.datasets = load_active_datasets(data)
+        self.active_profile = data.get("active_profile", "default")
+        self.active_client_count = data.get("active_client_count", len(data["Ability"]["ability"]))
         self.random_seed = data["random_seed"]
+
+        if self.node_id >= self.active_client_count:
+            raise ValueError(
+                f"node_id {self.node_id} is outside active_client_count {self.active_client_count}"
+            )
+
         self.kappa = data["Ability"]["ability"][self.node_id]
         self.distance = data["Energy"]["distance"][self.node_id]
         self.tx_power_dbm = data["Energy"]["tx_power_dbm"][self.node_id]
@@ -63,32 +102,39 @@ class Config:
         self.noise_dbm = data["Energy"]["noise_dbm"]
         self.bandwidth_hz = data["Energy"]["bandwidth_hz"]
         self.total_energy = data["Energy"]["total_energy"][self.node_id]
-        # # 系统参数
-        # self.noise_dbm = config.get("noise_dbm", -101)
-        # self.bandwidth_hz = config.get("bandwidth_hz", 20e6)
-        
+
     def modality(self, row):
-        return self.datasets[row]['modalities_name']
+        return self.datasets[row]["modalities_name"]
+
 
 class Client:
     def __init__(self, config):
         self.config = config
-        
+
     def start(self):
         set_all_seeds(self.config.random_seed)
-        self.trainers = []
-        for i in range(len(self.config.datasets)):
-            trainer = eval(f"{self.config.datasets[i]['dataset_name']}_main")(self.config.modality(i), self.config.node_id, self.config.datasets[i]['model_size'])
-            self.trainers.append(trainer)
-        
-        handler = ClientHandler(self.config, self.trainers)
-        
+        trainers = []
+
+        for dataset in self.config.datasets:
+            dataset_name = dataset["dataset_name"]
+            if dataset_name not in TRAINER_REGISTRY:
+                raise KeyError(f"Unsupported dataset: {dataset_name}")
+            trainer_cls = load_trainer_class(dataset_name)
+            trainer = trainer_cls(
+                dataset["modalities_name"],
+                self.config.node_id,
+                dataset["model_size"],
+            )
+            trainers.append(trainer)
+
+        handler = ClientHandler(self.config, trainers)
         handler.handle()
         print("all over")
-         
-if __name__ == "__main__":    
+
+
+if __name__ == "__main__":
     config = Config()
     client = Client(config)
-    for i in range(1): # RL rounds
+    for _ in range(1):
         client.start()
         time.sleep(10)

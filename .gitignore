@@ -54,10 +54,15 @@ server/RL/RLModel
 *.log
 
 client/USC-data
-
+client/MNIST/datasets
+client/FMNIST/datasets
+client/CIFAR/datasets
 server/jobs_backup
 server/Experiment/client_graph
 server/Experiment/**/*.png
 server/Experiment/backup/
 server/context.pkl
 server/std.log
+
+client/*/datasets
+client/*/models

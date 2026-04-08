@@ -64,7 +64,18 @@ class ServerHandler():
         
         self.datasets = self.recv() 
         print("Received Client modality: ", self.client_id)
-        
+
+        server_dataset_names = [job["name"] for job in self.server.jobs]
+        client_dataset_names = [dataset["dataset_name"] for dataset in self.datasets]
+        if client_dataset_names != server_dataset_names:
+            self.send(
+                f"dataset mismatch: client={client_dataset_names}, server={server_dataset_names}"
+            )
+            raise ValueError(
+                f"Client {self.client_id} datasets {client_dataset_names} "
+                f"do not match server jobs {server_dataset_names}"
+            )
+
         self.send("received modality! Start sample!")
         
         # one_epoch_time = self.recv()

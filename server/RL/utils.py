@@ -6,7 +6,7 @@ import numpy as np
 
 
 class ReplayBuffer:
-    def __init__(self, device='cpu'):
+    def __init__(self, device='cpu', file_tag='default'):
         self.states = []
         self.actions = []
         self.next_states = []
@@ -14,6 +14,7 @@ class ReplayBuffer:
         self.dones = []
 
         self.device = device
+        self.file_tag = file_tag
         self.load_data()
 
     # -------------------------------------------------
@@ -89,7 +90,7 @@ class ReplayBuffer:
     def save_data(self):
         data_dir = os.path.join(os.path.dirname(__file__), 'data')
         os.makedirs(data_dir, exist_ok=True)
-        file_path = os.path.join(data_dir, 'replay_buffer.pkl')
+        file_path = os.path.join(data_dir, f'replay_buffer_{self.file_tag}.pkl')
 
         with open(file_path, 'wb') as f:
             pickle.dump(self.__dict__, f)
@@ -97,11 +98,15 @@ class ReplayBuffer:
         print(f"ReplayBuffer saved to {file_path}")
 
     def load_data(self):
-        file_path = os.path.join(os.path.dirname(__file__), 'data', 'replay_buffer.pkl')
+        file_path = os.path.join(os.path.dirname(__file__), 'data', f'replay_buffer_{self.file_tag}.pkl')
         if not os.path.exists(file_path):
             return
 
+        current_device = self.device
+        current_file_tag = self.file_tag
         with open(file_path, 'rb') as f:
             self.__dict__.update(pickle.load(f))
 
+        self.device = current_device
+        self.file_tag = current_file_tag
         print(f"ReplayBuffer loaded from {file_path}")
