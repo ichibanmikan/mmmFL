@@ -5,6 +5,13 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+try:
+    from pickle_compat import load_pickle_file
+except ModuleNotFoundError:
+    import sys
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    from pickle_compat import load_pickle_file
+
 
 def flatten_model_params(model):
     params = []
@@ -66,10 +73,7 @@ class IDXImageDataset(Dataset):
 
 class CIFARPickleDataset(Dataset):
     def __init__(self, pickle_path):
-        import pickle
-
-        with Path(pickle_path).open("rb") as f:
-            payload = pickle.load(f)
+        payload = load_pickle_file(pickle_path)
         self.images = torch.as_tensor(payload["x_test"], dtype=torch.float32)
         self.labels = torch.as_tensor(payload["y_test"], dtype=torch.long)
 

@@ -4,6 +4,14 @@ import random
 import pickle
 import numpy as np
 
+try:
+    from pickle_compat import load_pickle_file
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    from pickle_compat import load_pickle_file
+
 
 class ReplayBuffer:
     def __init__(self, device='cpu', file_tag='default'):
@@ -104,8 +112,7 @@ class ReplayBuffer:
 
         current_device = self.device
         current_file_tag = self.file_tag
-        with open(file_path, 'rb') as f:
-            self.__dict__.update(pickle.load(f))
+        self.__dict__.update(load_pickle_file(file_path))
 
         self.device = current_device
         self.file_tag = current_file_tag

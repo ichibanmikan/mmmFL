@@ -1,9 +1,15 @@
-import pickle
 from pathlib import Path
 
 import torch
 import torch.nn.functional as torch_f
 from torch.utils.data import DataLoader, Dataset
+
+try:
+    from pickle_compat import load_pickle_file
+except ModuleNotFoundError:
+    import sys
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    from pickle_compat import load_pickle_file
 
 
 class CIFARDataset(Dataset):
@@ -16,8 +22,7 @@ class CIFARDataset(Dataset):
         self.labels = torch.as_tensor(self.labels, dtype=torch.long)
 
     def _load_payload(self, data_path):
-        with data_path.open("rb") as f:
-            return pickle.load(f)
+        return load_pickle_file(data_path)
 
     def _extract_split(self, payload, split):
         image_key = f"x_{split}"

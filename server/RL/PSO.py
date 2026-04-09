@@ -2,6 +2,14 @@ import os
 import pickle
 import numpy as np
 
+try:
+    from pickle_compat import load_pickle_file
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+    from pickle_compat import load_pickle_file
+
 
 class PSO:
     """
@@ -243,8 +251,7 @@ class PSO:
     def load_model(self):
         if not os.path.exists(self.model_path):
             return
-        with open(self.model_path, "rb") as file_obj:
-            checkpoint = pickle.load(file_obj)
+        checkpoint = load_pickle_file(self.model_path)
         self.last_solution = checkpoint.get("last_solution", self._uniform_action())
         self.last_fitness = checkpoint.get("last_fitness")
         self.random_seed = int(checkpoint.get("random_seed", self.random_seed))

@@ -18,6 +18,7 @@ from Experiment.plt import plot
 from RL.utils import ReplayBuffer
 from RL.Agent import Agent, AgentConfig
 from global_models.global_models import *
+from pickle_compat import load_pickle_file
 
 
 def load_active_jobs(jobs_path):
@@ -106,8 +107,9 @@ class Server:
         self.episode_length = 0
         self.global_reward = 0.0
         if os.path.exists(os.path.join(os.path.dirname(__file__), self.config.context_file)):
-            with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'rb') as context:
-                self.global_round = pickle.load(context)
+            self.global_round = load_pickle_file(
+                os.path.join(os.path.dirname(__file__), self.config.context_file)
+            )
         self.lock = threading.Lock()
         self.current_round_all_params = []
         self.global_models_manager = globel_models_manager([job["name"] for job in self.jobs])
