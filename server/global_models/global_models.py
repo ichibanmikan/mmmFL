@@ -11,34 +11,47 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import torch
+import importlib
+from pathlib import Path
+
 import numpy as np
-from global_models.MHAD_model import MHAD
-from global_models.AC_model import AC
-from global_models.CREMAD_model import CREMAD
-from global_models.CrisisMMD_model import CrisisMMD
-from global_models.USC_model import USC
-from global_models.FLASH_model import FLASH
-from global_models.HatefulMemes_model import HatefulMemes
+import torch
+
+MODEL_REGISTRY = {
+    "AC": ("global_models.AC_model", "AC"),
+    "CIFAR": ("global_models.CIFAR_model", "CIFAR"),
+    "CREMAD": ("global_models.CREMAD_model", "CREMAD"),
+    "CrisisMMD": ("global_models.CrisisMMD_model", "CrisisMMD"),
+    "FLASH": ("global_models.FLASH_model", "FLASH"),
+    "FMNIST": ("global_models.FMNIST_model", "FMNIST"),
+    "HatefulMemes": ("global_models.HatefulMemes_model", "HatefulMemes"),
+    "MHAD": ("global_models.MHAD_model", "MHAD"),
+    "MNIST": ("global_models.MNIST_model", "MNIST"),
+    "USC": ("global_models.USC_model", "USC"),
+}
+
+
+def load_model_class(job_name):
+    module_name, class_name = MODEL_REGISTRY[job_name]
+    module = importlib.import_module(module_name)
+    return getattr(module, class_name)
 
 class globel_models_manager:
-    def __init__(self):
-        self.models = []
-        
+    def __init__(self, job_names):
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
             device = torch.device("cuda")
         else:
             device = torch.device("cpu")
-        
-        self.models.append(HatefulMemes(device))
-        self.models.append(CrisisMMD(device))
-        self.models.append(MHAD(device))
-        self.models.append(USC(device))
-        # self.models.append(FLASH(device))
+
         self.device = device
+        self.models = []
+        for job_name in job_names:
+            if job_name not in MODEL_REGISTRY:
+                raise KeyError(f"Unsupported global model: {job_name}")
+            model_cls = load_model_class(job_name)
+            self.models.append(model_cls(device))
         
     def get_model_params(self, job):
         return self.models[job].get_model_params()
@@ -52,11 +65,8 @@ class globel_models_manager:
         return self.models[job].get_model_name()
         
     def test(self):
-        accs = []
-        for i in range(len(self.models)):
-            # self.models[i] = self.models[i].to(self.device)
-            accs.append(self.models[i].Tester.test())
-        return accs
+        return [model.Tester.test() for model in self.models]
     
     def save_model(self, job_index):
-        self.models[job_index].save_model(os.path.join(os.path.dirname(os.path.abspath(__file__)), f'models/{self.get_model_name(job_index)}.pth'))
+        model_path = Path(__file__).resolve().parent / "models" / f"{self.get_model_name(job_index)}.pth"
+        self.models[job_index].save_model(model_path)

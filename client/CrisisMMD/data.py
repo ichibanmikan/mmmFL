@@ -1,8 +1,9 @@
-import pickle
 from torch.utils.data import DataLoader, Dataset
 import torch
 import os
 import numpy as np
+
+from pickle_compat import load_pickle_file
 
 # class DataSet(Dataset):
 #     def __init__(self, data_pkl, device = "cuda"):
@@ -58,7 +59,7 @@ def collate_fn_padd(batch):
 
 class DataSet(Dataset):
     def __init__(self, data_pkl, device="cuda"):
-        self.data = pickle.load(open(data_pkl, "rb"))
+        self.data = load_pickle_file(data_pkl)
         self.device = device
 
     def __len__(self):

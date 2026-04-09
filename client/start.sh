@@ -13,19 +13,11 @@ print(config.get("active_client_count", len(config["Ability"]["ability"])))
 PY
 )"
 
-START_ID=11
-END_ID=21
+export KMP_USE_SHM="${KMP_USE_SHM:-0}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 
-if (( CLIENT_COUNT <= START_ID )); then
-    exit 0
-fi
-
-LAST_ID=$(( CLIENT_COUNT - 1 ))
-if (( END_ID > LAST_ID )); then
-    END_ID=$LAST_ID
-fi
-
-for ((node_id=START_ID; node_id<=END_ID; node_id++))
+for ((node_id=0; node_id<CLIENT_COUNT; node_id++))
 do
     echo "start $node_id"
     if [[ -n "${CUDA_VISIBLE_DEVICES+x}" && -n "${CUDA_VISIBLE_DEVICES}" ]]; then

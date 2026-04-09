@@ -1,24 +1,44 @@
 {
-    "Jobs": [
-        {
-            "name": "HatefulMemes",
-            "acc_goal": 75,
-            "model_size": 3008784
-        },    
-        {
-            "name": "CrisisMMD",
-            "acc_goal": 75,
-            "model_size": 5009960
-        },    
-        {
-            "name": "MHAD",
-            "acc_goal": 100,
-            "model_size": 1721880
-        },    
-        {
-            "name": "USC",
-            "acc_goal": 100,
-            "model_size": 1201624
-        }
-    ]
+    "active_profile": "vision_3tasks",
+    "profiles": {
+        "legacy_4tasks": [
+            {
+                "name": "HatefulMemes",
+                "acc_goal": 75,
+                "model_size": 3008784
+            },
+            {
+                "name": "CrisisMMD",
+                "acc_goal": 75,
+                "model_size": 5009960
+            },
+            {
+                "name": "MHAD",
+                "acc_goal": 100,
+                "model_size": 1721880
+            },
+            {
+                "name": "USC",
+                "acc_goal": 100,
+                "model_size": 1201624
+            }
+        ],
+        "vision_3tasks": [
+            {
+                "name": "MNIST",
+                "acc_goal": 98,
+                "model_size": 206922
+            },
+            {
+                "name": "FMNIST",
+                "acc_goal": 90,
+                "model_size": 390410
+            },
+            {
+                "name": "CIFAR",
+                "acc_goal": 80,
+                "model_size": 853018
+            }
+        ]
+    }
 }

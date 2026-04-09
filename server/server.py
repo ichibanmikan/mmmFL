@@ -1,14 +1,31 @@
 import os
 import time
 import json
+import pickle
+import random
 import socket
 import threading
 import numpy as np
 import configparser
+import torch
 from RL.Agent import RandomAgent
 from communication import *
 from Experiment.plt import plot
 from global_models.global_models import *
+from pickle_compat import load_pickle_file
+
+
+def load_active_jobs(jobs_path):
+    with open(jobs_path, "r", encoding="utf-8") as job_json:
+        data = json.load(job_json)
+
+    if "profiles" not in data:
+        return data["Jobs"]
+
+    active_profile = data.get("active_profile")
+    if active_profile not in data["profiles"]:
+        raise KeyError(f"Unknown jobs profile: {active_profile}")
+    return data["profiles"][active_profile]
 
 class Config:
     def __init__(self):
@@ -48,19 +65,23 @@ class Server:
         set_all_seeds(42)
         self.done = False
         self.history_data = {}
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
-            self.jobs = json.load(job_json)["Jobs"]
+        jobs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jobs.json")
+        with open(jobs_path, "r", encoding="utf-8") as job_json:
+            jobs_data = json.load(job_json)
+        self.jobs_profile = jobs_data.get("active_profile", "default")
+        self.jobs = load_active_jobs(jobs_path)
         self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
         self.threads = []
         self.global_round = 0
         self.episode_length = 0
         if os.path.exists(os.path.join(os.path.dirname(__file__), self.config.context_file)):
-            with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'rb') as context:
-                self.global_round = pickle.load(context)
+            self.global_round = load_pickle_file(
+                os.path.join(os.path.dirname(__file__), self.config.context_file)
+            )
         self.lock = threading.Lock()
         self.current_round_all_params = []
         self.num_part = 0
-        self.global_models_manager = globel_models_manager()
+        self.global_models_manager = globel_models_manager([job["name"] for job in self.jobs])
         self.stds = np.zeros(self.config.save_std_freq)
         # self.episode_accs = []
         
@@ -98,7 +119,7 @@ class Server:
             self.current_round_all_params = []
             for i in range(len(self.jobs)):
                 self.global_models_manager.save_model(i)
-            self.global_models_manager = globel_models_manager()
+            self.global_models_manager = globel_models_manager([job["name"] for job in self.jobs])
             for i in range(len(self.jobs)):
                 self.jobs_finish[i] = False
             self.threads.clear()

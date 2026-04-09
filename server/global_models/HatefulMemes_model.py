@@ -11,6 +11,8 @@ from torch.nn.utils.rnn import pack_padded_sequence
 
 from torch.utils.data import DataLoader, Dataset
 
+from pickle_compat import load_pickle_file
+
 class FuseBaseSelfAttention(nn.Module):
     # https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8421023
     def __init__(
@@ -179,7 +181,7 @@ class HatefulMemesSet(Dataset):
         self.data = []
         pkl_path = os.path.join(data_dir, 'test.pkl')
         if os.path.exists(pkl_path):
-            self.data.extend(pickle.load(open(pkl_path, "rb")))
+            self.data.extend(load_pickle_file(pkl_path))
         self.device = device
         
     def __len__(self):

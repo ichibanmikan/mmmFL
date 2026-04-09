@@ -225,10 +225,16 @@ class My3Model(nn.Module):
 class FLASH_set(Dataset):
     def __init__(self) -> None:
         super().__init__()
-        self.gps_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/gps.npz')['gps']
-        self.lidar_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/lidar.npz')['lidar']
-        self.image_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/image.npz')['image']
-        self.label_data = np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/FLASH/rf.npz')['rf']
+        base_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "test_datasets",
+            "FLASH",
+        )
+        self.gps_data = np.load(os.path.join(base_dir, "gps.npz"))['gps']
+        self.lidar_data = np.load(os.path.join(base_dir, "lidar.npz"))['lidar']
+        self.image_data = np.load(os.path.join(base_dir, "image.npz"))['image']
+        self.label_data = np.load(os.path.join(base_dir, "rf.npz"))['rf']
 
     def __len__(self):
         return len(self.label_data)

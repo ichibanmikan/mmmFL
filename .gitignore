@@ -46,7 +46,7 @@ client/CREMAD/datasets
 client/CREMAD/test.py
 client/CREMAD_lazyloading/datasets
 client/CREMAD_lazyloading/test.py
-/home/chenxu/codes/ichibanFATE/client/__MACOSX
+client/__MACOSX
 client/__MACOSX/USC-data/._.DS_Store
 server/models
 server/RL/RLModel
@@ -54,10 +54,17 @@ server/RL/RLModel
 *.log
 
 client/USC-data
-
+client/MNIST/datasets
+client/FMNIST/datasets
+client/CIFAR/datasets
 server/jobs_backup
 server/Experiment/client_graph
 server/Experiment/**/*.png
 server/Experiment/backup/
 server/context.pkl
 server/std.log
+
+client/*/datasets
+client/*/models
+
+client/prompt.md
