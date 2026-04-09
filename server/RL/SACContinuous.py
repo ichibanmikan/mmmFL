@@ -79,7 +79,7 @@ class SACContinuous:
         tau,
         gamma,
         device,
-        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SACContinuous.pth')
+        model_path = None
     ):
         self.N = N
         self.state_dim = 3 * N
@@ -87,6 +87,12 @@ class SACContinuous:
         self.device = device
         self.gamma = gamma
         self.tau = tau
+        if model_path is None:
+            model_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                'RLModel',
+                f'SACContinuous_N{N}.pth'
+            )
         self.model_path = model_path
 
         self.actor = Actor(3, hidden_dim).to(device)
@@ -105,6 +111,11 @@ class SACContinuous:
         self.log_alpha = torch.tensor(0.0, requires_grad=True, device=device)
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=alpha_lr)
         self.target_entropy = target_entropy
+        if os.path.exists(self.model_path):
+            try:
+                self.load_model()
+            except Exception as exc:
+                print(f"Skip incompatible SACContinuous checkpoint {self.model_path}: {exc}")
 
     def sample_action(self, states):
         psi = self.actor(states)

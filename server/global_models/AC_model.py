@@ -267,13 +267,24 @@ class My3Model(nn.Module):
 class ac_set(Dataset):
     def __init__(self) -> None:
         super().__init__()
-        self.label_data = torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/label.npy', 'r'), dtype=torch.long)
+        self.base_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "test_datasets",
+            "AC",
+        )
+        self.label_data = torch.tensor(np.load(os.path.join(self.base_dir, "label.npy"), 'r'), dtype=torch.long)
 
     def __len__(self):
         return len(self.label_data)
     
     def __getitem__(self, index):
-        return torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/audio/' + str(index) + '.npy', 'r'), dtype=torch.float16), torch.unsqueeze(torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/depth/' + str(index) + '.npy', 'r'), dtype=torch.float16), dim=0), torch.tensor(np.load('/home/chenxu/codes/ichibanFATE/server/test_datasets/AC/radar/' + str(index) + '.npy', 'r'), dtype=torch.float16), self.label_data[index]
+        return (
+            torch.tensor(np.load(os.path.join(self.base_dir, "audio", f"{index}.npy"), 'r'), dtype=torch.float16),
+            torch.unsqueeze(torch.tensor(np.load(os.path.join(self.base_dir, "depth", f"{index}.npy"), 'r'), dtype=torch.float16), dim=0),
+            torch.tensor(np.load(os.path.join(self.base_dir, "radar", f"{index}.npy"), 'r'), dtype=torch.float16),
+            self.label_data[index],
+        )
     
 class AC:
     def __init__(self, device):

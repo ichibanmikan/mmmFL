@@ -4,7 +4,7 @@ class Prompt_reward:
         self.Context = """
 
 # Context
-We address a multi-task multimodal federated learning (FL) problem with the objective of minimizing the completion time for all tasks. The challenge arises from the heterogeneity in client resources and data distribution across participating clients. Specifically, clients have limited computational and communication capabilities, and the data distribution is non-uniform, potentially leading to missing modalities or labels. This results in imbalanced distributions of data, modalities, and client capabilities. Furthermore, different FL tasks have varying resource requirements and convergence times.
+We address a multi-task federated learning (FL) problem with the objective of minimizing the completion time for all tasks. The challenge arises from the heterogeneity in client resources and data distribution across participating clients. Specifically, clients have limited computational and communication capabilities, and the data distribution is non-uniform, potentially leading to missing modalities or labels. This results in imbalanced distributions of data, modalities, and client capabilities. Furthermore, different FL tasks have varying resource requirements and convergence times. The current experiment setup may contain three image-classification tasks, such as MNIST, FMNIST, and CIFAR, but the task count should always be treated as dynamic.
 
 To tackle these challenges, we propose a framework for task and bandwidth allocation within each multi-task multimodal FL client. Task assignment involves selecting suitable clients for specific tasks based on their computational resources and data quality. For instance, a client with abundant computational resources and high-quality data for a long-running task would be prioritized for that task. Conversely, clients with limited resources or poor data quality may be assigned fewer training rounds or excluded from certain tasks. Bandwidth allocation aims to minimize the standard deviation of per-round time consumption across clients by allocating more bandwidth to slower tasks and less to faster ones, ensuring that transmission time does not become a bottleneck.
 
@@ -225,6 +225,5 @@ Please think step by step and generate content in the following JSON format (rep
             str += '\n'
       return pr.Context + pr.Action + str + self.Action_2 + self.Purpose + self.Expectation
    
-
 
 

@@ -293,8 +293,14 @@ class CREMAD:
                 os.path.dirname(
                     os.path.abspath(__file__)), f'models/{self.get_model_name()}.pth'))
         self.model = self.model.to(device)
+        data_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "test_datasets",
+            "CREMAD",
+        )
         self.test_loader = \
-            DataLoader(CREMADSet('/home/chenxu/codes/ichibanFATE/server/test_datasets/CREMAD'), \
+            DataLoader(CREMADSet(data_dir), \
                 batch_size=16, num_workers=16)
         self.Tester = Tester(self.model, test_loader=self.test_loader, device=device)
     def get_model_params(self):

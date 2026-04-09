@@ -6,8 +6,10 @@ import os
 import random
 
 class Actor(nn.Module):
-    def __init__(self, N, hidden_width = 128, action_width = 5):
+    def __init__(self, N, hidden_width = 128, action_width = None):
         super(Actor, self).__init__()
+        if action_width is None:
+            action_width = N + 1
         self.l1 = nn.Linear(2 * N + 1, hidden_width) 
         # (bsz, 3N + 1) @ (3N + 1, hidden_width)
         self.l2 = nn.Linear(hidden_width, action_width) 
@@ -25,8 +27,10 @@ class Actor(nn.Module):
     #Action a means select job (a - 1) unless a == 0
 
 class QValueNet(nn.Module):
-    def __init__(self, N, hidden_width, action_width = 5):
+    def __init__(self, N, hidden_width, action_width = None):
         super(QValueNet, self).__init__()
+        if action_width is None:
+            action_width = N + 1
         self.l1 = nn.Linear(2 * N + 1, hidden_width)
         # (bsz, 2 * N + 1) @ (2 * N + 1, h_d)
         self.l2 = nn.Linear(hidden_width, action_width)
@@ -47,16 +51,24 @@ class SACDiscrete:
     def __init__(self, N, hidden_dim,
                  actor_lr, critic_lr, alpha_lr,
                  target_entropy, tau, gamma, device, 
-                 model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'RLModel', 'SACDiscrete.pth')
+                 model_path = None
                  ):
+        if model_path is None:
+            model_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                'RLModel',
+                f'SACDiscrete_N{N}.pth'
+            )
+        self.N = N
+        self.action_width = N + 1
 
-        self.actor = Actor(N = N, hidden_width = hidden_dim).to(device)
+        self.actor = Actor(N = N, hidden_width = hidden_dim, action_width=self.action_width).to(device)
         
-        self.critic_1 = QValueNet(N = N, hidden_width = hidden_dim).to(device)
-        self.critic_2 = QValueNet(N = N, hidden_width = hidden_dim).to(device)
+        self.critic_1 = QValueNet(N = N, hidden_width = hidden_dim, action_width=self.action_width).to(device)
+        self.critic_2 = QValueNet(N = N, hidden_width = hidden_dim, action_width=self.action_width).to(device)
 
-        self.target_critic_1 = QValueNet(N = N, hidden_width = hidden_dim).to(device)
-        self.target_critic_2 = QValueNet(N = N, hidden_width = hidden_dim).to(device)
+        self.target_critic_1 = QValueNet(N = N, hidden_width = hidden_dim, action_width=self.action_width).to(device)
+        self.target_critic_2 = QValueNet(N = N, hidden_width = hidden_dim, action_width=self.action_width).to(device)
         
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic_1_optimizer = torch.optim.Adam(self.critic_1.parameters(), lr=critic_lr)
@@ -181,21 +193,26 @@ class SACDiscrete:
         print(f"Model saved to {self.model_path}")
 
     def load_model(self):
-        checkpoint = torch.load(self.model_path, map_location=self.device, weights_only=True)
-        self.actor.load_state_dict(checkpoint['actor_state_dict'])
-        self.critic_1.load_state_dict(checkpoint['critic_1_state_dict'])
-        self.critic_2.load_state_dict(checkpoint['critic_2_state_dict'])
-        self.target_critic_1.load_state_dict(checkpoint['target_critic_1_state_dict'])
-        self.target_critic_2.load_state_dict(checkpoint['target_critic_2_state_dict'])
-        self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
-        self.critic_1_optimizer.load_state_dict(
-            checkpoint['critic_1_optimizer_state_dict']
-        )
-        self.critic_2_optimizer.load_state_dict(
-            checkpoint['critic_2_optimizer_state_dict']
-        )
-        self.log_alpha = checkpoint['log_alpha']
-        self.log_alpha_optimizer.load_state_dict(
-            checkpoint['log_alpha_optimizer_state_dict']
-        )
-        print(f"Model loaded from {self.model_path}")
+        try:
+            checkpoint = torch.load(self.model_path, map_location=self.device, weights_only=True)
+            self.actor.load_state_dict(checkpoint['actor_state_dict'])
+            self.critic_1.load_state_dict(checkpoint['critic_1_state_dict'])
+            self.critic_2.load_state_dict(checkpoint['critic_2_state_dict'])
+            self.target_critic_1.load_state_dict(checkpoint['target_critic_1_state_dict'])
+            self.target_critic_2.load_state_dict(checkpoint['target_critic_2_state_dict'])
+            self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
+            self.critic_1_optimizer.load_state_dict(
+                checkpoint['critic_1_optimizer_state_dict']
+            )
+            self.critic_2_optimizer.load_state_dict(
+                checkpoint['critic_2_optimizer_state_dict']
+            )
+            self.log_alpha = checkpoint['log_alpha']
+            self.log_alpha_optimizer.load_state_dict(
+                checkpoint['log_alpha_optimizer_state_dict']
+            )
+            print(f"Model loaded from {self.model_path}")
+        except Exception as exc:
+            print(f"Skip incompatible SACDiscrete checkpoint {self.model_path}: {exc}")
+            self.target_critic_1.load_state_dict(self.critic_1.state_dict())
+            self.target_critic_2.load_state_dict(self.critic_2.state_dict())
