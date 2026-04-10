@@ -54,7 +54,7 @@ class Trainer:
             epoch_loss = self.every_epoch_train()
             elapsed = time.time() - time_start
             record_loss[epoch] = epoch_loss
-            print(f"Node {self.node_id} epoch {epoch}, total time {elapsed:.2f}")
+            # print(f"Node {self.node_id} epoch {epoch}, total time {elapsed:.2f}")
         return float(record_loss[-1])
 
     def sample_one_epoch(self):

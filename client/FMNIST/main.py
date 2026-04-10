@@ -24,7 +24,7 @@ class Config:
             config_data = json.load(f)
         self.batch_size = config_data.get("batch_size", 32)
         self.num_workers = config_data.get("num_workers", 0)
-        self.epochs = config_data.get("epochs", 50)
+        self.epochs = config_data.get("epochs", 1)
         self.learning_rate = config_data.get("learning_rate", 0.001)
         self.weight_decay = config_data.get("weight_decay", 0.0)
         self.num_classes = config_data.get("num_classes", 10)

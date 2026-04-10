@@ -1,4 +1,3 @@
-import os
 import torch
 import numpy as np
 from RL.SACDiscrete import SACDiscrete
@@ -20,7 +19,7 @@ class AgentConfig:
             setattr(self, key, value)
 
 class Agent:
-    def __init__(self, High_config, Low_config, N, M, device="cuda", tag="default"):
+    def __init__(self, High_config, Low_config, N, M, device="cuda"):
         self.N = N
         self.high_agent = SACDiscrete(
             N = N,
@@ -31,23 +30,10 @@ class Agent:
             device = High_config.device,
             tau = High_config.tau,
             target_entropy = High_config.target_entropy,
-            gamma = High_config.gamma,
-            model_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                'RLModel',
-                f'SACDiscrete_{tag}.pth'
-            )
+            gamma = High_config.gamma
         )
 
-        self.low_agent = PSO(
-            N=M,
-            model_path=os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                'RLModel',
-                f'PSO_{tag}.pkl'
-            ),
-            **Low_config.params
-        )
+        self.low_agent = PSO(N=M, **Low_config.params)
     
     def job_selection(self, state, take_next = False):
         return self.high_agent.take_action(state, take_next)

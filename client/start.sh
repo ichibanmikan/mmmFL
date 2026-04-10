@@ -81,7 +81,7 @@ for ((node_id=0; node_id<CLIENT_COUNT; node_id++))
 do
     gpu_idx=$((node_id % USE_GPU_COUNT))
     assigned_gpu="${GPU_LIST[$gpu_idx]}"
-    echo $CLIENT_COUNT
+    # echo $CLIENT_COUNT
     echo "start client $node_id on physical GPU $assigned_gpu"
 
     CUDA_VISIBLE_DEVICES="$assigned_gpu" \

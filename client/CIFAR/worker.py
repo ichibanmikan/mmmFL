@@ -88,7 +88,7 @@ class Trainer:
                 "validation_acc": float(validation_acc),
                 "epoch_time": float(elapsed),
             }
-            print(f"Node {self.node_id} epoch {epoch}, total time {elapsed:.2f}")
+            # print(f"Node {self.node_id} epoch {epoch}, total time {elapsed:.2f}")
 
         test_loss, test_acc = self.evaluate(self.test_loader, "test")
         final_metrics["test_loss"] = float(test_loss)

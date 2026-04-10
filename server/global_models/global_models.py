@@ -19,13 +19,9 @@ import torch
 import numpy as np
 
 MODEL_REGISTRY = {
-    "CIFAR": ("global_models.CIFAR_model", "CIFAR"),
-    "CrisisMMD": ("global_models.CrisisMMD_model", "CrisisMMD"),
-    "FMNIST": ("global_models.FMNIST_model", "FMNIST"),
-    "HatefulMemes": ("global_models.HatefulMemes_model", "HatefulMemes"),
-    "MHAD": ("global_models.MHAD_model", "MHAD"),
     "MNIST": ("global_models.MNIST_model", "MNIST"),
-    "USC": ("global_models.USC_model", "USC"),
+    "FMNIST": ("global_models.FMNIST_model", "FMNIST"),
+    "CIFAR": ("global_models.CIFAR_model", "CIFAR")
 }
 
 
@@ -36,7 +32,7 @@ def load_model_class(job_name):
 
 
 class globel_models_manager:
-    def __init__(self, job_names):
+    def __init__(self):
         if torch.backends.mps.is_available():
             device = torch.device("mps")
         elif torch.cuda.is_available():
@@ -46,9 +42,7 @@ class globel_models_manager:
 
         self.device = device
         self.models = []
-        for job_name in job_names:
-            if job_name not in MODEL_REGISTRY:
-                raise KeyError(f"Unsupported global model: {job_name}")
+        for job_name in MODEL_REGISTRY:
             model_cls = load_model_class(job_name)
             self.models.append(model_cls(device))
 
