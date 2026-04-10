@@ -1,43 +1,29 @@
 # Copyright 2024 ichibanmikan
-#
+# 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
+# 
 #     https://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
-import importlib
+import os
 import json
-import random
 import time
-from pathlib import Path
-
+import argparse
+from communication import ClientHandler
+from CIFAR.main import CIFAR_main
+from FMNIST.main import FMNIST_main
+from MNIST.main import MNIST_main
+import random
 import numpy as np
 import torch
-
-from communication import ClientHandler
-
-
-TRAINER_REGISTRY = {
-    "AC": ("AC.main", "AC_main"),
-    "CIFAR": ("CIFAR.main", "CIFAR_main"),
-    "CREMAD": ("CREMAD.main", "CREMAD_main"),
-    "CrisisMMD": ("CrisisMMD.main", "CrisisMMD_main"),
-    "FLASH": ("FLASH.main", "FLASH_main"),
-    "FMNIST": ("FMNIST.main", "FMNIST_main"),
-    "HatefulMemes": ("HatefulMemes.main", "HatefulMemes_main"),
-    "MHAD": ("MHAD.main", "MHAD_main"),
-    "MNIST": ("MNIST.main", "MNIST_main"),
-    "USC": ("USC.main", "USC_main"),
-}
-
+from pathlib import Path
 
 def set_all_seeds(seed=42):
     random.seed(seed)
@@ -49,31 +35,15 @@ def set_all_seeds(seed=42):
     if torch.backends.mps.is_available():
         torch.mps.manual_seed(seed)
     torch.set_default_dtype(torch.float32)
-    generator = torch.Generator()
-    generator.manual_seed(seed)
-    torch.set_rng_state(generator.get_state())
-
-
-def load_active_datasets(data):
-    if "dataset_profiles" not in data:
-        return data["datasets"]
-    active_profile = data.get("active_profile")
-    if active_profile not in data["dataset_profiles"]:
-        raise KeyError(f"Unknown dataset profile: {active_profile}")
-    return data["dataset_profiles"][active_profile]
-
-
-def load_trainer_class(dataset_name):
-    module_name, class_name = TRAINER_REGISTRY[dataset_name]
-    module = importlib.import_module(module_name)
-    return getattr(module, class_name)
-
+    g = torch.Generator()
+    g.manual_seed(seed)
+    torch.set_rng_state(g.get_state())
 
 class Config:
     def __init__(self):
         base_dir = Path(__file__).resolve().parent
         config_path = base_dir / "client.json"
-        with config_path.open("r", encoding="utf-8") as js:
+        with config_path.open("r") as js:
             data = json.load(js)
 
         parser = argparse.ArgumentParser(description="Process node ID.")
@@ -83,7 +53,7 @@ class Config:
         self.node_id = args.node_id
         self.server_address = data["Host"]["server_address"]
         self.port = data["Host"]["port"]
-        self.datasets = load_active_datasets(data)
+        self.datasets = data["datasets"]
         self.active_profile = data.get("active_profile", "default")
         self.active_client_count = data.get("active_client_count", len(data["Ability"]["ability"]))
         self.random_seed = data["random_seed"]
@@ -104,35 +74,25 @@ class Config:
     def modality(self, row):
         return self.datasets[row]["modalities_name"]
 
-
 class Client:
     def __init__(self, config):
         self.config = config
-
+        
     def start(self):
         set_all_seeds(self.config.random_seed)
-        trainers = []
-
-        for dataset in self.config.datasets:
-            dataset_name = dataset["dataset_name"]
-            if dataset_name not in TRAINER_REGISTRY:
-                raise KeyError(f"Unsupported dataset: {dataset_name}")
-            trainer_cls = load_trainer_class(dataset_name)
-            trainer = trainer_cls(
-                dataset["modalities_name"],
-                self.config.node_id,
-                dataset["model_size"],
-            )
-            trainers.append(trainer)
-
-        handler = ClientHandler(self.config, trainers)
+        self.trainers = []
+        for i in range(len(self.config.datasets)):
+            trainer = eval(f"{self.config.datasets[i]['dataset_name']}_main")(self.config.modality(i), self.config.node_id, self.config.datasets[i]['model_size'])
+            self.trainers.append(trainer)
+        
+        handler = ClientHandler(self.config, self.trainers)
+        
         handler.handle()
         print("all over")
-
-
-if __name__ == "__main__":
+         
+if __name__ == "__main__":    
     config = Config()
     client = Client(config)
-    for _ in range(1):
+    for i in range(1): # RL rounds
         client.start()
         time.sleep(10)

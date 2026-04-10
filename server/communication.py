@@ -245,6 +245,6 @@ class ServerHandler():
                 self.server.next_round_barrier.wait()
     
     def job_finish(self, job):
-        if(job < 0):
+        if(job <= 0):
             return False
         return self.server.jobs_finish[job]

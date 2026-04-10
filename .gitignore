@@ -68,3 +68,5 @@ client/*/datasets
 client/*/models
 
 client/prompt.md
+
+client/*/results

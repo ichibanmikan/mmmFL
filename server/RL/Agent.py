@@ -1,12 +1,10 @@
-import os
-
+import math
 import torch
 from RL.SACDiscrete import SACDiscrete
 from RL.SACContinuous import SACContinuous
 
 class AgentConfig:
     def __init__(self, config_dict):
-        self.params = dict(config_dict)
         self.hidden_dim = config_dict['hidden_dim']
         self.actor_lr = config_dict.get('actor_lr', 1e-3)
         self.critic_lr = config_dict.get('critic_lr', 1e-2)
@@ -15,11 +13,9 @@ class AgentConfig:
         self.target_entropy = config_dict.get('target_entropy', -1)
         self.gamma = config_dict.get('gamma', 0.9)
         self.device = config_dict.get('device')
-        for key, value in config_dict.items():
-            setattr(self, key, value)
 
 class Agent:
-    def __init__(self, High_config, Low_config, N, M, device="cuda", tag="default"):
+    def __init__(self, High_config, Low_config, N, M, device="cuda"):
         self.N = N
         self.high_agent = SACDiscrete(
             N = N,
@@ -30,12 +26,7 @@ class Agent:
             device = High_config.device,
             tau = High_config.tau,
             target_entropy = High_config.target_entropy,
-            gamma = High_config.gamma,
-            model_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                'RLModel',
-                f'SACDiscrete_{tag}.pth'
-            )
+            gamma = High_config.gamma
         )
 
         self.low_agent = SACContinuous(
@@ -47,12 +38,7 @@ class Agent:
             device = Low_config.device,
             tau = Low_config.tau,
             target_entropy = Low_config.target_entropy,
-            gamma = Low_config.gamma,
-            model_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                'RLModel',
-                f'SACContinuous_{tag}.pth'
-            )
+            gamma = Low_config.gamma
         )
     
     def job_selection(self, state, take_next = False):

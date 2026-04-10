@@ -3,11 +3,8 @@ import time
 import json
 import socket
 import threading
-import pickle
-import random
 import numpy as np
 import configparser
-import torch
 from communication import *
 from Experiment.plt import plot
 from RL.utils import ReplayBuffer
@@ -16,20 +13,6 @@ from RL.LLM.round_fit import round_fit
 from RL.Agent import Agent, AgentConfig
 from global_models.global_models import *
 from RL.LLM.reward_decoder import RewardDecoder
-from pickle_compat import load_pickle_file
-
-
-def load_active_jobs(jobs_path):
-    with open(jobs_path, "r", encoding="utf-8") as job_json:
-        data = json.load(job_json)
-
-    if "profiles" not in data:
-        return data["Jobs"]
-
-    active_profile = data.get("active_profile")
-    if active_profile not in data["profiles"]:
-        raise KeyError(f"Unknown jobs profile: {active_profile}")
-    return data["profiles"][active_profile]
 
 class Config:
     def __init__(self):
@@ -99,22 +82,18 @@ class Server:
         self.done = False
         self.history_data = {}
         # self.clients = {}
-        jobs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jobs.json")
-        with open(jobs_path, "r", encoding="utf-8") as job_json:
-            jobs_data = json.load(job_json)
-        self.jobs_profile = jobs_data.get("active_profile", "default")
-        self.jobs = load_active_jobs(jobs_path)
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jobs.json'), 'r', encoding='utf-8') as job_json:
+            self.jobs = json.load(job_json)["Jobs"]
         self.jobs_finish = np.zeros(len(self.jobs), dtype=bool)
         self.threads = []
         self.global_round = 0
         self.episode_length = 0
         if os.path.exists(os.path.join(os.path.dirname(__file__), self.config.context_file)):
-            self.global_round = load_pickle_file(
-                os.path.join(os.path.dirname(__file__), self.config.context_file)
-            )
+            with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'rb') as context:
+                self.global_round = pickle.load(context)
         self.lock = threading.Lock()
         self.current_round_all_params = []
-        self.global_models_manager = globel_models_manager([job["name"] for job in self.jobs])
+        self.global_models_manager = globel_models_manager()
         # self.stds = np.zeros(self.config.save_std_freq)
         self.reward_decoder = RewardDecoder(8)
         self.episode_accs = []
@@ -140,8 +119,7 @@ class Server:
         self.jobs_model_size_std = \
             (self.jobs_model_size - np.mean(self.jobs_model_size)) \
                 / np.std(self.jobs_model_size)
-        self.rl_tag = f"{self.jobs_profile}_N{len(self.jobs)}"
-        self.buffer = ReplayBuffer(device=device, file_tag=self.rl_tag)
+        self.buffer = ReplayBuffer(device=device)
     
     def clear_connections(self):
         """Release all current connections."""
@@ -192,7 +170,7 @@ class Server:
             # self.clients.clear()
             for i in range(len(self.jobs)):
                 self.global_models_manager.save_model(i)
-            self.global_models_manager = globel_models_manager([job["name"] for job in self.jobs])
+            self.global_models_manager = globel_models_manager()
             for i in range(len(self.jobs)):
                 self.jobs_goal_sub[i] = self.jobs[i]["acc_goal"]
                 self.jobs_goal = np.zeros(len(self.jobs))
@@ -248,8 +226,7 @@ class Server:
                 Low_config=AgentConfig(self.config.RL_low_agent), 
                 N=len(self.jobs),
                 M=len(self.threads),
-                device=self.device,
-                tag=self.rl_tag
+                device=self.device
             )
 
             self.clients_jobs = np.zeros(len(self.threads), dtype=np.int32)

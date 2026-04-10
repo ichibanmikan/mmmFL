@@ -24,11 +24,13 @@ class validaor_server:
         self.Energy_Consumption_Ratio = np.random.uniform(0.001, 0.002, 30)
 class chat_response:
     def __init__(self):
-        self.OPENAI_API_KEY = "sk-1a2b3c4d5e6f7g8h9i10j11k12l13m14n"
+        self.OPENAI_API_KEY = "sk-1a2b3c4d5e6f7g8h9i0j"
+        self.model_name = "qwen3-max"
+        self.log_path = "function.log"
 
         self.chat_client = openai.OpenAI(
             api_key=self.OPENAI_API_KEY,
-            base_url="https://api.deepseek.com",
+            base_url="https://www.dmxapi.cn/v1",
         )
         
         self.prompt_reward = Prompt_reward()
@@ -75,60 +77,102 @@ class chat_response:
 
 
     def extract_json_content(self, text):
-        match = re.search(r'```json\n(.*?)\n```', text, re.DOTALL)
+        if text is None:
+            return ""
+        text = text.strip()
+        if not text:
+            return ""
+        match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
         if match:
             return match.group(1).strip()
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end >= start:
+            return text[start:end + 1].strip()
         return text
     
     def extract_python_code(self, text):
-        match = re.search(r'```python(.*?)```', text, re.DOTALL)
+        if text is None:
+            return ""
+        match = re.search(r"```python\s*(.*?)\s*```", text, re.DOTALL)
         if match:
             return match.group(1).strip()
         return text
-    
-    def decode_stream(self, stream):
-        reasoning_content = ""
-        answer_content = ""
-        is_answering = False    
-        
-        for chunk in stream:
-            if not getattr(chunk, 'choices', None):
-                continue
-            
-            delta = chunk.choices[0].delta
-            
-            if not getattr(delta, 'reasoning_content', None) and\
-                not getattr(delta, 'content', None):
-                    continue
-                
-            if not getattr(delta, 'reasoning_content', None) and\
-                not is_answering:
-                    is_answering = True
 
-            if getattr(delta, 'reasoning_content', None):
-                reasoning_content += delta.reasoning_content
+    def _append_log(self, title, prompt_text, response_text):
+        with open(self.log_path, "a", encoding="utf-8") as file:
+            file.write(f"{title}\n")
+            file.write("Prompt:\n")
+            file.write(f"{prompt_text}\n")
+            file.write("Answer:\n")
+            file.write(f"{response_text}\n\n")
 
-            elif getattr(delta, 'content', None):
-                answer_content += delta.content
-        return reasoning_content, answer_content
+    def _request_text(self, prompt_text, title):
+        response = self.chat_client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": prompt_text}],
+        )
+        answer = ""
+        if getattr(response, "choices", None):
+            message = getattr(response.choices[0], "message", None)
+            if message is not None:
+                answer = getattr(message, "content", "") or ""
+        self._append_log(title, prompt_text, answer)
+        if not answer.strip():
+            response_dump = response.model_dump_json(indent=2)
+            raise ValueError(
+                "LLM returned empty content. Full response:\n"
+                f"{response_dump}"
+            )
+        return answer
+
+    def _parse_response_json(self, answer_text):
+        response_content = self.extract_json_content(answer_text)
+        if not response_content:
+            raise ValueError("LLM response is empty after JSON extraction.")
+        try:
+            data = json.loads(response_content)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "LLM response is not valid JSON.\n"
+                f"Raw answer:\n{answer_text}\n"
+                f"Extracted content:\n{response_content}"
+            ) from exc
+        if "Functions" not in data:
+            raise ValueError(
+                "LLM JSON response does not contain 'Functions'.\n"
+                f"Parsed JSON: {json.dumps(data, ensure_ascii=False, indent=2)}"
+            )
+        str_reward_function = self.extract_python_code(data["Functions"])
+        if not str_reward_function.strip():
+            raise ValueError(
+                "The 'Functions' field is empty.\n"
+                f"Parsed JSON: {json.dumps(data, ensure_ascii=False, indent=2)}"
+            )
+        return str_reward_function
+
+    def _build_summary_prompt(self):
+        prompt_parts = [
+            self.prompt_reward.Context,
+            self.prompt_reward.Action,
+            self.prompt_summary.Action_1,
+        ]
+        for idx, func in enumerate(self.functions):
+            prompt_parts.append(f"{idx}. {func}\n")
+        prompt_parts.extend([
+            self.prompt_summary.Action_2,
+            self.prompt_summary.Purpose,
+            self.prompt_summary.Expectation,
+        ])
+        return "".join(prompt_parts)
 
     def generate_func(self):
         try:
-            response = self.chat_client.chat.completions.create(
-                model="deepseek-reasoner",
-                messages=[{"role": "user", "content": self.prompt_reward.get_context()}],
-                stream=True
+            answer = self._request_text(
+                self.prompt_reward.get_context(),
+                "Generate Function",
             )
-            reasoning, answer = self.decode_stream(response)
-            with open('function.log', 'a') as file:
-                file.write(f"Reasoning: \n{reasoning}\n")
-                file.write(f"Answer: \n{answer}\n")
-                file.write("\n")
-                
-            response_content = self.extract_json_content(answer)
-            print(response_content)
-            data = json.loads(response_content)
-            str_reward_function = self.extract_python_code(data["Functions"])
+            str_reward_function = self._parse_response_json(answer)
 
             for i in range(5):
                 errmess = self.validator(str_reward_function)
@@ -136,45 +180,29 @@ class chat_response:
                     break
                 print(f"Syntax Error in generated function: {errmess}")
                 pr = Prompt_regenerate(str_reward_function, errmess["error"])
-                reresponse = self.chat_client.chat.completions.create(
-                    model="deepseek-reasoner",
-                    messages=[{"role": "user", "content": pr.get_context()}],
-                    stream=True
+                answer = self._request_text(
+                    pr.get_context(),
+                    f"Regenerate Function {i + 1}",
                 )
-                reasoning, answer = self.decode_stream(reresponse)
-                with open('function.log', 'a') as file:
-                    file.write(f"Reasoning: \n{reasoning}\n")
-                    file.write(f"Answer: \n{answer}\n")
-                    file.write("\n")
-                reresponse_content = self.extract_json_content(answer)
-                print(reresponse_content)
-                data = json.loads(reresponse_content)
-                str_reward_function = self.extract_python_code(data["Functions"])
+                str_reward_function = self._parse_response_json(answer)
 
             return str_reward_function
-        except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {e}")
         except Exception as e:
             print(f"API error: {e}")
+            raise
     
     def generate(self):
         for i in range(5):
             reward_function = self.generate_func()
-            self.functions.append(reward_function)
-        summary = self.chat_client.chat.completions.create(
-            model="deepseek-reasoner",
-            messages=[{"role": "user", "content": self.prompt_reward.get_context()}],
-            stream=True
+            if reward_function:
+                self.functions.append(reward_function)
+        if not self.functions:
+            raise ValueError("Failed to generate any valid reward function.")
+        answer = self._request_text(
+            self._build_summary_prompt(),
+            "Summarize Functions",
         )
-        reasoning, answer = self.decode_stream(summary)
-        with open('function.log', 'a') as file:
-            file.write(f"Reasoning: \n{reasoning}\n")
-            file.write(f"Answer: \n{answer}\n")
-            file.write("\n")
-        summary_content = self.extract_json_content(answer)
-        print(summary_content)
-        data = json.loads(summary_content)
-        str_reward_function = self.extract_python_code(data["Functions"])
+        str_reward_function = self._parse_response_json(answer)
         return str_reward_function
     
 if __name__ == "__main__":

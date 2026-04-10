@@ -4,48 +4,8 @@
         "port": 12345
     },
     "random_seed": 42,
-    "active_profile": "vision_3tasks",
-    "active_client_count": 30,
-    "dataset_profiles": {
-        "legacy_4tasks": [
-            {
-                "dataset_name": "HatefulMemes",
-                "modalities_num": 2,
-                "modalities_name": [
-                    "text",
-                    "img"
-                ],
-                "model_size": 3008784
-            },
-            {
-                "dataset_name": "CrisisMMD",
-                "modalities_num": 2,
-                "modalities_name": [
-                    "text",
-                    "img"
-                ],
-                "model_size": 5009960
-            },
-            {
-                "dataset_name": "MHAD",
-                "modalities_num": 2,
-                "modalities_name": [
-                    "acc",
-                    "skeleton"
-                ],
-                "model_size": 1721880
-            },
-            {
-                "dataset_name": "USC",
-                "modalities_num": 2,
-                "modalities_name": [
-                    "acc",
-                    "gyr"
-                ],
-                "model_size": 1201624
-            }
-        ],
-        "vision_3tasks": [
+    "active_client_count": 20,
+    "datasets": [
             {
                 "dataset_name": "MNIST",
                 "modalities_num": 1,
@@ -70,8 +30,7 @@
                 ],
                 "model_size": 853018
             }
-        ]
-    },
+    ],
     "Ability": {
         "ability": [
             1264373629,
