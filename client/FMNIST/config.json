@@ -1,0 +1,9 @@
+{
+    "batch_size": 32,
+    "num_workers": 0,
+    "epochs": 1,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "num_classes": 10,
+    "MACs": 390410
+}

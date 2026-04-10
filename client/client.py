@@ -17,15 +17,13 @@ import json
 import time
 import argparse
 from communication import ClientHandler
-from FLASH.main import FLASH_main
-from MHAD.main import MHAD_main
-from CREMAD.main import CREMAD_main
-from USC.main import USC_main
-from CrisisMMD.main import CrisisMMD_main
-from HatefulMemes.main import HatefulMemes_main
+from CIFAR.main import CIFAR_main
+from FMNIST.main import FMNIST_main
+from MNIST.main import MNIST_main
 import random
 import numpy as np
 import torch
+from pathlib import Path
 
 def set_all_seeds(seed=42):
     random.seed(seed)
@@ -43,18 +41,28 @@ def set_all_seeds(seed=42):
 
 class Config:
     def __init__(self):
-        with open(os.path.join(os.path.dirname(__file__), "client.json")) as js:
+        base_dir = Path(__file__).resolve().parent
+        config_path = base_dir / "client.json"
+        with config_path.open("r") as js:
             data = json.load(js)
-            parser = argparse.ArgumentParser(description="Process node ID.")
 
-        parser.add_argument('--node_id', type=int, required=True, help='Node ID of the client')
-
+        parser = argparse.ArgumentParser(description="Process node ID.")
+        parser.add_argument("--node_id", type=int, required=True, help="Node ID of the client")
         args = parser.parse_args()
-        
+
         self.node_id = args.node_id
         self.server_address = data["Host"]["server_address"]
         self.port = data["Host"]["port"]
         self.datasets = data["datasets"]
+        self.active_profile = data.get("active_profile", "default")
+        self.active_client_count = data.get("active_client_count", len(data["Ability"]["ability"]))
+        self.random_seed = data["random_seed"]
+
+        if self.node_id >= self.active_client_count:
+            raise ValueError(
+                f"node_id {self.node_id} is outside active_client_count {self.active_client_count}"
+            )
+
         self.kappa = data["Ability"]["ability"][self.node_id]
         self.distance = data["Energy"]["distance"][self.node_id]
         self.tx_power_dbm = data["Energy"]["tx_power_dbm"][self.node_id]
@@ -62,9 +70,9 @@ class Config:
         self.noise_dbm = data["Energy"]["noise_dbm"]
         self.bandwidth_hz = data["Energy"]["bandwidth_hz"]
         self.total_energy = data["Energy"]["total_energy"][self.node_id]
-        self.random_seed = data["random_seed"]
+
     def modality(self, row):
-        return self.datasets[row]['modalities_name']
+        return self.datasets[row]["modalities_name"]
 
 class Client:
     def __init__(self, config):
