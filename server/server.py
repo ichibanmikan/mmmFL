@@ -113,6 +113,12 @@ class Server:
         time.sleep(5)
 
     def start(self):
+        if self.global_round >= self.config.max_rounds:
+            print(
+                f"Configured max rounds {self.config.max_rounds} already reached "
+                f"(current: {self.global_round})."
+            )
+            return
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server_socket=server_socket
@@ -182,6 +188,7 @@ class Server:
         with open(os.path.join(os.path.dirname(__file__), 'server.log'), "a") as log:
             log.write(f"This round all jobs' acc are: {accs}\n")
         self.global_round += 1
+        self.is_done()
         
     def round_clean(self):
         # self.round_time = np.zeros(len(self.threads))
@@ -222,9 +229,16 @@ class Server:
         #                 plot(time_table = self.round_time_part, round = self.global_round)                    
         #         std = np.std(part_time)
         # self.stds[(self.global_round - 1) % self.config.save_std_freq] = std
+
+    def is_done(self):
+        if self.global_round >= self.config.max_rounds:
+            self.done = True
+            with open(os.path.join(os.path.dirname(__file__), self.config.context_file), 'wb') as context:
+                binary_round = pickle.dumps(self.global_round, pickle.HIGHEST_PROTOCOL)
+                context.write(binary_round)
         
 if __name__ == "__main__":
     config = Config()  # Initialize the config
     server = Server(config)
-    for i in range(server.config.max_rounds):
+    while server.global_round < server.config.max_rounds:
         server.start()
