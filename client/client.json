@@ -5,7 +5,7 @@
     },
     "random_seed": 42,
     "active_profile": "vision_3tasks",
-    "active_client_count": 30,
+    "active_client_count": 20,
     "dataset_profiles": {
         "legacy_4tasks": [
             {
